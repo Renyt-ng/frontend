@@ -1,0 +1,30 @@
+import Link from "next/link";
+import Image from "next/image";
+
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-[var(--color-bg)] px-4 py-12">
+      {/* Logo */}
+      <Link href="/" className="mb-8 flex items-center">
+        <Image
+          src="/logo-primary.png"
+          alt="Renyt"
+          width={140}
+          height={44}
+          className="h-11 w-auto"
+          priority
+        />
+      </Link>
+
+      <div className="w-full max-w-md">{children}</div>
+
+      <p className="mt-8 text-center text-xs text-[var(--color-text-secondary)]">
+        &copy; {new Date().getFullYear()} Renyt.ng &mdash; Rent with Confidence
+      </p>
+    </div>
+  );
+}
