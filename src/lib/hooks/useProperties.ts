@@ -6,10 +6,15 @@ import {
 } from "@tanstack/react-query";
 import { propertiesApi } from "@/lib/api";
 import type {
+  FeeType,
   Property,
+  PropertyTypeDefinition,
   PropertyWithImages,
   PropertySearchParams,
+  PropertyImage,
+  PropertyVideo,
   ApiSuccessResponse,
+  UploadPropertyMediaInput,
 } from "@/types";
 
 /** Query key factory for properties */
@@ -20,7 +25,10 @@ export const propertyKeys = {
     [...propertyKeys.lists(), params] as const,
   details: () => [...propertyKeys.all, "detail"] as const,
   detail: (id: string) => [...propertyKeys.details(), id] as const,
+  manage: (id: string) => [...propertyKeys.all, "manage", id] as const,
   mine: () => [...propertyKeys.all, "mine"] as const,
+  feeTypes: () => [...propertyKeys.all, "fee-types"] as const,
+  propertyTypes: () => [...propertyKeys.all, "property-types"] as const,
 };
 
 /** Search/list properties with filters */
@@ -49,6 +57,21 @@ export function useProperty(
   return useQuery({
     queryKey: propertyKeys.detail(id),
     queryFn: () => propertiesApi.getProperty(id),
+    enabled: !!id,
+    ...options,
+  });
+}
+
+export function useManageProperty(
+  id: string,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<PropertyWithImages>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.manage(id),
+    queryFn: () => propertiesApi.getManageProperty(id),
     enabled: !!id,
     ...options,
   });
@@ -91,8 +114,136 @@ export function useUpdateProperty() {
       queryClient.invalidateQueries({
         queryKey: propertyKeys.detail(variables.id),
       });
+      queryClient.invalidateQueries({
+        queryKey: propertyKeys.manage(variables.id),
+      });
       queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+    },
+  });
+}
+
+export function useFeeTypes(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<FeeType[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.feeTypes(),
+    queryFn: () => propertiesApi.getFeeTypes(),
+    ...options,
+  });
+}
+
+export function usePropertyTypes(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<PropertyTypeDefinition[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.propertyTypes(),
+    queryFn: () => propertiesApi.getPropertyTypes(),
+    ...options,
+  });
+}
+
+export function useCreateFeeType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: propertiesApi.createFeeType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.feeTypes() });
+    },
+  });
+}
+
+export function usePublishProperty() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: propertiesApi.publishProperty,
+    onSuccess: (_data, propertyId) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(propertyId) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+    },
+  });
+}
+
+export function useUploadPropertyImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UploadPropertyMediaInput }) =>
+      propertiesApi.uploadPropertyImage(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+    },
+  });
+}
+
+export function useReorderPropertyImages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, imageIds }: { id: string; imageIds: string[] }) =>
+      propertiesApi.reorderPropertyImages(id, imageIds),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+    },
+  });
+}
+
+export function useSetPropertyCoverImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, imageId }: { id: string; imageId: string }) =>
+      propertiesApi.setPropertyCoverImage(id, imageId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+    },
+  });
+}
+
+export function useDeletePropertyImage() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, imageId }: { id: string; imageId: string }) =>
+      propertiesApi.deletePropertyImage(id, imageId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+    },
+  });
+}
+
+export function useUploadPropertyVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UploadPropertyMediaInput }) =>
+      propertiesApi.uploadPropertyVideo(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+    },
+  });
+}
+
+export function useDeletePropertyVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, videoId }: { id: string; videoId: string }) =>
+      propertiesApi.deletePropertyVideo(id, videoId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
     },
   });
 }

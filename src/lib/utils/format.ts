@@ -57,12 +57,43 @@ export function formatPropertyType(type: string): string {
   const LABELS: Record<string, string> = {
     apartment: "Apartment",
     duplex: "Duplex",
+    shortlet: "Shortlet",
     selfcontain: "Self Contain",
     flat: "Flat",
     bungalow: "Bungalow",
     penthouse: "Penthouse",
   };
-  return LABELS[type] ?? capitalize(type);
+
+  if (LABELS[type]) {
+    return LABELS[type];
+  }
+
+  return type
+    .split(/[_-]+/)
+    .map((part) => capitalize(part))
+    .join(" ");
+}
+
+export function formatListingPurpose(purpose: "rent" | "sale"): string {
+  return purpose === "sale" ? "For Sale" : "For Rent";
+}
+
+export function formatPropertyPriceLabel(params: {
+  listingPurpose: "rent" | "sale";
+  rentAmount?: number | null;
+  askingPrice?: number | null;
+}) {
+  if (params.listingPurpose === "sale") {
+    return {
+      amount: formatCurrency(params.askingPrice ?? 0),
+      qualifier: "asking",
+    };
+  }
+
+  return {
+    amount: formatCurrency(params.rentAmount ?? 0),
+    qualifier: "per year",
+  };
 }
 
 /** Slugify text for URLs */

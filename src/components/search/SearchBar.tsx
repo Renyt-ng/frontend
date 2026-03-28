@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useDeferredValue, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LAGOS_AREAS } from "@/lib/utils";
+import { useLocations } from "@/lib/hooks";
+import type { Location } from "@/types";
 
 interface SearchBarProps {
   /** Initial area value */
   defaultArea?: string;
+  defaultLocationSlug?: string;
   /** Compact mode for navbar or inline usage */
   compact?: boolean;
   className?: string;
@@ -16,39 +18,56 @@ interface SearchBarProps {
 
 export function SearchBar({
   defaultArea = "",
+  defaultLocationSlug = "",
   compact = false,
   className,
 }: SearchBarProps) {
   const router = useRouter();
   const [area, setArea] = useState(defaultArea);
+  const [locationSlug, setLocationSlug] = useState(defaultLocationSlug);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const deferredArea = useDeferredValue(area.trim());
 
-  const filtered =
-    area.length > 0
-      ? LAGOS_AREAS.filter((a) => a.toLowerCase().includes(area.toLowerCase()))
-      : LAGOS_AREAS;
+  const locationsQuery = useLocations({
+    q: deferredArea || undefined,
+    kind: "all",
+    limit: deferredArea ? 8 : 0,
+  });
+  const filtered = locationsQuery.data?.data ?? [];
+
+  function buildSearchUrl(nextArea: string, nextLocationSlug?: string) {
+    const params = new URLSearchParams();
+    const trimmedArea = nextArea.trim();
+
+    if (trimmedArea) {
+      params.set("area", trimmedArea);
+    }
+
+    if (nextLocationSlug) {
+      params.set("location_slug", nextLocationSlug);
+    }
+
+    return `/search${params.toString() ? `?${params.toString()}` : ""}`;
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (area.trim()) {
-      router.push(`/search?area=${encodeURIComponent(area.trim())}`);
-    } else {
-      router.push("/search");
-    }
+    router.push(buildSearchUrl(area, locationSlug || undefined));
     setShowSuggestions(false);
   }
 
-  function selectArea(selected: string) {
-    setArea(selected);
+  function selectArea(location: Location) {
+    setArea(location.name);
+    setLocationSlug(location.slug);
     setShowSuggestions(false);
-    router.push(`/search?area=${encodeURIComponent(selected)}`);
+    router.push(buildSearchUrl(location.name, location.slug));
   }
 
   return (
     <form onSubmit={handleSubmit} className={cn("relative w-full", className)}>
       <div
         className={cn(
-          "flex items-center overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm transition-shadow focus-within:shadow-md focus-within:border-[var(--color-deep-slate-blue)]/30",
+          "flex items-center overflow-hidden rounded-2xl border border-[var(--color-border)] bg-white shadow-sm transition-shadow focus-within:shadow-md",
           compact ? "h-11" : "h-14",
         )}
       >
@@ -67,16 +86,17 @@ export function SearchBar({
           value={area}
           onChange={(e) => {
             setArea(e.target.value);
-            setShowSuggestions(true);
+            setLocationSlug("");
+            setShowSuggestions(e.target.value.trim().length > 0);
           }}
-          onFocus={() => setShowSuggestions(true)}
+          onFocus={() => setShowSuggestions(area.trim().length > 0)}
           onBlur={() => {
             // Delay so click on suggestion works
             setTimeout(() => setShowSuggestions(false), 200);
           }}
           placeholder="Search by area in Lagos..."
           className={cn(
-            "flex-1 bg-transparent text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] focus:outline-none",
+            "search-field-reset flex-1 border-0 bg-transparent text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0",
             compact ? "text-sm" : "text-base",
           )}
         />
@@ -92,18 +112,21 @@ export function SearchBar({
       </div>
 
       {/* Suggestions dropdown */}
-      {showSuggestions && filtered.length > 0 && (
+      {showSuggestions && area.trim().length > 0 && filtered.length > 0 && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-white py-1 shadow-lg">
-          {filtered.map((a) => (
+          {filtered.map((location) => (
             <button
-              key={a}
+              key={location.slug}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
-              onClick={() => selectArea(a)}
+              onClick={() => selectArea(location)}
               className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-[var(--color-text-primary)] hover:bg-gray-50 transition-colors"
             >
               <MapPin className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
-              {a}
+              <span>{location.display_name}</span>
+              <span className="ml-auto text-xs uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">
+                {location.kind}
+              </span>
             </button>
           ))}
         </div>

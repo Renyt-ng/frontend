@@ -29,7 +29,7 @@ export async function getMyApplications() {
 
 export async function getPropertyApplications(propertyId: string) {
   const res = await apiClient.get<ApiSuccessResponse<Application[]>>(
-    `/applications/property/${propertyId}`,
+    `/properties/${propertyId}/applications`,
   );
   return res.data;
 }

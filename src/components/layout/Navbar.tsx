@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Search,
   Menu,
@@ -15,9 +15,11 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildCurrentUrl } from "@/lib/authNavigation";
 import { Container } from "./Container";
 import { Button } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
+import { useAuthOverlayStore } from "@/stores/authOverlayStore";
 
 const NAV_LINKS = [
   { href: "/search", label: "Find a Home", icon: Search },
@@ -28,7 +30,16 @@ const NAV_LINKS = [
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated, user } = useAuthStore();
+  const openOverlay = useAuthOverlayStore((state) => state.openOverlay);
+  const currentUrl = buildCurrentUrl(pathname || "/", searchParams);
+  const showDashboard = isAuthenticated && (user?.role === "admin" || user?.role === "agent");
+
+  function openAuth(mode: "login" | "register") {
+    openOverlay({ mode, redirectTo: currentUrl });
+    setMobileOpen(false);
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white/95 backdrop-blur-sm">
@@ -66,25 +77,23 @@ export function Navbar() {
 
           {/* Desktop Auth */}
           <div className="hidden items-center gap-3 md:flex">
-            {isAuthenticated ? (
+            {showDashboard ? (
               <Link href="/dashboard">
                 <Button variant="secondary" size="sm">
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
-            ) : (
+            ) : !isAuthenticated ? (
               <>
-                <Link href="/login">
-                  <Button variant="ghost" size="sm">
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button size="sm">Get Started</Button>
-                </Link>
+                <Button variant="ghost" size="sm" onClick={() => openAuth("login")}>
+                  Sign In
+                </Button>
+                <Button size="sm" onClick={() => openAuth("register")}>
+                  Get Started
+                </Button>
               </>
-            )}
+            ) : null}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -126,37 +135,29 @@ export function Navbar() {
             })}
           </div>
           <div className="mt-3 border-t border-[var(--color-border)] pt-3">
-            {isAuthenticated ? (
+            {showDashboard ? (
               <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
                 <Button variant="primary" className="w-full">
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
                 </Button>
               </Link>
-            ) : (
+            ) : !isAuthenticated ? (
               <div className="flex gap-2">
-                <Link
-                  href="/login"
-                  className="flex-1"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Button variant="secondary" className="w-full">
+                <div className="flex-1">
+                  <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
                     <LogIn className="h-4 w-4" />
                     Sign In
                   </Button>
-                </Link>
-                <Link
-                  href="/register"
-                  className="flex-1"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Button className="w-full">
+                </div>
+                <div className="flex-1">
+                  <Button className="w-full" onClick={() => openAuth("register")}>
                     <User className="h-4 w-4" />
                     Get Started
                   </Button>
-                </Link>
+                </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

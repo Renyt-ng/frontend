@@ -10,17 +10,19 @@ import {
   FileText,
   ScrollText,
   Settings,
+  Mail,
   LogOut,
   Menu,
   X,
-  ChevronRight,
   Users,
   ShieldCheck,
   ClipboardList,
+  Shapes,
+  MapPinned,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Container } from "@/components/layout";
-import { Avatar, Button } from "@/components/ui";
+import { Avatar } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
 import { createBrowserClient } from "@supabase/ssr";
 import { useRouter } from "next/navigation";
@@ -45,9 +47,21 @@ const NAV_ITEMS = [
     roles: ["tenant", "agent", "admin"],
   },
   {
+    href: "/dashboard/agent-verification",
+    label: "Agent Verification",
+    icon: ShieldCheck,
+    roles: ["agent"],
+  },
+  {
     href: "/dashboard/leases",
     label: "Leases",
     icon: ScrollText,
+    roles: ["tenant", "agent", "admin"],
+  },
+  {
+    href: "/dashboard/referrals",
+    label: "Referrals",
+    icon: Gift,
     roles: ["tenant", "agent", "admin"],
   },
   {
@@ -66,6 +80,24 @@ const NAV_ITEMS = [
     href: "/dashboard/audit-log",
     label: "Audit Log",
     icon: ClipboardList,
+    roles: ["admin"],
+  },
+  {
+    href: "/dashboard/property-types",
+    label: "Property Types",
+    icon: Shapes,
+    roles: ["admin"],
+  },
+  {
+    href: "/dashboard/locations",
+    label: "Locations",
+    icon: MapPinned,
+    roles: ["admin"],
+  },
+  {
+    href: "/dashboard/email-settings",
+    label: "Email Settings",
+    icon: Mail,
     roles: ["admin"],
   },
   {

@@ -1,4 +1,5 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
+import { createClient } from "@/lib/supabase/client";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
@@ -11,6 +12,30 @@ const apiClient = axios.create({
   baseURL: API_BASE,
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
+});
+
+apiClient.interceptors.request.use(async (config) => {
+  if (typeof window === "undefined") {
+    return config;
+  }
+
+  const headers = AxiosHeaders.from(config.headers);
+
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+    config.headers = headers;
+    return config;
+  }
+
+  headers.delete("Authorization");
+  config.headers = headers;
+
+  return config;
 });
 
 /** Set bearer token for authenticated requests */

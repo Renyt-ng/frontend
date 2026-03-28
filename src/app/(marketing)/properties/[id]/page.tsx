@@ -5,23 +5,23 @@ import {
   MapPin,
   ShieldCheck,
   ArrowLeft,
-  Phone,
-  MessageCircle,
-  Share2,
-  Heart,
   Calendar,
   CheckCircle2,
+  Video,
 } from "lucide-react";
 import { Container } from "@/components/layout";
 import {
   PropertyGallery,
+  PropertyAgentCard,
   PropertySpecs,
   PricingBreakdown,
+  PropertyEngagementButtons,
 } from "@/components/property";
-import { Button, Badge, Card, CardContent } from "@/components/ui";
+import { PropertyActionPanel } from "@/components/property/PropertyActionPanel";
+import { Badge } from "@/components/ui";
 import { VerifiedBadge } from "@/components/shared";
 import { propertiesApi } from "@/lib/api";
-import { formatCurrency, formatDate, PROPERTY_TYPE_LABELS } from "@/lib/utils";
+import { formatDate, formatListingPurpose, formatPropertyPriceLabel, formatPropertyType } from "@/lib/utils";
 import type { PropertyWithImages } from "@/types";
 
 interface PropertyPageProps {
@@ -36,9 +36,14 @@ export async function generateMetadata({
   try {
     const res = await propertiesApi.getProperty(id);
     const property = res.data;
+    const price = formatPropertyPriceLabel({
+      listingPurpose: property.listing_purpose,
+      rentAmount: property.rent_amount,
+      askingPrice: property.asking_price,
+    });
     return {
       title: `${property.title} in ${property.area}`,
-      description: `${PROPERTY_TYPE_LABELS[property.property_type] ?? property.property_type} for rent in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${formatCurrency(property.rent_amount)}/year.`,
+      description: `${formatPropertyType(property.property_type)} ${formatListingPurpose(property.listing_purpose).toLowerCase()} in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${price.amount} ${price.qualifier}.`,
     };
   } catch {
     return { title: "Property Not Found" };
@@ -60,7 +65,12 @@ export default async function PropertyDetailPage({
 
   if (!property) notFound();
 
-  const images = property.images ?? [];
+  const images = property.images ?? property.property_images ?? [];
+  const price = formatPropertyPriceLabel({
+    listingPurpose: property.listing_purpose,
+    rentAmount: property.rent_amount,
+    askingPrice: property.asking_price,
+  });
 
   return (
     <div className="pb-16">
@@ -109,13 +119,19 @@ export default async function PropertyDetailPage({
                   {property.address_line ?? property.area}
                 </span>
                 <Badge variant="default">
-                  {PROPERTY_TYPE_LABELS[property.property_type] ??
-                    property.property_type}
+                  {formatPropertyType(property.property_type)}
+                </Badge>
+                <Badge variant={property.listing_purpose === "sale" ? "verified" : "info"}>
+                  {formatListingPurpose(property.listing_purpose)}
                 </Badge>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
                   Listed {formatDate(property.created_at)}
                 </span>
+              </div>
+
+              <div className="mt-4 flex items-center justify-start gap-4 border-t border-[var(--color-border)] pt-4">
+                <PropertyEngagementButtons propertyId={property.id} />
               </div>
             </div>
 
@@ -131,6 +147,23 @@ export default async function PropertyDetailPage({
                 <p className="whitespace-pre-line text-sm leading-relaxed text-[var(--color-text-secondary)]">
                   {property.description}
                 </p>
+              </div>
+            )}
+
+            {property.property_videos?.[0] && (
+              <div>
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-[var(--color-text-primary)]">
+                  <Video className="h-5 w-5" />
+                  Walkthrough Video
+                </h2>
+                <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-black">
+                  <video controls preload="metadata" className="w-full">
+                    <source
+                      src={property.property_videos[0].video_url}
+                      type={property.property_videos[0].mime_type ?? "video/mp4"}
+                    />
+                  </video>
+                </div>
               </div>
             )}
 
@@ -162,39 +195,25 @@ export default async function PropertyDetailPage({
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
           <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-            {/* Pricing */}
-            <PricingBreakdown property={property} />
+            {property.listing_purpose === "rent" ? (
+              <PricingBreakdown property={property} />
+            ) : (
+              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
+                <p className="text-sm font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                  Asking Price
+                </p>
+                <p className="mt-2 text-3xl font-bold text-[var(--color-deep-slate-blue)]">
+                  {price.amount}
+                </p>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  Agent-led contact intent only in this release.
+                </p>
+              </div>
+            )}
 
-            {/* Apply CTA */}
-            <Card>
-              <CardContent className="space-y-3 p-5">
-                <Link href={`/properties/${id}/apply`} className="block">
-                  <Button size="lg" className="w-full">
-                    Apply for This Property
-                  </Button>
-                </Link>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button variant="secondary" size="sm" className="w-full">
-                    <Phone className="h-4 w-4" />
-                    Call Agent
-                  </Button>
-                  <Button variant="secondary" size="sm" className="w-full">
-                    <MessageCircle className="h-4 w-4" />
-                    Message
-                  </Button>
-                </div>
-                <div className="flex gap-3 pt-1">
-                  <button className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]">
-                    <Heart className="h-4 w-4" />
-                    Save
-                  </button>
-                  <button className="flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]">
-                    <Share2 className="h-4 w-4" />
-                    Share
-                  </button>
-                </div>
-              </CardContent>
-            </Card>
+            <PropertyAgentCard property={property} />
+
+            <PropertyActionPanel property={property} />
 
             {/* Safety notice */}
             <div className="rounded-xl border border-[var(--color-emerald)]/20 bg-emerald-50 p-4">
@@ -202,11 +221,12 @@ export default async function PropertyDetailPage({
                 <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--color-emerald)]" />
                 <div>
                   <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                    Verified Listing
+                    {property.is_verified ? "Verified Listing" : "Verification In Progress"}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-                    This property has been verified by the Renyt team. The agent
-                    is ID-verified and approved.
+                    {property.is_verified
+                      ? "This property has been verified by the Renyt team. The agent is ID-verified and approved."
+                      : "This listing is visible, but final property verification is still pending review by the Renyt team."}
                   </p>
                 </div>
               </div>

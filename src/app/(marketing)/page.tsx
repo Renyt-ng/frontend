@@ -1,22 +1,19 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ShieldCheck,
   Eye,
-  FileSignature,
   ArrowRight,
   Building2,
-  Star,
+  Search,
   TrendingUp,
-  MapPin,
+  Sparkles,
 } from "lucide-react";
 import { Container } from "@/components/layout";
-import { SearchBar } from "@/components/search";
-import { AreaTags } from "@/components/search";
+import { HeroSearchPanel, PopularAreasGrid } from "@/components/search";
 import { Button } from "@/components/ui";
 import {
-  APP_TAGLINE,
   APP_DESCRIPTION,
-  LAGOS_AREAS,
   PROPERTY_TYPE_LABELS,
 } from "@/lib/utils";
 
@@ -25,29 +22,22 @@ import {
 const HIGHLIGHTS = [
   {
     icon: ShieldCheck,
-    title: "Verified Agents",
-    body: "Every agent is ID-verified and admin-approved before they can list a single property.",
+    title: "Verified Experts",
+    body: "Every agent is reviewed before they can publish listings, helping discovery feel more trustworthy from the first click.",
     color: "bg-emerald-50 text-[var(--color-emerald)]",
   },
   {
     icon: Eye,
-    title: "Transparent Pricing",
-    body: "See rent, service charge, caution deposit, and agency fee upfront — zero hidden costs.",
+    title: "Clear Listing Intent",
+    body: "Browse homes for rent or sale with pricing, status, and listing purpose visible upfront.",
     color: "bg-blue-50 text-[var(--color-deep-slate-blue)]",
   },
   {
-    icon: FileSignature,
-    title: "Digital Leases",
-    body: "Apply online, get approved, and e-sign your lease — all within the Renyt platform.",
-    color: "bg-purple-50 text-purple-600",
+    icon: Sparkles,
+    title: "Save Your Momentum",
+    body: "Shortlist listings, like what stands out, and keep exploring without getting pushed off the page.",
+    color: "bg-amber-50 text-amber-600",
   },
-] as const;
-
-const STATS = [
-  { value: "1,200+", label: "Verified Listings" },
-  { value: "300+", label: "Trusted Agents" },
-  { value: "5,000+", label: "Happy Tenants" },
-  { value: "16", label: "Lagos Areas" },
 ] as const;
 
 const PROPERTY_TYPES = Object.entries(PROPERTY_TYPE_LABELS).map(
@@ -64,52 +54,55 @@ export default function HomePage() {
   return (
     <>
       {/* ─── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#f0f4f8] via-[var(--color-bg)] to-[var(--color-bg)] pb-16 pt-12 sm:pb-24 sm:pt-20">
-        {/* Decorative blobs */}
-        <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-[var(--color-deep-slate-blue)]/5 blur-3xl" />
-        <div className="pointer-events-none absolute -right-32 top-16 h-72 w-72 rounded-full bg-[var(--color-emerald)]/5 blur-3xl" />
+      <section className="relative z-10 overflow-visible bg-[#0f1720] pb-28 pt-6 sm:pb-40 sm:pt-10">
+        <Image
+          src="/landing-image.jpg"
+          alt="People exploring property options together"
+          fill
+          priority
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,32,0.48)_0%,rgba(15,23,32,0.62)_28%,rgba(15,23,32,0.72)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(180deg,rgba(15,23,32,0)_0%,rgba(15,23,32,0.42)_45%,rgba(249,250,251,1)_100%)]" />
 
-        <Container size="md" className="relative text-center">
-          {/* Pill */}
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-emerald)]/20 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-[var(--color-emerald)]">
-            <Star className="h-3.5 w-3.5" />
-            Lagos&rsquo; trust-first rental marketplace
+        <Container size="md" className="relative">
+          <div className="mx-auto max-w-4xl text-center text-white">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-md">
+              <Search className="h-4 w-4" />
+              Trust-first property discovery for Lagos
+            </div>
+
+            <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl md:text-6xl">
+              Housing without the anxiety.
+            </h1>
+
+            {/* <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/88 sm:text-lg">
+              {APP_DESCRIPTION} Browse rent and sale listings, save what stands out,
+              and contact verified experts when you&rsquo;re ready.
+            </p> */}
           </div>
 
-          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold leading-tight tracking-tight text-[var(--color-text-primary)] sm:text-5xl md:text-6xl">
-            Find Your Perfect Home.{" "}
-            <span className="text-[var(--color-deep-slate-blue)]">
-              {APP_TAGLINE}.
-            </span>
-          </h1>
-
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[var(--color-text-secondary)] sm:text-xl">
-            {APP_DESCRIPTION}
-          </p>
-
-          {/* Search */}
-          <div className="mx-auto mt-10 max-w-xl">
-            <SearchBar />
+          <div className="mx-auto mt-10 max-w-4xl">
+            <HeroSearchPanel />
           </div>
 
-          {/* Quick property-type links */}
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm">
-            <span className="text-[var(--color-text-secondary)]">Popular:</span>
+          {/* <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-sm text-white/85">
+            <span className="font-medium text-white/70">Trending:</span>
             {PROPERTY_TYPES.slice(0, 4).map((t) => (
               <Link
                 key={t.slug}
                 href={t.href}
-                className="rounded-full border border-[var(--color-border)] bg-white px-3 py-1 font-medium text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-deep-slate-blue)]/30 hover:text-[var(--color-text-primary)]"
+                className="rounded-full border border-white/20 bg-white/10 px-3 py-1.5 font-medium backdrop-blur-sm transition-colors hover:bg-white/16"
               >
                 {t.label}
               </Link>
             ))}
-          </div>
+          </div> */}
         </Container>
       </section>
 
       {/* ─── Trust Stats Bar ──────────────────────────────────── */}
-      <section className="border-y border-[var(--color-border)] bg-white py-8">
+      {/* <section className="relative z-0 border-y border-[var(--color-border)] bg-white py-8">
         <Container>
           <div className="stagger-children grid grid-cols-2 gap-6 sm:grid-cols-4">
             {STATS.map((s) => (
@@ -124,18 +117,18 @@ export default function HomePage() {
             ))}
           </div>
         </Container>
-      </section>
+      </section> */}
 
       {/* ─── Why Renyt ────────────────────────────────────────── */}
-      <section className="py-16 sm:py-24">
+      {/* <section className="py-16 sm:py-24">
         <Container size="md">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-[var(--color-text-primary)] sm:text-3xl">
-              Why Renters &amp; Agents Choose Renyt
+              Why Property Seekers &amp; Agents Choose Renyt
             </h2>
             <p className="mx-auto mt-3 max-w-xl text-[var(--color-text-secondary)]">
-              We&rsquo;re solving the trust gap in Lagos rentals — one verified
-              listing at a time.
+              We&rsquo;re making discovery feel clearer, warmer, and more trustworthy
+              across the Lagos property journey.
             </p>
           </div>
 
@@ -163,7 +156,7 @@ export default function HomePage() {
             })}
           </div>
         </Container>
-      </section>
+      </section> */}
 
       {/* ─── Browse by Area ───────────────────────────────────── */}
       <section className="bg-white py-16 sm:py-24">
@@ -185,27 +178,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {LAGOS_AREAS.map((area) => (
-              <Link
-                key={area}
-                href={`/search?area=${encodeURIComponent(area)}`}
-                className="group flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-bg)] p-4 transition-all hover:border-[var(--color-deep-slate-blue)]/20 hover:bg-white hover:shadow-sm"
-              >
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-[var(--color-deep-slate-blue)]/5 transition-colors group-hover:bg-[var(--color-deep-slate-blue)]/10">
-                  <MapPin className="h-5 w-5 text-[var(--color-deep-slate-blue)]" />
-                </div>
-                <div>
-                  <p className="font-medium text-[var(--color-text-primary)]">
-                    {area}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    Browse listings &rarr;
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <PopularAreasGrid />
         </Container>
       </section>
 
@@ -213,10 +186,10 @@ export default function HomePage() {
       <section className="py-16 sm:py-24">
         <Container>
           <h2 className="text-2xl font-bold text-[var(--color-text-primary)] sm:text-3xl">
-            Rent by Property Type
+            Browse by Property Type
           </h2>
           <p className="mt-2 text-[var(--color-text-secondary)]">
-            Find the right home for your lifestyle.
+            Explore property formats that match how you want to search.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
@@ -247,16 +220,16 @@ export default function HomePage() {
       <section className="bg-[var(--color-deep-slate-blue)] py-16 sm:py-20">
         <Container size="md" className="text-center">
           <h2 className="text-2xl font-bold text-white sm:text-3xl">
-            Ready to Find Your Next Home?
+            Ready to Explore Lagos Properties?
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-blue-200/80">
-            Join thousands of Lagos renters who&rsquo;ve found their perfect
-            home through Renyt&rsquo;s verified marketplace.
+            Search verified listings, shortlist what fits, and move from discovery
+            to serious intent with less friction.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link href="/search">
               <Button variant="success" size="lg" className="px-8">
-                Start Searching
+                Start Exploring
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -280,7 +253,7 @@ export default function HomePage() {
             How Renyt Works
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-[var(--color-text-secondary)]">
-            Renting in Lagos, simplified in three steps.
+            Discover property opportunities in Lagos with a simpler front door.
           </p>
 
           <div className="stagger-children mt-12 grid gap-8 sm:grid-cols-3">
@@ -288,19 +261,19 @@ export default function HomePage() {
               {
                 step: "01",
                 title: "Search & Discover",
-                body: "Browse verified listings across 16+ Lagos areas. Filter by type, price, and bedrooms.",
+                body: "Browse verified listings across Lagos, then narrow quickly by area, property type, bedrooms, and price.",
                 icon: TrendingUp,
               },
               {
                 step: "02",
-                title: "Apply Instantly",
-                body: "Found a home? Submit your application with a single click. Agents respond within 48 hours.",
-                icon: FileSignature,
+                title: "Save & Shortlist",
+                body: "Like or save listings that catch your eye so you can compare options without losing momentum.",
+                icon: Sparkles,
               },
               {
                 step: "03",
-                title: "Sign & Move In",
-                body: "E-sign your lease digitally and get your keys. No paper, no stress — just your new home.",
+                title: "Contact Verified Experts",
+                body: "When your are ready, continue with the listing that fits and reach the verified expert attached to it.",
                 icon: ShieldCheck,
               },
             ].map((item) => {

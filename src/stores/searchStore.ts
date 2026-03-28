@@ -1,10 +1,12 @@
 import { create } from "zustand";
-import type { PropertyType } from "@/types";
+import type { PropertyListingPurpose, PropertyType } from "@/types";
 
 interface SearchState {
   /** Current search filters */
   area: string;
-  propertyType: PropertyType | "";
+  locationSlug: string;
+  listingPurpose: PropertyListingPurpose;
+  propertyTypes: PropertyType[];
   minPrice: number | undefined;
   maxPrice: number | undefined;
   bedrooms: number | undefined;
@@ -15,7 +17,9 @@ interface SearchState {
 
   /** Actions */
   setArea: (area: string) => void;
-  setPropertyType: (type: PropertyType | "") => void;
+  setLocation: (area: string, locationSlug?: string) => void;
+  setListingPurpose: (purpose: PropertyListingPurpose) => void;
+  setPropertyTypes: (types: PropertyType[]) => void;
   setPriceRange: (min?: number, max?: number) => void;
   setBedrooms: (beds?: number) => void;
   setBathrooms: (baths?: number) => void;
@@ -26,7 +30,9 @@ interface SearchState {
 
 const INITIAL_STATE = {
   area: "",
-  propertyType: "" as const,
+  locationSlug: "",
+  listingPurpose: "rent" as const,
+  propertyTypes: [] as PropertyType[],
   minPrice: undefined,
   maxPrice: undefined,
   bedrooms: undefined,
@@ -39,8 +45,12 @@ const INITIAL_STATE = {
 export const useSearchStore = create<SearchState>((set) => ({
   ...INITIAL_STATE,
 
-  setArea: (area) => set({ area, page: 1 }),
-  setPropertyType: (propertyType) => set({ propertyType, page: 1 }),
+  setArea: (area) => set({ area, locationSlug: "", page: 1 }),
+  setLocation: (area, locationSlug = "") =>
+    set({ area, locationSlug, page: 1 }),
+  setListingPurpose: (listingPurpose) =>
+    set({ listingPurpose, minPrice: undefined, maxPrice: undefined, page: 1 }),
+  setPropertyTypes: (propertyTypes) => set({ propertyTypes, page: 1 }),
   setPriceRange: (minPrice, maxPrice) => set({ minPrice, maxPrice, page: 1 }),
   setBedrooms: (bedrooms) => set({ bedrooms, page: 1 }),
   setBathrooms: (bathrooms) => set({ bathrooms, page: 1 }),

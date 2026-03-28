@@ -10,6 +10,9 @@ interface ModalProps {
   title?: string;
   children: ReactNode;
   className?: string;
+  dialogClassName?: string;
+  ariaLabel?: string;
+  showCloseButton?: boolean;
 }
 
 export function Modal({
@@ -18,6 +21,9 @@ export function Modal({
   title,
   children,
   className,
+  dialogClassName,
+  ariaLabel,
+  showCloseButton = true,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -26,8 +32,10 @@ export function Modal({
     if (!dialog) return;
 
     if (isOpen) {
-      dialog.showModal();
-    } else {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
       dialog.close();
     }
   }, [isOpen]);
@@ -36,7 +44,11 @@ export function Modal({
     <dialog
       ref={dialogRef}
       onClose={onClose}
-      className="fixed inset-0 z-50 m-auto max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+      aria-label={ariaLabel || title}
+      className={cn(
+        "fixed inset-0 z-50 m-auto max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm",
+        dialogClassName,
+      )}
     >
       <div className={cn("p-6", className)}>
         {title && (
@@ -44,12 +56,14 @@ export function Modal({
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
               {title}
             </h2>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-[var(--color-text-secondary)] hover:bg-gray-100 transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {showCloseButton ? (
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1.5 text-[var(--color-text-secondary)] transition-colors hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            ) : null}
           </div>
         )}
         {children}

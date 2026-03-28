@@ -8,10 +8,11 @@ import {
   Building2,
   FileText,
   ScrollText,
-  Filter,
 } from "lucide-react";
 import { Card, Badge, Select } from "@/components/ui";
 import { EmptyState } from "@/components/shared";
+import { useAdminAuditLogs } from "@/lib/hooks";
+import { formatAuditActor } from "@/lib/adminUtils";
 
 const ACTION_ICONS: Record<string, React.ElementType> = {
   agent_approved: User,
@@ -38,31 +39,24 @@ const ACTION_COLORS: Record<string, string> = {
 interface AuditEntry {
   id: string;
   user_id: string;
-  user_name: string;
   action: string;
   entity_type: string;
   entity_id: string;
   created_at: string;
+  profiles?: {
+    full_name: string;
+  } | null;
 }
-
-/** Placeholder — replaced by real API data when backend is connected */
-const PLACEHOLDER_ENTRIES: AuditEntry[] = [];
 
 export default function AuditLogPage() {
   const [entityTypeFilter, setEntityTypeFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [entries] = useState(PLACEHOLDER_ENTRIES);
-
-  const filtered = entries.filter((e) => {
-    if (entityTypeFilter && e.entity_type !== entityTypeFilter) return false;
-    if (
-      searchQuery &&
-      !e.action.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !e.user_name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-      return false;
-    return true;
+  const logsQuery = useAdminAuditLogs({
+    entity_type: entityTypeFilter || undefined,
+    search: searchQuery || undefined,
+    limit: 100,
   });
+  const entries = logsQuery.data?.data ?? [];
 
   return (
     <div className="space-y-6">
@@ -100,12 +94,18 @@ export default function AuditLogPage() {
             { value: "applications", label: "Applications" },
             { value: "leases", label: "Leases" },
             { value: "profiles", label: "Users" },
+            { value: "email_provider_settings", label: "Email Providers" },
+            { value: "email_notification_settings", label: "Email Notifications" },
           ]}
         />
       </div>
 
       {/* Log Entries */}
-      {filtered.length === 0 ? (
+      {logsQuery.isError ? (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
+          Audit log data could not be loaded. Confirm the backend is running and you are signed in as an admin.
+        </div>
+      ) : entries.length === 0 ? (
         <EmptyState
           icon={<ClipboardList size={28} />}
           title="No Audit Entries"
@@ -118,7 +118,7 @@ export default function AuditLogPage() {
       ) : (
         <Card>
           <div className="divide-y divide-[var(--color-border)]">
-            {filtered.map((entry) => {
+            {entries.map((entry) => {
               const Icon = ACTION_ICONS[entry.action] ?? ClipboardList;
               const color = (ACTION_COLORS[entry.action] as any) ?? "default";
               return (
@@ -131,7 +131,7 @@ export default function AuditLogPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-[var(--color-text-primary)]">
-                      <span className="font-medium">{entry.user_name}</span>{" "}
+                      <span className="font-medium">{formatAuditActor(entry)}</span>{" "}
                       performed{" "}
                       <Badge variant={color} size="sm">
                         {entry.action.replace(/_/g, " ")}

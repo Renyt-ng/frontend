@@ -6,14 +6,26 @@ interface PricingBreakdownProps {
 }
 
 export function PricingBreakdown({ property }: PricingBreakdownProps) {
-  const items = [
-    { label: "Annual Rent", amount: property.rent_amount, primary: true },
-    { label: "Service Charge", amount: property.service_charge },
-    { label: "Caution Deposit", amount: property.caution_deposit },
-    { label: "Agency Fee", amount: property.agency_fee },
-  ];
+  const rentAmount = property.rent_amount ?? 0;
+  const feeItems = property.property_fees?.length
+    ? property.property_fees.map((fee) => ({
+        label: fee.label,
+        amount: fee.calculated_amount,
+        meta:
+          fee.value_type === "percentage" && fee.percentage != null
+            ? `${fee.percentage}% of annual rent`
+            : null,
+      }))
+    : [
+        { label: "Service Charge", amount: property.service_charge, meta: null },
+        { label: "Caution Deposit", amount: property.caution_deposit, meta: null },
+        { label: "Agency Fee", amount: property.agency_fee, meta: null },
+      ].filter((item) => item.amount != null);
 
-  const total = items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const total = property.pricing_summary?.total_move_in_cost ?? (
+    rentAmount + feeItems.reduce((sum, item) => sum + (item.amount ?? 0), 0)
+  );
+  const monthly = property.pricing_summary?.monthly_equivalent ?? rentAmount / 12;
 
   return (
     <div className="rounded-2xl border border-[var(--color-border)] bg-white p-6">
@@ -22,18 +34,33 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
       </h3>
 
       <div className="space-y-3">
-        {items.map((item) => (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            Annual Rent
+          </span>
+          <span className="text-base font-semibold text-[var(--color-text-primary)]">
+            {formatCurrency(rentAmount)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            Monthly Equivalent
+          </span>
+          <span className="text-sm text-[var(--color-text-primary)]">
+            {formatCurrency(monthly)}
+          </span>
+        </div>
+        {feeItems.map((item) => (
           <div key={item.label} className="flex items-center justify-between">
-            <span className="text-sm text-[var(--color-text-secondary)]">
-              {item.label}
-            </span>
-            <span
-              className={
-                item.primary
-                  ? "text-base font-semibold text-[var(--color-text-primary)]"
-                  : "text-sm text-[var(--color-text-primary)]"
-              }
-            >
+            <div>
+              <span className="text-sm text-[var(--color-text-secondary)]">
+                {item.label}
+              </span>
+              {item.meta && (
+                <p className="text-xs text-[var(--color-text-secondary)]">{item.meta}</p>
+              )}
+            </div>
+            <span className="text-sm text-[var(--color-text-primary)]">
               {item.amount != null ? formatCurrency(item.amount) : "—"}
             </span>
           </div>

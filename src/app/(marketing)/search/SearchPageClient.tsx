@@ -4,28 +4,35 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { Container } from "@/components/layout";
-import { SearchBar, FilterBar, AreaTags } from "@/components/search";
+import { SearchBar, FilterBar, AreaTags, IntentToggle } from "@/components/search";
 import { PropertyGrid } from "@/components/property";
 import { Button, Select } from "@/components/ui";
+import { appendPropertyTypeParams } from "@/lib/utils";
 import { useSearchStore } from "@/stores/searchStore";
 import { propertiesApi } from "@/lib/api";
-import type { Property, PropertyImage } from "@/types";
+import type { Property, PropertyImage, PropertyListingPurpose, PropertyType } from "@/types";
 
 interface SearchPageClientProps {
   initialArea: string;
-  initialPropertyType: string;
+  initialLocationSlug: string;
+  initialListingPurpose: PropertyListingPurpose;
+  initialPropertyTypes: PropertyType[];
 }
 
 export function SearchPageClient({
   initialArea,
-  initialPropertyType,
+  initialLocationSlug,
+  initialListingPurpose,
+  initialPropertyTypes,
 }: SearchPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const {
     area,
-    propertyType,
+    locationSlug,
+    listingPurpose,
+    propertyTypes,
     minPrice,
     maxPrice,
     bedrooms,
@@ -33,7 +40,9 @@ export function SearchPageClient({
     sortOrder,
     page,
     setArea,
-    setPropertyType,
+    setLocation,
+    setListingPurpose,
+    setPropertyTypes,
     setSort,
     setPage,
   } = useSearchStore();
@@ -43,11 +52,22 @@ export function SearchPageClient({
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const sortOptions = [
+    { value: "created_at:desc", label: "Newest First" },
+    { value: "created_at:asc", label: "Oldest First" },
+    { value: "rent_amount:asc", label: "Price: Low → High" },
+    { value: "rent_amount:desc", label: "Price: High → Low" },
+  ];
 
   // Sync URL params → store on mount
   useEffect(() => {
-    if (initialArea) setArea(initialArea);
-    if (initialPropertyType) setPropertyType(initialPropertyType as "" | any);
+    if (initialArea || initialLocationSlug) {
+      setLocation(initialArea, initialLocationSlug);
+    } else if (initialArea) {
+      setArea(initialArea);
+    }
+    setListingPurpose(initialListingPurpose);
+    setPropertyTypes(initialPropertyTypes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -57,7 +77,9 @@ export function SearchPageClient({
     try {
       const res = await propertiesApi.searchProperties({
         area: area || undefined,
-        property_type: (propertyType as any) || undefined,
+        location_slug: locationSlug || undefined,
+        listing_purpose: listingPurpose,
+        property_type: propertyTypes.length > 0 ? propertyTypes : undefined,
         min_price: minPrice,
         max_price: maxPrice,
         bedrooms,
@@ -86,7 +108,9 @@ export function SearchPageClient({
     }
   }, [
     area,
-    propertyType,
+    locationSlug,
+    listingPurpose,
+    propertyTypes,
     minPrice,
     maxPrice,
     bedrooms,
@@ -103,7 +127,9 @@ export function SearchPageClient({
   useEffect(() => {
     const params = new URLSearchParams();
     if (area) params.set("area", area);
-    if (propertyType) params.set("property_type", propertyType);
+    if (locationSlug) params.set("location_slug", locationSlug);
+    if (listingPurpose !== "rent") params.set("listing_purpose", listingPurpose);
+    appendPropertyTypeParams(params, propertyTypes);
     if (minPrice) params.set("min_price", String(minPrice));
     if (maxPrice && maxPrice < Infinity)
       params.set("max_price", String(maxPrice));
@@ -114,7 +140,7 @@ export function SearchPageClient({
     const qs = params.toString();
     router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [area, propertyType, minPrice, maxPrice, bedrooms, sortBy, sortOrder]);
+  }, [area, locationSlug, listingPurpose, propertyTypes, minPrice, maxPrice, bedrooms, sortBy, sortOrder]);
 
   return (
     <div className="pb-16">
@@ -124,6 +150,9 @@ export function SearchPageClient({
           <div className="mx-auto max-w-2xl">
             <SearchBar defaultArea={area} />
           </div>
+          <div className="mt-4 flex justify-center sm:justify-start">
+            <IntentToggle />
+          </div>
         </Container>
       </div>
 
@@ -132,7 +161,7 @@ export function SearchPageClient({
         <AreaTags currentArea={area} className="mb-6" />
 
         {/* Toolbar */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative z-40 mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Desktop filters */}
           <div className="hidden sm:block">
             <FilterBar />
@@ -157,7 +186,8 @@ export function SearchPageClient({
                 : `${total} ${total === 1 ? "property" : "properties"}`}
               {area ? ` in ${area}` : ""}
             </span>
-            <select
+            <Select
+              options={sortOptions}
               value={`${sortBy}:${sortOrder}`}
               onChange={(e) => {
                 const [by, order] = e.target.value.split(":") as [
@@ -166,13 +196,8 @@ export function SearchPageClient({
                 ];
                 setSort(by, order);
               }}
-              className="h-9 rounded-lg border border-[var(--color-border)] bg-white px-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none"
-            >
-              <option value="created_at:desc">Newest First</option>
-              <option value="created_at:asc">Oldest First</option>
-              <option value="rent_amount:asc">Price: Low → High</option>
-              <option value="rent_amount:desc">Price: High → Low</option>
-            </select>
+              className="h-9 min-w-[170px] rounded-lg bg-white py-0 text-sm"
+            />
           </div>
         </div>
 
@@ -190,8 +215,8 @@ export function SearchPageClient({
           isLoading={isLoading}
           emptyMessage={
             area
-              ? `No properties found in ${area}`
-              : "No properties match your filters"
+              ? `No ${listingPurpose === "sale" ? "homes for sale" : "rental listings"} found in ${area}`
+              : `No ${listingPurpose === "sale" ? "homes for sale" : "properties"} match your filters`
           }
         />
       </Container>

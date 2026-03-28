@@ -1,5 +1,5 @@
 import { BedDouble, Bath, Ruler, Calendar } from "lucide-react";
-import { formatDate, PROPERTY_TYPE_LABELS } from "@/lib/utils";
+import { formatDate, formatPropertyType } from "@/lib/utils";
 import type { Property } from "@/types";
 
 interface PropertySpecsProps {
@@ -21,8 +21,7 @@ export function PropertySpecs({ property }: PropertySpecsProps) {
     {
       icon: Ruler,
       label: "Type",
-      value:
-        PROPERTY_TYPE_LABELS[property.property_type] ?? property.property_type,
+      value: formatPropertyType(property.property_type),
     },
     {
       icon: Calendar,

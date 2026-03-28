@@ -52,6 +52,7 @@ export function useCreateAgent() {
     mutationFn: agentsApi.createAgent,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.all });
+      queryClient.invalidateQueries({ queryKey: agentKeys.me() });
     },
   });
 }

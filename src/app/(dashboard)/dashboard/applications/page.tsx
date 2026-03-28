@@ -1,33 +1,98 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
-import { Card, CardContent, Badge, Button } from "@/components/ui";
+import { FileText, CheckCircle2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Card, CardContent, Button } from "@/components/ui";
 import { Skeleton } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
 import { applicationsApi } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
+import { useUpdateApplicationStatus } from "@/lib/hooks";
+import { propertiesApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
 import type { Application } from "@/types";
 
+type DashboardApplication = Application & {
+  property_title?: string;
+  property_area?: string;
+};
+
 export default function ApplicationsPage() {
   const { user } = useAuthStore();
-  const [applications, setApplications] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<DashboardApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const updateApplicationStatus = useUpdateApplicationStatus();
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
+      if (!user) {
+        if (active) {
+          setApplications([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
       try {
-        const res = await applicationsApi.getMyApplications();
-        setApplications(res.data ?? []);
+        if (user.role === "tenant") {
+          const res = await applicationsApi.getMyApplications();
+          if (active) {
+            setApplications(res.data ?? []);
+          }
+          return;
+        }
+
+        const propertiesRes = await propertiesApi.getMyProperties();
+        const properties = propertiesRes.data ?? [];
+        const applicationGroups = await Promise.all(
+          properties.map(async (property) => {
+            const response = await applicationsApi.getPropertyApplications(
+              property.id,
+            );
+
+            return (response.data ?? []).map((application) => ({
+              ...application,
+              property_title: property.title,
+              property_area: property.area,
+            }));
+          }),
+        );
+
+        if (active) {
+          setApplications(applicationGroups.flat());
+        }
       } catch {
-        setApplications([]);
+        if (active) {
+          setApplications([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+        }
       }
     }
+
     load();
-  }, []);
+
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  async function handleStatusUpdate(
+    applicationId: string,
+    status: "approved" | "rejected",
+  ) {
+    await updateApplicationStatus.mutateAsync({ id: applicationId, status });
+    setApplications((current) =>
+      current.map((application) =>
+        application.id === applicationId ? { ...application, status } : application,
+      ),
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -76,6 +141,12 @@ export default function ApplicationsPage() {
                     </h3>
                     <StatusBadge status={app.status} />
                   </div>
+                  {app.property_title && (
+                    <p className="mt-0.5 text-sm font-medium text-[var(--color-text-primary)]">
+                      {app.property_title}
+                      {app.property_area ? ` · ${app.property_area}` : ""}
+                    </p>
+                  )}
                   <p className="mt-0.5 text-sm text-[var(--color-text-secondary)]">
                     Applied on {formatDate(app.created_at)}
                   </p>
@@ -85,9 +156,37 @@ export default function ApplicationsPage() {
                     </p>
                   )}
                 </div>
-                <Button variant="secondary" size="sm">
-                  View Details
-                </Button>
+                {user?.role === "tenant" ? (
+                  <Link href={`/properties/${app.property_id}`}>
+                    <Button variant="secondary" size="sm">
+                      View Property
+                    </Button>
+                  </Link>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleStatusUpdate(app.id, "approved")}
+                      disabled={
+                        updateApplicationStatus.isPending || app.status !== "pending"
+                      }
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      Approve
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleStatusUpdate(app.id, "rejected")}
+                      disabled={
+                        updateApplicationStatus.isPending || app.status !== "pending"
+                      }
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

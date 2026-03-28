@@ -9,6 +9,7 @@ const STATUS_MAP: Record<
   rented: { variant: "info", label: "Rented" },
   pending: { variant: "pending", label: "Pending" },
   approved: { variant: "verified", label: "Approved" },
+  flagged: { variant: "rejected", label: "Flagged" },
   rejected: { variant: "rejected", label: "Rejected" },
   draft: { variant: "default", label: "Draft" },
   sent: { variant: "info", label: "Sent" },

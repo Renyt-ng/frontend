@@ -43,3 +43,16 @@ export function useUpdateProfile() {
     },
   });
 }
+
+export function useUploadProfileAvatar() {
+  const queryClient = useQueryClient();
+  const setUser = useAuthStore((s) => s.setUser);
+
+  return useMutation({
+    mutationFn: authApi.uploadProfileAvatar,
+    onSuccess: (res) => {
+      setUser(res.data);
+      queryClient.setQueryData(profileKeys.me, res);
+    },
+  });
+}

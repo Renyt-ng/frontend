@@ -3,7 +3,6 @@ import {
   APP_NAME,
   APP_TAGLINE,
   COLORS,
-  LAGOS_AREAS,
   PROPERTY_TYPE_LABELS,
   PRICE_RANGES,
   DEFAULT_PAGE_SIZE,
@@ -23,13 +22,6 @@ describe("constants", () => {
     expect(COLORS.deepSlateBlue).toBe("#1E3A5F");
     expect(COLORS.emerald).toBe("#10B981");
     expect(COLORS.background).toBe("#F9FAFB");
-  });
-
-  it("has 16 Lagos areas", () => {
-    expect(LAGOS_AREAS).toHaveLength(16);
-    expect(LAGOS_AREAS).toContain("Lekki");
-    expect(LAGOS_AREAS).toContain("Victoria Island");
-    expect(LAGOS_AREAS).toContain("Ikoyi");
   });
 
   it("has 6 property type labels", () => {

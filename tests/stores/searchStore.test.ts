@@ -9,7 +9,8 @@ describe("searchStore", () => {
   it("starts with default values", () => {
     const state = useSearchStore.getState();
     expect(state.area).toBe("");
-    expect(state.propertyType).toBe("");
+    expect(state.locationSlug).toBe("");
+    expect(state.propertyTypes).toEqual([]);
     expect(state.minPrice).toBeUndefined();
     expect(state.maxPrice).toBeUndefined();
     expect(state.bedrooms).toBeUndefined();
@@ -21,17 +22,29 @@ describe("searchStore", () => {
 
   it("setArea updates area and resets page", () => {
     useSearchStore.getState().setPage(5);
+    useSearchStore.getState().setLocation("Eti-Osa", "eti-osa-lga");
     useSearchStore.getState().setArea("Lekki");
     const state = useSearchStore.getState();
     expect(state.area).toBe("Lekki");
+    expect(state.locationSlug).toBe("");
     expect(state.page).toBe(1);
   });
 
-  it("setPropertyType updates type and resets page", () => {
-    useSearchStore.getState().setPage(3);
-    useSearchStore.getState().setPropertyType("apartment");
+  it("setLocation stores the canonical slug and resets page", () => {
+    useSearchStore.getState().setPage(4);
+    useSearchStore.getState().setLocation("Eti-Osa", "eti-osa-lga");
+
     const state = useSearchStore.getState();
-    expect(state.propertyType).toBe("apartment");
+    expect(state.area).toBe("Eti-Osa");
+    expect(state.locationSlug).toBe("eti-osa-lga");
+    expect(state.page).toBe(1);
+  });
+
+  it("setPropertyTypes updates selected types and resets page", () => {
+    useSearchStore.getState().setPage(3);
+    useSearchStore.getState().setPropertyTypes(["apartment", "duplex"]);
+    const state = useSearchStore.getState();
+    expect(state.propertyTypes).toEqual(["apartment", "duplex"]);
     expect(state.page).toBe(1);
   });
 
@@ -57,14 +70,14 @@ describe("searchStore", () => {
 
   it("resetFilters returns to defaults", () => {
     useSearchStore.getState().setArea("Ikoyi");
-    useSearchStore.getState().setPropertyType("duplex");
+    useSearchStore.getState().setPropertyTypes(["duplex"]);
     useSearchStore.getState().setPriceRange(1_000_000, 5_000_000);
     useSearchStore.getState().setPage(4);
 
     useSearchStore.getState().resetFilters();
     const state = useSearchStore.getState();
     expect(state.area).toBe("");
-    expect(state.propertyType).toBe("");
+    expect(state.propertyTypes).toEqual([]);
     expect(state.minPrice).toBeUndefined();
     expect(state.page).toBe(1);
   });

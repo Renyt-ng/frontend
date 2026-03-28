@@ -6,7 +6,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  *  1. Refreshes the Supabase auth session on every request.
  *  2. Protects /dashboard routes — redirects unauthenticated users to /login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Refresh auth session (sets/updates cookies)
   const { response, user } = await updateSession(request);
 
@@ -14,7 +14,7 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     if (!user) {
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", request.nextUrl.pathname);
+      loginUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
       const redirectResponse = NextResponse.redirect(loginUrl);
 
       response.cookies.getAll().forEach((cookie) => {

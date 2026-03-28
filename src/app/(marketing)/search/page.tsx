@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { normalizePropertyTypes } from "@/lib/utils";
 import { SearchPageClient } from "./SearchPageClient";
 
 export const metadata: Metadata = {
@@ -17,9 +18,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <SearchPageClient
       initialArea={typeof params.area === "string" ? params.area : ""}
-      initialPropertyType={
-        typeof params.property_type === "string" ? params.property_type : ""
+      initialLocationSlug={
+        typeof params.location_slug === "string" ? params.location_slug : ""
       }
+      initialListingPurpose={
+        typeof params.listing_purpose === "string" && params.listing_purpose === "sale"
+          ? "sale"
+          : "rent"
+      }
+      initialPropertyTypes={normalizePropertyTypes(params.property_type)}
     />
   );
 }

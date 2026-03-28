@@ -5,3 +5,6 @@ export * as applicationsApi from "./applications";
 export * as leasesApi from "./leases";
 export * as authApi from "./auth";
 export * as adminApi from "./admin";
+export * as locationsApi from "./locations";
+export * as propertyInteractionsApi from "./propertyInteractions";
+export * as referralsApi from "./referrals";

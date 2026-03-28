@@ -1,28 +1,29 @@
 "use client";
 
 import { useSearchStore } from "@/stores/searchStore";
-import { Select } from "@/components/ui";
-import { PROPERTY_TYPE_LABELS, PRICE_RANGES } from "@/lib/utils";
+import { MultiSelect, Select } from "@/components/ui";
+import { usePropertyTypes } from "@/lib/hooks";
+import { PRICE_RANGES } from "@/lib/utils";
 import type { PropertyType } from "@/types";
 
 export function FilterBar() {
+  const propertyTypesQuery = usePropertyTypes();
   const {
-    propertyType,
+    listingPurpose,
+    propertyTypes,
     minPrice,
     maxPrice,
     bedrooms,
-    setPropertyType,
+    setPropertyTypes,
     setPriceRange,
     setBedrooms,
     resetFilters,
   } = useSearchStore();
 
-  const propertyTypeOptions = [
-    ...Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => ({
-      value,
-      label,
-    })),
-  ];
+  const propertyTypeOptions = (propertyTypesQuery.data?.data ?? []).map((type) => ({
+    value: type.slug,
+    label: type.label,
+  }));
 
   const priceOptions = PRICE_RANGES.map((r, i) => ({
     value: String(i),
@@ -42,13 +43,11 @@ export function FilterBar() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Select
+      <MultiSelect
         options={propertyTypeOptions}
-        placeholder="Property Type"
-        value={propertyType}
-        onChange={(e) =>
-          setPropertyType((e.target.value || "") as PropertyType | "")
-        }
+        value={propertyTypes}
+        onChange={(nextValue) => setPropertyTypes(nextValue as PropertyType[])}
+        emptyLabel="Any"
         className="h-10 min-w-[150px] rounded-lg text-sm"
       />
 
@@ -81,7 +80,7 @@ export function FilterBar() {
         className="h-10 min-w-[130px] rounded-lg text-sm"
       />
 
-      {(propertyType || minPrice || bedrooms) && (
+      {(propertyTypes.length > 0 || minPrice || bedrooms) && (
         <button
           onClick={resetFilters}
           className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-gray-100 transition-colors"
@@ -89,6 +88,10 @@ export function FilterBar() {
           Clear filters
         </button>
       )}
+
+      <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+        {listingPurpose === "sale" ? "Sale pricing" : "Rental pricing"}
+      </span>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { LAGOS_AREAS, PROPERTY_TYPE_LABELS } from "@/lib/utils/constants";
+import { PROPERTY_TYPE_LABELS } from "@/lib/utils/constants";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://renyt.ng";
 
@@ -34,14 +34,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  /** Area-based search pages */
-  const areaRoutes: MetadataRoute.Sitemap = LAGOS_AREAS.map((area) => ({
-    url: `${BASE_URL}/search?area=${encodeURIComponent(area)}`,
-    lastModified: now,
-    changeFrequency: "daily" as const,
-    priority: 0.7,
-  }));
-
   /** Property type search pages */
   const typeRoutes: MetadataRoute.Sitemap = Object.keys(
     PROPERTY_TYPE_LABELS,
@@ -52,5 +44,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...areaRoutes, ...typeRoutes];
+  return [...staticRoutes, ...typeRoutes];
 }

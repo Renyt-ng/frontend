@@ -2,6 +2,8 @@ export { Button, buttonVariants, type ButtonProps } from "./Button";
 export { Badge, type BadgeProps } from "./Badge";
 export { Card, CardHeader, CardContent, CardFooter } from "./Card";
 export { Input, type InputProps } from "./Input";
+export { MultiSelect, type MultiSelectProps } from "./MultiSelect";
+export { NumericInput, type NumericInputProps } from "./NumericInput";
 export { Select, type SelectProps } from "./Select";
 export { Skeleton, PropertyCardSkeleton } from "./Skeleton";
 export { Modal } from "./Modal";

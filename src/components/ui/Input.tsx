@@ -21,9 +21,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           id={id}
           className={cn(
-            "flex h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] transition-colors focus:border-[var(--color-deep-slate-blue)] focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/20 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)] transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50",
             error &&
-              "border-[var(--color-rejected)] focus:ring-[var(--color-rejected)]/20",
+              "border-[var(--color-rejected)] focus:ring-[var(--color-rejected)]/15",
             className,
           )}
           ref={ref}

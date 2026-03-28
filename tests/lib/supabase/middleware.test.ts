@@ -36,9 +36,9 @@ vi.mock("@/lib/supabase/middleware", () => ({
   updateSession: updateSessionMock,
 }));
 
-import { middleware } from "@/middleware";
+import { proxy } from "@/proxy";
 
-describe("frontend middleware auth protection", () => {
+describe("frontend proxy auth protection", () => {
   beforeEach(() => {
     nextMock.mockClear();
     redirectMock.mockClear();
@@ -54,7 +54,7 @@ describe("frontend middleware auth protection", () => {
       user: null,
     });
 
-    const result = await middleware({
+    const result = await proxy({
       nextUrl: { pathname: "/dashboard" },
       url: "https://renyt.ng/dashboard",
     } as never);
@@ -62,7 +62,7 @@ describe("frontend middleware auth protection", () => {
     expect(redirectMock).toHaveBeenCalledOnce();
     expect(result).toMatchObject({
       kind: "redirect",
-      location: "https://renyt.ng/login?redirect=%2Fdashboard",
+      location: "https://renyt.ng/login?redirectTo=%2Fdashboard",
     });
     expect(result.cookies.getAll()).toEqual([
       {
@@ -81,7 +81,7 @@ describe("frontend middleware auth protection", () => {
       user: { id: "user-1" },
     });
 
-    const result = await middleware({
+    const result = await proxy({
       nextUrl: { pathname: "/dashboard/settings" },
       url: "https://renyt.ng/dashboard/settings",
     } as never);
@@ -98,7 +98,7 @@ describe("frontend middleware auth protection", () => {
       user: null,
     });
 
-    const result = await middleware({
+    const result = await proxy({
       nextUrl: { pathname: "/login" },
       url: "https://renyt.ng/login",
     } as never);

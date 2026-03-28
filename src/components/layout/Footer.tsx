@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Container } from "./Container";
-import { APP_NAME, LAGOS_AREAS } from "@/lib/utils";
+import { useLocations } from "@/lib/hooks";
+import { APP_NAME } from "@/lib/utils";
 
-const FOOTER_SECTIONS = [
+const BASE_FOOTER_SECTIONS = [
   {
     title: "Renyt",
     links: [
@@ -14,7 +17,7 @@ const FOOTER_SECTIONS = [
     ],
   },
   {
-    title: "Rent by Type",
+    title: "Browse by Type",
     links: [
       { href: "/search?property_type=apartment", label: "Apartments" },
       { href: "/search?property_type=duplex", label: "Duplexes" },
@@ -23,13 +26,6 @@ const FOOTER_SECTIONS = [
       { href: "/search?property_type=bungalow", label: "Bungalows" },
       { href: "/search?property_type=penthouse", label: "Penthouses" },
     ],
-  },
-  {
-    title: "Popular Areas",
-    links: LAGOS_AREAS.slice(0, 8).map((area) => ({
-      href: `/search?area=${encodeURIComponent(area)}`,
-      label: area,
-    })),
   },
   {
     title: "Support",
@@ -42,11 +38,25 @@ const FOOTER_SECTIONS = [
 ];
 
 export function Footer() {
+  const locationsQuery = useLocations({ kind: "area", limit: 8 });
+  const popularAreas = locationsQuery.data?.data ?? [];
+  const footerSections = [
+    ...BASE_FOOTER_SECTIONS.slice(0, 2),
+    {
+      title: "Popular Areas",
+      links: popularAreas.map((area) => ({
+        href: `/search?area=${encodeURIComponent(area.name)}`,
+        label: area.name,
+      })),
+    },
+    ...BASE_FOOTER_SECTIONS.slice(2),
+  ];
+
   return (
     <footer className="border-t border-[var(--color-border)] bg-white">
       <Container>
         <div className="grid grid-cols-2 gap-8 py-12 md:grid-cols-4">
-          {FOOTER_SECTIONS.map((section) => (
+          {footerSections.map((section) => (
             <div key={section.title}>
               <h3 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
                 {section.title}
@@ -78,8 +88,8 @@ export function Footer() {
             />
           </div>
           <p className="text-xs text-[var(--color-text-secondary)]">
-            &copy; {new Date().getFullYear()} {APP_NAME}.ng &mdash; Rent with
-            Confidence. Lagos, Nigeria.
+            &copy; {new Date().getFullYear()} {APP_NAME}.ng &mdash; Trust-first
+            property discovery in Lagos, Nigeria.
           </p>
         </div>
       </Container>

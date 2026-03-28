@@ -61,6 +61,12 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-deep-slate-blue);
   outline-offset: 2px;
+  animation: fade-in 0.2s ease-out both;
+}
+
+.search-field-reset:focus-visible {
+  outline: none;
+  outline-offset: 0;
 }
 
 /* ---- Scrollbar (subtle) ---------------------------------------- */
