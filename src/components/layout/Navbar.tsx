@@ -50,9 +50,10 @@ export function Navbar() {
             <Image
               src="/logo-primary.png"
               alt="Renyt"
-              width={110}
-              height={36}
-              className="h-9 w-auto"
+              width={176}
+              height={40}
+              className="h-auto w-[68px]"
+              unoptimized
               priority
             />
           </Link>

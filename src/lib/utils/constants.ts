@@ -19,6 +19,21 @@ export const COLORS = {
   archived: "#9CA3AF",
 } as const;
 
+export const DASHBOARD_COLORS = {
+  background: "#F6F7F8",
+  surface: "#FFFFFF",
+  surfaceAlt: "#FAFAFA",
+  border: "#ECEDEE",
+  borderStrong: "#D9DDE1",
+  textPrimary: "#111315",
+  textSecondary: "#5F6670",
+  textTertiary: "#8A9199",
+  accent: "#1E3A5F",
+  success: "#10B981",
+  warning: "#B7791F",
+  critical: "#C0392B",
+} as const;
+
 /** Property type labels */
 export const PROPERTY_TYPE_LABELS: Record<string, string> = {
   apartment: "Apartment",

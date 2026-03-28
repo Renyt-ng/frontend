@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MapPinned, Plus, Save } from "lucide-react";
-import { Button, Card, CardContent } from "@/components/ui";
+import { Button, Card, CardContent, Select } from "@/components/ui";
 import {
   useAdminLocations,
   useCreateAdminLocation,
@@ -56,6 +56,22 @@ export default function LocationsPage() {
     () => locations.filter((location) => location.kind === "lga"),
     [locations],
   );
+  const locationKindOptions = [
+    { value: "area", label: "Area" },
+    { value: "lga", label: "LGA" },
+  ];
+  const filterKindOptions = [
+    { value: "all", label: "All kinds" },
+    { value: "area", label: "Areas" },
+    { value: "lga", label: "LGAs" },
+  ];
+  const parentOptions = [
+    { value: "", label: "Parent LGA" },
+    ...lgaOptions.map((location) => ({
+      value: location.name,
+      label: location.display_name,
+    })),
+  ];
 
   async function handleCreate(event: React.FormEvent) {
     event.preventDefault();
@@ -135,7 +151,7 @@ export default function LocationsPage() {
               placeholder="Display name"
               className="h-12 rounded-xl border border-[var(--color-border)] px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
             />
-            <select
+            <Select
               value={form.kind}
               onChange={(event) =>
                 setForm((current) => ({
@@ -144,25 +160,16 @@ export default function LocationsPage() {
                   parent_name: event.target.value === "lga" ? "" : current.parent_name,
                 }))
               }
-              className="h-12 rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-            >
-              <option value="area">Area</option>
-              <option value="lga">LGA</option>
-            </select>
+              options={locationKindOptions}
+            />
 
-            <select
+            <Select
               value={form.parent_name}
               onChange={(event) => setForm((current) => ({ ...current, parent_name: event.target.value }))}
               disabled={form.kind !== "area"}
-              className="h-12 rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10 disabled:cursor-not-allowed disabled:bg-gray-50"
-            >
-              <option value="">Parent LGA</option>
-              {lgaOptions.map((location) => (
-                <option key={location.id} value={location.name}>
-                  {location.display_name}
-                </option>
-              ))}
-            </select>
+              options={parentOptions}
+              placeholder="Parent LGA"
+            />
             <input
               value={form.aliases}
               onChange={(event) => setForm((current) => ({ ...current, aliases: event.target.value }))}
@@ -194,7 +201,7 @@ export default function LocationsPage() {
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <select
+            <Select
               value={filters.kind}
               onChange={(event) =>
                 setFilters((current) => ({
@@ -202,12 +209,9 @@ export default function LocationsPage() {
                   kind: event.target.value as LocationKind | "all",
                 }))
               }
-              className="h-11 rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-            >
-              <option value="all">All kinds</option>
-              <option value="area">Areas</option>
-              <option value="lga">LGAs</option>
-            </select>
+              options={filterKindOptions}
+              className="h-11 min-w-[168px]"
+            />
             <input
               value={filters.search}
               onChange={(event) =>
@@ -270,7 +274,7 @@ export default function LocationsPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <select
+                <Select
                   defaultValue={location.parent_name ?? ""}
                   disabled={location.kind !== "area"}
                   onChange={(event) => {
@@ -278,15 +282,10 @@ export default function LocationsPage() {
                       parent_name: event.target.value || null,
                     });
                   }}
-                  className="h-11 rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10 disabled:cursor-not-allowed disabled:bg-gray-50"
-                >
-                  <option value="">Parent LGA</option>
-                  {lgaOptions.map((option) => (
-                    <option key={option.id} value={option.name}>
-                      {option.display_name}
-                    </option>
-                  ))}
-                </select>
+                  options={parentOptions}
+                  placeholder="Parent LGA"
+                  className="h-11"
+                />
                 <input
                   type="text"
                   inputMode="numeric"

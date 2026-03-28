@@ -11,12 +11,18 @@ const buttonVariants = cva(
           "bg-[var(--color-deep-slate-blue)] text-white hover:bg-[#162d4a] shadow-sm",
         secondary:
           "border border-[var(--color-deep-slate-blue)] text-[var(--color-deep-slate-blue)] bg-white hover:bg-gray-50",
+        dashboardPrimary:
+          "border border-[var(--dashboard-accent)] bg-[var(--dashboard-accent)] text-white hover:bg-[var(--color-deep-slate-blue-hover)] hover:border-[var(--color-deep-slate-blue-hover)] shadow-sm",
+        dashboard:
+          "border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] text-[var(--dashboard-text-primary)] hover:border-[var(--dashboard-border-strong)] hover:bg-[var(--dashboard-surface-alt)]",
         success:
           "bg-[var(--color-emerald)] text-white hover:bg-emerald-600 shadow-sm",
         danger:
           "bg-[var(--color-rejected)] text-white hover:bg-red-600 shadow-sm",
         ghost:
           "bg-transparent text-[var(--color-text-secondary)] hover:bg-transparent hover:text-[var(--color-text-primary)]",
+        dashboardGhost:
+          "bg-transparent text-[var(--dashboard-text-secondary)] hover:bg-[var(--dashboard-surface-alt)] hover:text-[var(--dashboard-text-primary)]",
         link: "text-[var(--color-deep-slate-blue)] underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {

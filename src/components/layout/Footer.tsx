@@ -84,7 +84,8 @@ export function Footer() {
               alt={APP_NAME}
               width={90}
               height={30}
-              className="h-7 w-auto"
+              className="h-auto w-[68px]"
+              unoptimized
             />
           </div>
           <p className="text-xs text-[var(--color-text-secondary)]">

@@ -33,6 +33,12 @@ describe("Button", () => {
 
     rerender(<Button variant="ghost">Ghost</Button>);
     expect(screen.getByRole("button").className).toContain("hover:");
+
+    rerender(<Button variant="dashboard">Dashboard</Button>);
+    expect(screen.getByRole("button").className).toContain("dashboard-border");
+
+    rerender(<Button variant="dashboardPrimary">Primary</Button>);
+    expect(screen.getByRole("button").className).toContain("dashboard-accent");
   });
 
   it("applies size classes", () => {

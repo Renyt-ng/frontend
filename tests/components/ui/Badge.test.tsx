@@ -17,6 +17,9 @@ describe("Badge", () => {
 
     rerender(<Badge variant="rejected">Rejected</Badge>);
     expect(screen.getByText("Rejected").className).toContain("bg-");
+
+    rerender(<Badge variant="dashboardAccent">Dashboard</Badge>);
+    expect(screen.getByText("Dashboard").className).toContain("dashboard-accent");
   });
 
   it("renders different sizes", () => {

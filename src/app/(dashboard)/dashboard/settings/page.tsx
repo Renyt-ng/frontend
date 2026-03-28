@@ -17,6 +17,9 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fullName, setFullName] = useState(user?.full_name ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
+
+  const roleLabel =
+    user?.role === "admin" ? "Admin" : user?.role === "agent" ? "Agent" : "User";
   const [avatarError, setAvatarError] = useState("");
   const [serverError, setServerError] = useState("");
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
@@ -219,9 +222,9 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
-                  value={user?.role ?? "tenant"}
+                  value={roleLabel}
                   disabled
-                  className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-gray-50 px-4 text-sm capitalize text-[var(--color-text-secondary)] focus:outline-none"
+                  className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-gray-50 px-4 text-sm text-[var(--color-text-secondary)] focus:outline-none"
                 />
               </div>
             </div>

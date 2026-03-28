@@ -13,9 +13,10 @@ export default function AuthLayout({
         <Image
           src="/logo-primary.png"
           alt="Renyt"
-          width={140}
-          height={44}
-          className="h-11 w-auto"
+          width={176}
+          height={40}
+          className="h-auto w-[68px]"
+          unoptimized
           priority
         />
       </Link>
