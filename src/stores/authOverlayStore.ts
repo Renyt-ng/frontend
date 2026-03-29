@@ -6,6 +6,7 @@ interface OpenAuthOverlayOptions {
   redirectTo?: string;
   resumeAction?: ResumeAction | null;
   onAuthenticated?: (() => void | Promise<void>) | null;
+  onClose?: (() => void) | null;
   restoreFocusTo?: HTMLElement | null;
 }
 
@@ -15,6 +16,7 @@ interface AuthOverlayState {
   redirectTo: string;
   resumeAction: ResumeAction | null;
   onAuthenticated: (() => void | Promise<void>) | null;
+  onClose: (() => void) | null;
   restoreFocusTo: HTMLElement | null;
   openOverlay: (options?: OpenAuthOverlayOptions) => void;
   closeOverlay: () => void;
@@ -28,6 +30,7 @@ export const useAuthOverlayStore = create<AuthOverlayState>((set, get) => ({
   redirectTo: "/",
   resumeAction: null,
   onAuthenticated: null,
+  onClose: null,
   restoreFocusTo: null,
   openOverlay: (options) =>
     set({
@@ -36,6 +39,7 @@ export const useAuthOverlayStore = create<AuthOverlayState>((set, get) => ({
       redirectTo: options?.redirectTo ?? "/",
       resumeAction: options?.resumeAction ?? null,
       onAuthenticated: options?.onAuthenticated ?? null,
+      onClose: options?.onClose ?? null,
       restoreFocusTo:
         options?.restoreFocusTo ??
         (typeof document !== "undefined"
@@ -44,14 +48,17 @@ export const useAuthOverlayStore = create<AuthOverlayState>((set, get) => ({
     }),
   closeOverlay: () => {
     const restoreFocusTo = get().restoreFocusTo;
+    const onClose = get().onClose;
 
     set({
       isOpen: false,
       onAuthenticated: null,
+      onClose: null,
       resumeAction: null,
       restoreFocusTo: null,
     });
 
+    onClose?.();
     restoreFocusTo?.focus();
   },
   setMode: (mode) => set({ mode }),

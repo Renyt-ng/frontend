@@ -8,10 +8,10 @@ import { z } from "zod/v4";
 import { Mail, Lock, User, Eye, EyeOff, UserPlus } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Button, Card, CardContent, Input } from "@/components/ui";
-import { authApi, setAuthToken } from "@/lib/api";
+import { setAuthToken } from "@/lib/api";
+import { syncAuthenticatedProfile } from "@/lib/authProfile";
 import { buildAuthHref, resolveAuthNavigation, type ResumeAction } from "@/lib/authNavigation";
 import { useAuthStore } from "@/stores/authStore";
-import type { UserRole } from "@/types";
 
 const registerSchema = z
   .object({
@@ -104,20 +104,15 @@ export function RegisterForm({
 
     if (authData.user) {
       try {
-        const profile = await authApi.getProfile();
-        setUser(profile.data);
+        const profile = await syncAuthenticatedProfile(
+          authData.session?.access_token ?? "",
+          authData.user,
+          useAuthStore.getState().user,
+        );
+        setUser(profile);
       } catch {
-        setUser({
-          id: authData.user.id,
-          email: authData.user.email ?? "",
-          full_name: data.full_name,
-          role: data.role as UserRole,
-          phone: null,
-          avatar_url: null,
-          avatar_review_status: "pending",
-          avatar_review_note: null,
-          created_at: authData.user.created_at,
-        });
+        setServerError("Account created, but we could not finish loading your profile.");
+        return;
       }
     }
 

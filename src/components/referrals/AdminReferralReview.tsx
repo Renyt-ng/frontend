@@ -6,22 +6,31 @@ import { ClipboardList, Plus, ShieldAlert, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
 import { EmptyState } from "@/components/shared/EmptyState";
 import {
+  useAdminListingFreshnessPolicy,
   useAdminReferralEvents,
   useAdminReferralProgram,
   useCreateReferralCampaign,
+  useUpdateListingFreshnessPolicy,
   useUpdateReferralCampaign,
   useUpdateReferralEvent,
   useUpdateReferralProgramSettings,
 } from "@/lib/hooks";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDate,
+  formatListingFreshnessPolicySummary,
+  getReferralCloseStatusLabel,
+} from "@/lib/utils";
 import type {
   AdminReferralEvent,
+  ListingFreshnessPolicy,
   ReferralCampaign,
+  ReferralClosureStatus,
   ReferralCommissionBasisSource,
   ReferralCommissionPreview,
   ReferralCommissionType,
   ReferralEventStatus,
-  ReferralProgramSettings,
 } from "@/types";
 
 const FILTERS: Array<{ label: string; value: ReferralEventStatus | "all" }> = [
@@ -126,6 +135,16 @@ function ruleSummary(input: {
   }
 
   return `Fixed ${formatCurrency(input.commission_value)}`;
+}
+
+function policyToForm(policy: ListingFreshnessPolicy) {
+  return {
+    fresh_window_days: String(policy.fresh_window_days),
+    confirmation_grace_days: String(policy.confirmation_grace_days),
+    reminder_start_days: String(policy.reminder_start_days),
+    reminder_interval_days: String(policy.reminder_interval_days),
+    auto_mark_unavailable: policy.auto_mark_unavailable,
+  };
 }
 
 function CampaignEditorCard({
@@ -344,6 +363,7 @@ export function AdminReferralReview() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [adminNote, setAdminNote] = useState("");
+  const [closeStatus, setCloseStatus] = useState<ReferralClosureStatus | "">("");
   const [campaignForm, setCampaignForm] = useState<CampaignFormState>(emptyCampaignForm);
   const [settingsForm, setSettingsForm] = useState({
     is_enabled: true,
@@ -353,8 +373,17 @@ export function AdminReferralReview() {
     fallback_commission_amount: "20000",
     terms_version: "launch-v1",
   });
+  const [freshnessPolicyForm, setFreshnessPolicyForm] = useState({
+    fresh_window_days: "14",
+    confirmation_grace_days: "7",
+    reminder_start_days: "10",
+    reminder_interval_days: "2",
+    auto_mark_unavailable: true,
+  });
 
+  const freshnessPolicyQuery = useAdminListingFreshnessPolicy();
   const programQuery = useAdminReferralProgram();
+  const updateFreshnessPolicy = useUpdateListingFreshnessPolicy();
   const updateProgramSettings = useUpdateReferralProgramSettings();
   const createCampaign = useCreateReferralCampaign();
   const updateCampaign = useUpdateReferralCampaign();
@@ -365,10 +394,19 @@ export function AdminReferralReview() {
   });
   const updateReferralEvent = useUpdateReferralEvent();
 
+  const freshnessPolicy = freshnessPolicyQuery.data?.data ?? null;
   const program = programQuery.data?.data;
   const settings = program?.settings ?? null;
   const campaigns = program?.campaigns ?? [];
   const events = eventsQuery.data?.data ?? [];
+
+  useEffect(() => {
+    if (!freshnessPolicy) {
+      return;
+    }
+
+    setFreshnessPolicyForm(policyToForm(freshnessPolicy));
+  }, [freshnessPolicy?.id]);
 
   useEffect(() => {
     if (!settings) {
@@ -408,7 +446,22 @@ export function AdminReferralReview() {
 
     setRejectionReason(selectedEvent.rejection_reason ?? "");
     setAdminNote(selectedEvent.admin_note ?? "");
+    setCloseStatus(selectedEvent.close_status ?? "");
   }, [selectedEvent?.id]);
+
+  async function handleFreshnessPolicySave() {
+    await updateFreshnessPolicy.mutateAsync({
+      fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
+      confirmation_grace_days: Number(
+        freshnessPolicyForm.confirmation_grace_days || 0,
+      ),
+      reminder_start_days: Number(freshnessPolicyForm.reminder_start_days || 0),
+      reminder_interval_days: Number(
+        freshnessPolicyForm.reminder_interval_days || 0,
+      ),
+      auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
+    });
+  }
 
   async function handleProgramSave() {
     await updateProgramSettings.mutateAsync({
@@ -457,6 +510,7 @@ export function AdminReferralReview() {
       id: selectedEvent.id,
       data: {
         status,
+        close_status: closeStatus || null,
         rejection_reason: status === "rejected" ? rejectionReason : null,
         admin_note: adminNote || null,
       },
@@ -476,6 +530,107 @@ export function AdminReferralReview() {
           Configure the default commission policy, layer campaign overrides on top of it, and review qualified referral events before payout.
         </p>
       </div>
+
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              Listing freshness policy
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+              Tune how long listings stay fresh, when reminders start, and whether stale listings are automatically hidden from inquiry.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Input
+              label="Fresh window"
+              value={freshnessPolicyForm.fresh_window_days}
+              onChange={(event) =>
+                setFreshnessPolicyForm((current) => ({
+                  ...current,
+                  fresh_window_days: event.target.value,
+                }))
+              }
+              inputMode="numeric"
+            />
+            <Input
+              label="Grace period"
+              value={freshnessPolicyForm.confirmation_grace_days}
+              onChange={(event) =>
+                setFreshnessPolicyForm((current) => ({
+                  ...current,
+                  confirmation_grace_days: event.target.value,
+                }))
+              }
+              inputMode="numeric"
+            />
+            <Input
+              label="Reminder start"
+              value={freshnessPolicyForm.reminder_start_days}
+              onChange={(event) =>
+                setFreshnessPolicyForm((current) => ({
+                  ...current,
+                  reminder_start_days: event.target.value,
+                }))
+              }
+              inputMode="numeric"
+            />
+            <Input
+              label="Reminder interval"
+              value={freshnessPolicyForm.reminder_interval_days}
+              onChange={(event) =>
+                setFreshnessPolicyForm((current) => ({
+                  ...current,
+                  reminder_interval_days: event.target.value,
+                }))
+              }
+              inputMode="numeric"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+            <input
+              type="checkbox"
+              checked={freshnessPolicyForm.auto_mark_unavailable}
+              onChange={(event) =>
+                setFreshnessPolicyForm((current) => ({
+                  ...current,
+                  auto_mark_unavailable: event.target.checked,
+                }))
+              }
+            />
+            Automatically mark stale listings unavailable after the grace period
+          </label>
+
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            {formatListingFreshnessPolicySummary({
+              fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
+              confirmation_grace_days: Number(
+                freshnessPolicyForm.confirmation_grace_days || 0,
+              ),
+              reminder_start_days: Number(
+                freshnessPolicyForm.reminder_start_days || 0,
+              ),
+              reminder_interval_days: Number(
+                freshnessPolicyForm.reminder_interval_days || 0,
+              ),
+              auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
+            })}
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleFreshnessPolicySave}
+              isLoading={
+                updateFreshnessPolicy.isPending || freshnessPolicyQuery.isLoading
+              }
+            >
+              Save freshness policy
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
         <Card>
@@ -901,6 +1056,11 @@ export function AdminReferralReview() {
                           Campaign: {event.campaign_name}
                         </p>
                       ) : null}
+                      {event.close_status ? (
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                          Outcome: {getReferralCloseStatusLabel(event.close_status)}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-semibold text-[var(--color-text-primary)]">
@@ -1009,6 +1169,19 @@ export function AdminReferralReview() {
                         : "Not confirmed yet"}
                     </p>
                   </div>
+                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                      Close outcome
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                      {getReferralCloseStatusLabel(selectedEvent.close_status)}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                      {selectedEvent.close_recorded_at
+                        ? `Recorded ${formatDate(selectedEvent.close_recorded_at)}`
+                        : "Record whether this closed through Renyt or off-platform before confirming payout."}
+                    </p>
+                  </div>
                 </div>
 
                 {selectedEvent.fraud_flags.length > 0 ? (
@@ -1032,6 +1205,28 @@ export function AdminReferralReview() {
                     {selectedEvent.rejection_reason}
                   </div>
                 ) : null}
+
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+                    Close outcome
+                  </label>
+                  <select
+                    value={closeStatus}
+                    onChange={(event) =>
+                      setCloseStatus(event.target.value as ReferralClosureStatus | "")
+                    }
+                    className="h-12 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+                  >
+                    <option value="">Select outcome</option>
+                    <option value="rented_renyt">Rented via Renyt</option>
+                    <option value="rented_off_platform">Rented off-platform</option>
+                    <option value="sold_renyt">Sold via Renyt</option>
+                    <option value="sold_off_platform">Sold off-platform</option>
+                  </select>
+                  <p className="text-xs text-[var(--color-text-secondary)]">
+                    Commission approval depends on whether the close happened through Renyt or outside the platform.
+                  </p>
+                </div>
 
                 <div className="space-y-3">
                   <label className="block text-sm font-medium text-[var(--color-text-primary)]">
@@ -1069,12 +1264,14 @@ export function AdminReferralReview() {
                     variant="success"
                     onClick={() => handleStatusUpdate("confirmed")}
                     isLoading={updateReferralEvent.isPending}
+                    disabled={!closeStatus}
                   >
                     Confirm earning
                   </Button>
                   <Button
                     onClick={() => handleStatusUpdate("paid")}
                     isLoading={updateReferralEvent.isPending}
+                    disabled={!closeStatus}
                   >
                     <Wallet className="h-4 w-4" />
                     Mark as paid

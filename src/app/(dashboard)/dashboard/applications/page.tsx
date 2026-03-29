@@ -98,12 +98,12 @@ export default function ApplicationsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
-          Applications
+          {user?.role === "tenant" ? "Requests" : "Applications"}
         </h1>
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
           {user?.role === "agent"
             ? "Review and manage applications for your properties."
-            : "Track the status of your rental applications."}
+            : "Track the status of your housing requests."}
         </p>
       </div>
 
@@ -120,12 +120,12 @@ export default function ApplicationsPage() {
               <FileText className="h-8 w-8 text-[var(--color-deep-slate-blue)]" />
             </div>
             <p className="text-lg font-medium text-[var(--color-text-primary)]">
-              No applications yet
+              {user?.role === "tenant" ? "No requests yet" : "No applications yet"}
             </p>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
               {user?.role === "agent"
                 ? "Applications from tenants will appear here."
-                : "Browse properties and submit your first application."}
+                : "Browse properties and send your first request."}
             </p>
           </CardContent>
         </Card>
@@ -137,7 +137,7 @@ export default function ApplicationsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate font-semibold text-[var(--color-text-primary)]">
-                      Application #{app.id.slice(0, 8)}
+                      {user?.role === "tenant" ? "Request" : "Application"} #{app.id.slice(0, 8)}
                     </h3>
                     <StatusBadge status={app.status} />
                   </div>

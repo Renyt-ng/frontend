@@ -12,7 +12,8 @@ import {
   formatListingPurpose,
   formatPropertyPriceLabel,
   formatPropertyType,
-  formatRelativeTime,
+  getPropertyFreshnessBadgeVariant,
+  getPropertyFreshnessLabel,
 } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import {
@@ -50,6 +51,7 @@ export function PropertyCard({
   const imageCount = images?.length ?? 0;
   const agentName = property.agent_contact?.full_name?.trim() || "Verified Agent";
   const detailHref = `/properties/${property.id}`;
+  const freshnessLabel = getPropertyFreshnessLabel(property);
 
   useEffect(() => {
     return () => {
@@ -196,14 +198,13 @@ export function PropertyCard({
               {formatListingPurpose(property.listing_purpose)}
             </span>
             {property.status === "active" && (
-              <span className="rounded-md bg-[var(--color-emerald)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                Available
-              </span>
-            )}
-            {property.listing_purpose === "rent" && property.application_mode === "instant_apply" && (
-              <span className="rounded-md bg-[var(--color-deep-slate-blue)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-                Instant Apply
-              </span>
+              <Badge
+                variant={getPropertyFreshnessBadgeVariant(property)}
+                size="sm"
+                className="rounded-md bg-white/90 backdrop-blur-sm"
+              >
+                {freshnessLabel}
+              </Badge>
             )}
             {property.is_verified && (
               <span className="flex items-center gap-1 rounded-md bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-emerald)] backdrop-blur-sm">
@@ -262,7 +263,7 @@ export function PropertyCard({
             </div>
           </div>
 
-          {/* Price + timestamp */}
+          {/* Price + freshness */}
           <div className="mt-3 flex items-end justify-between">
             <div>
               {(() => {
@@ -285,7 +286,7 @@ export function PropertyCard({
               })()}
             </div>
             <p className="text-xs text-[var(--color-text-secondary)]">
-              {formatRelativeTime(property.created_at)}
+              {freshnessLabel}
             </p>
           </div>
 

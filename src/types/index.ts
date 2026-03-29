@@ -14,6 +14,8 @@ export type {
   PropertyListingPurpose,
   PropertyTypeDefinition,
   PropertyStatus,
+  ListingFreshnessState,
+  ListingFreshnessPolicy,
   PropertyApplicationMode,
   PropertyVerificationStatus,
   PropertySearchParams,
@@ -30,10 +32,14 @@ export type {
   CreatePropertyMessageIntentInput,
   PropertyMessageIntentResult,
   PropertyInquiry,
+  AgentPropertyInquiry,
 } from "./propertyInteraction";
 export type {
   ReferralCommissionType,
   ReferralCommissionBasisSource,
+  ReferralClosureSource,
+  ReferralClosureStatus,
+  ReferralClosureType,
   ReferralEventStatus,
   ReferralSourceChannel,
   ReferralShareChannel,

@@ -21,7 +21,16 @@ import { PropertyActionPanel } from "@/components/property/PropertyActionPanel";
 import { Badge } from "@/components/ui";
 import { VerifiedBadge } from "@/components/shared";
 import { propertiesApi } from "@/lib/api";
-import { formatDate, formatListingPurpose, formatPropertyPriceLabel, formatPropertyType } from "@/lib/utils";
+import {
+  buildAbsoluteSiteUrl,
+  formatDate,
+  formatListingPurpose,
+  formatPropertyPriceLabel,
+  formatPropertyType,
+  getPropertyFreshnessBadgeVariant,
+  getPropertyFreshnessLabel,
+  getPropertyFreshnessMeta,
+} from "@/lib/utils";
 import type { PropertyWithImages } from "@/types";
 
 interface PropertyPageProps {
@@ -36,14 +45,43 @@ export async function generateMetadata({
   try {
     const res = await propertiesApi.getProperty(id);
     const property = res.data;
+    const propertyUrl = buildAbsoluteSiteUrl(`/properties/${property.id}`);
+    const previewImage =
+      property.images?.find((image) => image.is_cover)?.image_url ??
+      property.images?.[0]?.image_url ??
+      "/logo-primary.png";
     const price = formatPropertyPriceLabel({
       listingPurpose: property.listing_purpose,
       rentAmount: property.rent_amount,
       askingPrice: property.asking_price,
     });
+    const title = `${property.title} in ${property.area}`;
+    const description = `${formatPropertyType(property.property_type)} ${formatListingPurpose(property.listing_purpose).toLowerCase()} in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${price.amount} ${price.qualifier}.`;
+
     return {
-      title: `${property.title} in ${property.area}`,
-      description: `${formatPropertyType(property.property_type)} ${formatListingPurpose(property.listing_purpose).toLowerCase()} in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${price.amount} ${price.qualifier}.`,
+      title,
+      description,
+      alternates: {
+        canonical: propertyUrl,
+      },
+      openGraph: {
+        type: "website",
+        url: propertyUrl,
+        title,
+        description,
+        images: [
+          {
+            url: previewImage,
+            alt: property.title,
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [previewImage],
+      },
     };
   } catch {
     return { title: "Property Not Found" };
@@ -71,6 +109,8 @@ export default async function PropertyDetailPage({
     rentAmount: property.rent_amount,
     askingPrice: property.asking_price,
   });
+  const freshnessLabel = getPropertyFreshnessLabel(property);
+  const freshnessMeta = getPropertyFreshnessMeta(property);
 
   return (
     <div className="pb-16">
@@ -124,11 +164,20 @@ export default async function PropertyDetailPage({
                 <Badge variant={property.listing_purpose === "sale" ? "verified" : "info"}>
                   {formatListingPurpose(property.listing_purpose)}
                 </Badge>
+                <Badge variant={getPropertyFreshnessBadgeVariant(property)}>
+                  {freshnessLabel}
+                </Badge>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3.5 w-3.5" />
                   Listed {formatDate(property.created_at)}
                 </span>
               </div>
+
+              {freshnessMeta ? (
+                <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+                  {freshnessMeta}
+                </p>
+              ) : null}
 
               <div className="mt-4 flex items-center justify-start gap-4 border-t border-[var(--color-border)] pt-4">
                 <PropertyEngagementButtons propertyId={property.id} />
@@ -230,6 +279,19 @@ export default async function PropertyDetailPage({
                   </p>
                 </div>
               </div>
+            </div>
+
+            <div className="rounded-xl border border-[var(--color-border)] bg-white p-4">
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                {freshnessLabel}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                {property.freshness_state === "fresh"
+                  ? "This listing was recently reconfirmed by the agent and is still open for direct contact."
+                  : property.freshness_state === "confirmation_due"
+                    ? "This listing is temporarily being reconfirmed. Contact response may be slower until the agent refreshes availability."
+                    : "This listing is no longer active for new contact."}
+              </p>
             </div>
           </div>
         </div>

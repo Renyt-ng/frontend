@@ -13,9 +13,11 @@ export function FilterBar() {
     propertyTypes,
     minPrice,
     maxPrice,
+    freshOnly,
     bedrooms,
     setPropertyTypes,
     setPriceRange,
+    setFreshOnly,
     setBedrooms,
     resetFilters,
   } = useSearchStore();
@@ -80,7 +82,19 @@ export function FilterBar() {
         className="h-10 min-w-[130px] rounded-lg text-sm"
       />
 
-      {(propertyTypes.length > 0 || minPrice || bedrooms) && (
+      <button
+        type="button"
+        onClick={() => setFreshOnly(!freshOnly)}
+        className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+          freshOnly
+            ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
+            : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-gray-50"
+        }`}
+      >
+        Fresh listings
+      </button>
+
+      {(propertyTypes.length > 0 || minPrice || bedrooms || freshOnly) && (
         <button
           onClick={resetFilters}
           className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-gray-100 transition-colors"

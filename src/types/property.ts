@@ -12,10 +12,33 @@ export interface PropertyTypeDefinition {
   updated_at: string;
 }
 
-export type PropertyStatus = "draft" | "active" | "archived" | "rented";
+export type PropertyStatus =
+  | "draft"
+  | "publishing"
+  | "active"
+  | "confirmation_due"
+  | "unavailable"
+  | "archived"
+  | "rented_renyt"
+  | "rented_off_platform"
+  | "sold_renyt"
+  | "sold_off_platform";
 export type PropertyApplicationMode = "instant_apply" | "message_agent";
 export type PropertyListingPurpose = "rent" | "sale";
+export type ListingFreshnessState = "fresh" | "confirmation_due" | "unavailable";
 export type FeeValueType = "fixed" | "percentage";
+
+export interface ListingFreshnessPolicy {
+  id: string;
+  fresh_window_days: number;
+  confirmation_grace_days: number;
+  reminder_start_days: number;
+  reminder_interval_days: number;
+  auto_mark_unavailable: boolean;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 export type PropertyVerificationStatus =
   | "none"
@@ -93,6 +116,9 @@ export interface Property {
   is_verified: boolean;
   verification_status: PropertyVerificationStatus;
   status: PropertyStatus;
+  publish_error?: string | null;
+  availability_confirmed_at: string | null;
+  freshness_state?: ListingFreshnessState;
   last_updated_at: string;
   created_at: string;
   images?: PropertyImage[];
@@ -178,6 +204,7 @@ export interface PropertySearchParams {
   bedrooms?: number;
   bathrooms?: number;
   status?: PropertyStatus;
+  fresh?: boolean;
   page?: number;
   limit?: number;
   sort_by?: "rent_amount" | "created_at";

@@ -8,7 +8,8 @@ import { z } from "zod/v4";
 import { Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Button, Input, Card, CardContent } from "@/components/ui";
-import { authApi, setAuthToken } from "@/lib/api";
+import { setAuthToken } from "@/lib/api";
+import { syncAuthenticatedProfile } from "@/lib/authProfile";
 import { buildAuthHref, resolveAuthNavigation, type ResumeAction } from "@/lib/authNavigation";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -84,9 +85,13 @@ export function LoginForm({
 
     if (authData.user) {
       try {
-        const profile = await authApi.getProfile();
-        setUser(profile.data);
-      } catch (profileError) {
+        const profile = await syncAuthenticatedProfile(
+          authData.session?.access_token ?? "",
+          authData.user,
+          useAuthStore.getState().user,
+        );
+        setUser(profile);
+      } catch {
         setServerError("Signed in, but failed to load your profile");
         return;
       }

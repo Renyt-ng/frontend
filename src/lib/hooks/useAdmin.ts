@@ -10,9 +10,11 @@ import type {
   AdminReferralEvent,
   ApiSuccessResponse,
   Location,
+  ListingFreshnessPolicy,
   Property,
   PropertyTypeDefinition,
   ReferralCampaign,
+  ReferralClosureStatus,
   ReferralEventStatus,
   ReferralProgramAdminConfig,
   ReferralProgramSettings,
@@ -44,6 +46,7 @@ export const adminKeys = {
   referrals: (params?: GetAdminReferralEventsParams) =>
     ["admin", "referrals", params] as const,
   referralProgram: () => ["admin", "referrals", "program"] as const,
+  listingFreshnessPolicy: () => ["admin", "listing-freshness-policy"] as const,
   users: (params?: GetAdminUsersParams) => ["admin", "users", params] as const,
   agents: (params?: GetAdminAgentsParams) => ["admin", "agents", params] as const,
   properties: (params?: GetAdminPropertiesParams) =>
@@ -126,6 +129,31 @@ export function useAdminReferralProgram(
   });
 }
 
+export function useAdminListingFreshnessPolicy(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<ListingFreshnessPolicy>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.listingFreshnessPolicy(),
+    queryFn: () => adminApi.getListingFreshnessPolicy(),
+    ...options,
+  });
+}
+
+export function useUpdateListingFreshnessPolicy() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.updateListingFreshnessPolicy,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "listing-freshness-policy"] });
+      queryClient.invalidateQueries({ queryKey: ["properties"] });
+    },
+  });
+}
+
 export function useUpdateReferralProgramSettings() {
   const queryClient = useQueryClient();
 
@@ -193,6 +221,7 @@ export function useUpdateReferralEvent() {
       id: string;
       data: {
         status: ReferralEventStatus;
+        close_status?: ReferralClosureStatus | null;
         rejection_reason?: string | null;
         admin_note?: string | null;
       };

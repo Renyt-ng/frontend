@@ -38,7 +38,6 @@ import {
   usePublishProperty,
   usePropertyTypes,
   useReorderPropertyImages,
-  useSetPropertyCoverImage,
   useUpdateProperty,
   useUploadPropertyImage,
   useUploadPropertyVideo,
@@ -56,9 +55,11 @@ import type {
   CreatePropertyInput,
   FeeType,
   PropertyFeeInput,
+  PropertyImage,
   PropertyListingPurpose,
   PropertyStatus,
   PropertyType,
+  PropertyVideo,
 } from "@/types";
 
 type ComposerStep = "basics" | "pricing" | "media" | "review";
@@ -110,6 +111,29 @@ const defaultValues: ComposerValues = {
   fees: [],
 };
 
+function parseComposerStep(stepParam: string | null | undefined): ComposerStep {
+  if (stepParam && stepOrder.includes(stepParam as ComposerStep)) {
+    return stepParam as ComposerStep;
+  }
+
+  return "basics";
+}
+
+function syncComposerStepInUrl(nextStep: ComposerStep) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  if (nextStep === "basics") {
+    url.searchParams.delete("step");
+  } else {
+    url.searchParams.set("step", nextStep);
+  }
+
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -142,6 +166,21 @@ function serializeValues(values: ComposerValues) {
   return JSON.stringify(values);
 }
 
+function normalizeComposerImages(images: PropertyImage[]) {
+  return images.map((image, index) => ({
+    ...image,
+    display_order: index,
+    is_cover: index === 0,
+  }));
+}
+
+function moveImageToIndex(images: PropertyImage[], fromIndex: number, toIndex: number) {
+  const reordered = [...images];
+  const [movedImage] = reordered.splice(fromIndex, 1);
+  reordered.splice(toIndex, 0, movedImage);
+  return normalizeComposerImages(reordered);
+}
+
 export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
@@ -158,7 +197,6 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   const createFeeType = useCreateFeeType();
   const uploadImage = useUploadPropertyImage();
   const reorderImages = useReorderPropertyImages();
-  const setCoverImage = useSetPropertyCoverImage();
   const deleteImage = useDeletePropertyImage();
   const uploadVideo = useUploadPropertyVideo();
   const deleteVideo = useDeletePropertyVideo();
@@ -175,10 +213,31 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   const [newFeeTypeDescription, setNewFeeTypeDescription] = useState("");
   const [uploadingImages, setUploadingImages] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [continuingToMedia, setContinuingToMedia] = useState(false);
+  const [publishingListing, setPublishingListing] = useState(false);
+  const [isImageDropActive, setIsImageDropActive] = useState(false);
+  const [isVideoDropActive, setIsVideoDropActive] = useState(false);
+  const [imageItems, setImageItems] = useState<PropertyImage[]>([]);
+  const [videoItems, setVideoItems] = useState<PropertyVideo[]>([]);
+  const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
+  const [dropTargetImageId, setDropTargetImageId] = useState<string | null>(null);
+  const [reorderingImages, setReorderingImages] = useState(false);
+  const [removingImageIds, setRemovingImageIds] = useState<string[]>([]);
+  const [removingVideoId, setRemovingVideoId] = useState<string | null>(null);
 
   const hydratedProperty = managePropertyQuery.data?.data;
   const lastSavedSnapshot = useRef<string>(serializeValues(defaultValues));
   const initializedRef = useRef(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    setStep(parseComposerStep(new URLSearchParams(window.location.search).get("step")));
+  }, []);
 
   useEffect(() => {
     if (!hydratedProperty || initializedRef.current) {
@@ -214,6 +273,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   }, [hydratedProperty]);
 
   useEffect(() => {
+    setImageItems(normalizeComposerImages(hydratedProperty?.images ?? hydratedProperty?.property_images ?? []));
+    setVideoItems(hydratedProperty?.property_videos ?? []);
+  }, [hydratedProperty?.images, hydratedProperty?.property_images, hydratedProperty?.property_videos]);
+
+  useEffect(() => {
     if (!draftId || !initializedRef.current) {
       return;
     }
@@ -226,16 +290,13 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     const timeout = window.setTimeout(async () => {
       try {
         setSaveState("saving");
-        const response = await updateProperty.mutateAsync({
+        await updateProperty.mutateAsync({
           id: draftId,
           data: buildPayload(values),
         });
         lastSavedSnapshot.current = serializeValues(values);
         setSaveState("saved");
         setServerError("");
-        if (response.data?.id) {
-          startTransition(() => router.refresh());
-        }
       } catch (error) {
         setSaveState("error");
         setServerError(getApiErrorMessage(error, "Could not save draft"));
@@ -243,7 +304,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     }, 1200);
 
     return () => window.clearTimeout(timeout);
-  }, [draftId, router, updateProperty, values]);
+  }, [draftId, updateProperty, values]);
 
   const agentProfile = myAgentQuery.data?.data ?? null;
   const agentStatus = agentProfile?.verification_status;
@@ -269,9 +330,9 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       bathrooms: values.bathrooms ?? -1,
       rent_amount: values.rent_amount ?? 0,
       asking_price: values.asking_price ?? 0,
-      imageCount: hydratedProperty?.images?.length ?? 0,
+      imageCount: imageItems.length,
     });
-  }, [hydratedProperty?.completion, hydratedProperty?.images?.length, values]);
+  }, [hydratedProperty?.completion, imageItems.length, values]);
 
   const pricingSummary = useMemo(
     () => buildDraftPricingSummary(values.rent_amount ?? 0, values.asking_price ?? 0, values.fees),
@@ -280,8 +341,6 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
   const currentStepIndex = stepOrder.indexOf(step);
   const draftStatus = (hydratedProperty?.status ?? "draft") as PropertyStatus;
-  const images = hydratedProperty?.images ?? hydratedProperty?.property_images ?? [];
-  const videos = hydratedProperty?.property_videos ?? [];
   const feeTypeOptions = (feeTypesQuery.data?.data ?? []).map((feeType) => ({
     value: feeType.id,
     label: feeType.name,
@@ -305,6 +364,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
   function updateField<K extends keyof ComposerValues>(key: K, value: ComposerValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateStep(nextStep: ComposerStep) {
+    setStep(nextStep);
+    syncComposerStepInUrl(nextStep);
   }
 
   function updateFee(index: number, patch: Partial<PropertyFeeInput>) {
@@ -389,7 +453,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     return Object.keys(errors).length === 0;
   }
 
-  async function ensureDraftSaved() {
+  async function ensureDraftSaved(nextStep?: ComposerStep) {
     const payload = buildPayload(values);
     setServerError("");
     setSaveState("saving");
@@ -402,8 +466,9 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       lastSavedSnapshot.current = serializeValues(values);
       setSaveState("saved");
       startTransition(() => {
-        router.replace(`/dashboard/properties/${property.id}/edit`);
-        router.refresh();
+        const targetStep = nextStep ?? step;
+        const stepQuery = targetStep === "basics" ? "" : `?step=${targetStep}`;
+        router.replace(`/dashboard/properties/${property.id}/edit${stepQuery}`);
       });
       return property.id;
     }
@@ -424,7 +489,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
           return;
         }
 
-        setStep("pricing");
+        updateStep("pricing");
         return;
       }
 
@@ -433,15 +498,30 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
           return;
         }
 
-        await ensureDraftSaved();
-        setStep("media");
+        setContinuingToMedia(true);
+
+        if (draftId) {
+          updateStep("media");
+          void ensureDraftSaved("media").catch((error) => {
+            setSaveState("error");
+            setServerError(getApiErrorMessage(error, "Could not save draft"));
+          }).finally(() => {
+            setContinuingToMedia(false);
+          });
+          return;
+        }
+
+        await ensureDraftSaved("media");
+        updateStep("media");
+        setContinuingToMedia(false);
         return;
       }
 
       if (step === "media") {
-        setStep("review");
+        updateStep("review");
       }
     } catch (error) {
+      setContinuingToMedia(false);
       setSaveState("error");
       setServerError(getApiErrorMessage(error, "Could not save draft"));
     }
@@ -495,8 +575,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     }
   }
 
-  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
+  async function uploadImageFiles(files: File[]) {
     if (!draftId || files.length === 0) {
       return;
     }
@@ -507,7 +586,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     try {
       for (const file of files) {
         const base64_data = await fileToBase64(file);
-        await uploadImage.mutateAsync({
+        const response = await uploadImage.mutateAsync({
           id: draftId,
           data: {
             file_name: file.name,
@@ -515,18 +594,23 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
             base64_data,
           },
         });
+
+        setImageItems((current) => normalizeComposerImages([...current, response.data]));
       }
-      startTransition(() => router.refresh());
     } catch (error) {
       setServerError(getApiErrorMessage(error, "Could not upload images"));
     } finally {
       setUploadingImages(false);
-      event.target.value = "";
     }
   }
 
-  async function handleVideoUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    await uploadImageFiles(files);
+    event.target.value = "";
+  }
+
+  async function uploadVideoFile(file: File | null | undefined) {
     if (!draftId || !file) {
       return;
     }
@@ -536,7 +620,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
     try {
       const base64_data = await fileToBase64(file);
-      await uploadVideo.mutateAsync({
+      const response = await uploadVideo.mutateAsync({
         id: draftId,
         data: {
           file_name: file.name,
@@ -544,13 +628,36 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
           base64_data,
         },
       });
-      startTransition(() => router.refresh());
+      setVideoItems([response.data]);
     } catch (error) {
       setServerError(getApiErrorMessage(error, "Could not upload video"));
     } finally {
       setUploadingVideo(false);
-      event.target.value = "";
     }
+  }
+
+  async function handleVideoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    await uploadVideoFile(file);
+    event.target.value = "";
+  }
+
+  async function handleImageDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsImageDropActive(false);
+    const files = Array.from(event.dataTransfer.files ?? []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+    await uploadImageFiles(files);
+  }
+
+  async function handleVideoDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setIsVideoDropActive(false);
+    const file = Array.from(event.dataTransfer.files ?? []).find((item) =>
+      item.type.startsWith("video/"),
+    );
+    await uploadVideoFile(file);
   }
 
   async function moveImage(imageId: string, direction: "up" | "down") {
@@ -558,24 +665,101 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       return;
     }
 
-    const currentIndex = images.findIndex((image) => image.id === imageId);
+    const currentIndex = imageItems.findIndex((image) => image.id === imageId);
     if (currentIndex === -1) {
       return;
     }
 
     const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    if (targetIndex < 0 || targetIndex >= images.length) {
+    if (targetIndex < 0 || targetIndex >= imageItems.length) {
       return;
     }
 
-    const reordered = [...images];
-    const [moved] = reordered.splice(currentIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
-    await reorderImages.mutateAsync({
-      id: draftId,
-      imageIds: reordered.map((image) => image.id),
-    });
-    startTransition(() => router.refresh());
+    const reordered = moveImageToIndex(imageItems, currentIndex, targetIndex);
+    const previousImages = imageItems;
+    setImageItems(reordered);
+    setReorderingImages(true);
+
+    try {
+      await reorderImages.mutateAsync({
+        id: draftId,
+        imageIds: reordered.map((image) => image.id),
+      });
+    } catch (error) {
+      setImageItems(previousImages);
+      setServerError(getApiErrorMessage(error, "Could not reorder images"));
+    } finally {
+      setReorderingImages(false);
+    }
+  }
+
+  async function reorderImagesByDrag(sourceImageId: string, targetImageId: string) {
+    if (!draftId || sourceImageId === targetImageId) {
+      return;
+    }
+
+    const sourceIndex = imageItems.findIndex((image) => image.id === sourceImageId);
+    const targetIndex = imageItems.findIndex((image) => image.id === targetImageId);
+    if (sourceIndex === -1 || targetIndex === -1) {
+      return;
+    }
+
+    const reordered = moveImageToIndex(imageItems, sourceIndex, targetIndex);
+    const previousImages = imageItems;
+    setImageItems(reordered);
+    setReorderingImages(true);
+    setDraggedImageId(null);
+    setDropTargetImageId(null);
+
+    try {
+      await reorderImages.mutateAsync({
+        id: draftId,
+        imageIds: reordered.map((image) => image.id),
+      });
+    } catch (error) {
+      setImageItems(previousImages);
+      setServerError(getApiErrorMessage(error, "Could not reorder images"));
+    } finally {
+      setReorderingImages(false);
+    }
+  }
+
+  async function handleRemoveImage(imageId: string) {
+    if (!draftId) {
+      return;
+    }
+
+    const previousImages = imageItems;
+    setRemovingImageIds((current) => [...current, imageId]);
+    setImageItems((current) => normalizeComposerImages(current.filter((image) => image.id !== imageId)));
+
+    try {
+      await deleteImage.mutateAsync({ id: draftId, imageId });
+    } catch (error) {
+      setImageItems(previousImages);
+      setServerError(getApiErrorMessage(error, "Could not remove image"));
+    } finally {
+      setRemovingImageIds((current) => current.filter((currentId) => currentId !== imageId));
+    }
+  }
+
+  async function handleRemoveVideo(videoId: string) {
+    if (!draftId) {
+      return;
+    }
+
+    const previousVideos = videoItems;
+    setRemovingVideoId(videoId);
+    setVideoItems([]);
+
+    try {
+      await deleteVideo.mutateAsync({ id: draftId, videoId });
+    } catch (error) {
+      setVideoItems(previousVideos);
+      setServerError(getApiErrorMessage(error, "Could not remove video"));
+    } finally {
+      setRemovingVideoId(null);
+    }
   }
 
   async function handlePublish() {
@@ -584,15 +768,16 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     }
 
     setPublishError("");
+    setPublishingListing(true);
 
     try {
-      await ensureDraftSaved();
-      await publishProperty.mutateAsync(draftId);
+      const propertyId = await ensureDraftSaved("review");
+      await publishProperty.mutateAsync(propertyId);
       startTransition(() => {
-        router.push("/dashboard/properties");
-        router.refresh();
+        router.push(`/dashboard/properties?publishing=${propertyId}`);
       });
     } catch (error) {
+      setPublishingListing(false);
       setPublishError(getApiErrorMessage(error, "Could not publish listing"));
     }
   }
@@ -600,7 +785,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   function handleStepClick(nextStep: ComposerStep) {
     const nextIndex = stepOrder.indexOf(nextStep);
     if (nextIndex <= currentStepIndex) {
-      setStep(nextStep);
+      updateStep(nextStep);
     }
   }
 
@@ -1024,7 +1209,34 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                   </div>
                 ) : (
                   <>
-                    <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] px-6 py-10 text-center">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => imageInputRef.current?.click()}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          imageInputRef.current?.click();
+                        }
+                      }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setIsImageDropActive(true);
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
+                        if (event.currentTarget === event.target) {
+                          setIsImageDropActive(false);
+                        }
+                      }}
+                      onDrop={handleImageDrop}
+                      aria-label="Upload property photos"
+                      className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-10 text-center transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/20 ${
+                        isImageDropActive
+                          ? "border-[var(--color-deep-slate-blue)] bg-blue-50/60"
+                          : "border-[var(--color-border)] bg-[var(--color-background)]"
+                      }`}
+                    >
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[var(--color-deep-slate-blue)] shadow-sm">
                         {uploadingImages ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <ImagePlus className="h-6 w-6" />}
                       </div>
@@ -1033,33 +1245,72 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                           Include living area, bedrooms, bathrooms, kitchen, and exterior where possible.
                         </p>
+                        <p className="mt-2 text-sm font-medium text-[var(--color-deep-slate-blue)]">
+                          Drag and drop photos here or click to browse.
+                        </p>
                       </div>
                       <input
+                        ref={imageInputRef}
                         type="file"
                         multiple
                         accept="image/png,image/jpeg,image/webp"
                         className="hidden"
                         onChange={handleImageUpload}
                       />
-                    </label>
+                    </div>
 
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {images.map((image, index) => (
-                        <div key={image.id} className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-white">
+                      {imageItems.map((image, index) => (
+                        <div
+                          key={image.id}
+                          draggable
+                          onDragStart={() => {
+                            setDraggedImageId(image.id);
+                            setDropTargetImageId(image.id);
+                          }}
+                          onDragOver={(event) => {
+                            event.preventDefault();
+                            if (draggedImageId && draggedImageId !== image.id) {
+                              setDropTargetImageId(image.id);
+                            }
+                          }}
+                          onDragEnd={() => {
+                            setDraggedImageId(null);
+                            setDropTargetImageId(null);
+                          }}
+                          onDrop={(event) => {
+                            event.preventDefault();
+                            if (draggedImageId) {
+                              void reorderImagesByDrag(draggedImageId, image.id);
+                            }
+                          }}
+                          className={`overflow-hidden rounded-3xl border bg-white transition-shadow ${
+                            dropTargetImageId === image.id && draggedImageId !== image.id
+                              ? "border-[var(--color-deep-slate-blue)] shadow-md"
+                              : "border-[var(--color-border)]"
+                          }`}
+                        >
                           <div className="aspect-[4/3] bg-gray-100">
                             <img src={image.image_url} alt={`Property image ${index + 1}`} className="h-full w-full object-cover" />
                           </div>
                           <div className="space-y-3 p-4">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-[var(--color-text-primary)]">Photo {index + 1}</span>
-                              {image.is_cover && <StatusBadge status="approved" size="sm" />}
+                              {index === 0 ? (
+                                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                  Cover
+                                </span>
+                              ) : null}
                             </div>
+                            <p className="text-xs text-[var(--color-text-secondary)]">
+                              Drag to reorder. The first photo becomes the cover automatically.
+                            </p>
                             <div className="grid grid-cols-2 gap-2">
-                              <Button type="button" variant="secondary" size="sm" onClick={() => moveImage(image.id, "up")} disabled={index === 0}>
+                              <Button type="button" variant="secondary" size="sm" onClick={() => moveImage(image.id, "up")} disabled={index === 0 || reorderingImages}>
                                 <ChevronUp className="h-4 w-4" />
                                 Up
                               </Button>
-                              <Button type="button" variant="secondary" size="sm" onClick={() => moveImage(image.id, "down")} disabled={index === images.length - 1}>
+                              <Button type="button" variant="secondary" size="sm" onClick={() => moveImage(image.id, "down")} disabled={index === imageItems.length - 1 || reorderingImages}>
                                 <ChevronDown className="h-4 w-4" />
                                 Down
                               </Button>
@@ -1067,16 +1318,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => draftId && setCoverImage.mutateAsync({ id: draftId, imageId: image.id }).then(() => startTransition(() => router.refresh()))}
-                              >
-                                <Check className="h-4 w-4" />
-                                Cover
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => draftId && deleteImage.mutateAsync({ id: draftId, imageId: image.id }).then(() => startTransition(() => router.refresh()))}
+                                className="col-span-2"
+                                onClick={() => void handleRemoveImage(image.id)}
+                                disabled={removingImageIds.includes(image.id)}
+                                isLoading={removingImageIds.includes(image.id)}
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Remove
@@ -1087,38 +1332,78 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                       ))}
                     </div>
 
-                    <div className="rounded-3xl border border-[var(--color-border)] bg-white p-5">
+                    <div
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setIsVideoDropActive(true);
+                      }}
+                      onDragLeave={(event) => {
+                        event.preventDefault();
+                        if (event.currentTarget === event.target) {
+                          setIsVideoDropActive(false);
+                        }
+                      }}
+                      onDrop={handleVideoDrop}
+                      className={`rounded-3xl border bg-white p-5 transition-colors ${
+                        isVideoDropActive
+                          ? "border-[var(--color-deep-slate-blue)] bg-blue-50/40"
+                          : "border-[var(--color-border)]"
+                      }`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <p className="font-medium text-[var(--color-text-primary)]">Add a walkthrough video</p>
                           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                             Optional, but useful for trust and engagement.
                           </p>
+                          <p className="mt-2 text-sm font-medium text-[var(--color-deep-slate-blue)]">
+                            Drag and drop a walkthrough video anywhere in this card or click Upload Video.
+                          </p>
                         </div>
-                        <label>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => videoInputRef.current?.click()}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              videoInputRef.current?.click();
+                            }
+                          }}
+                          aria-label="Upload property video"
+                          className={`inline-flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                            isVideoDropActive
+                              ? "border-[var(--color-deep-slate-blue)] bg-blue-50/60 text-[var(--color-deep-slate-blue)]"
+                              : "border-[var(--color-border)] text-[var(--color-text-primary)]"
+                          }`}
+                        >
                           <input
+                            ref={videoInputRef}
                             type="file"
                             accept="video/mp4,video/webm,video/quicktime"
                             className="hidden"
                             onChange={handleVideoUpload}
                           />
-                          <span className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-text-primary)]">
-                            {uploadingVideo ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                            Upload Video
-                          </span>
-                        </label>
+                          {uploadingVideo ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          Upload Video
+                        </div>
                       </div>
 
-                      {videos[0] && (
+                      {videoItems[0] && (
                         <div className="mt-4 space-y-3 rounded-2xl border border-[var(--color-border)] p-4">
                           <video controls preload="metadata" className="w-full rounded-2xl bg-black">
-                            <source src={videos[0].video_url} type={videos[0].mime_type ?? "video/mp4"} />
+                            <source src={videoItems[0].video_url} type={videoItems[0].mime_type ?? "video/mp4"} />
                           </video>
+                          <p className="text-sm text-[var(--color-text-secondary)]">
+                            Drop a new video here to replace the current walkthrough.
+                          </p>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            onClick={() => draftId && deleteVideo.mutateAsync({ id: draftId, videoId: videos[0].id }).then(() => startTransition(() => router.refresh()))}
+                            onClick={() => void handleRemoveVideo(videoItems[0].id)}
+                            disabled={removingVideoId === videoItems[0].id}
+                            isLoading={removingVideoId === videoItems[0].id}
                           >
                             <Trash2 className="h-4 w-4" />
                             Remove Video
@@ -1151,8 +1436,8 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                   </SummaryCard>
 
                   <SummaryCard title="Media & Trust">
-                    <SummaryRow label="Photos" value={`${images.length} uploaded`} />
-                    <SummaryRow label="Video" value={videos[0] ? "Added" : "Optional"} />
+                    <SummaryRow label="Photos" value={`${imageItems.length} uploaded`} />
+                    <SummaryRow label="Video" value={videoItems[0] ? "Added" : "Optional"} />
                     <SummaryRow label="Verification" value="Published listings can go live before property verification." />
                   </SummaryCard>
                 </div>
@@ -1261,14 +1546,19 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                 type="button"
                 variant="ghost"
                 className="flex-1 sm:flex-none"
-                onClick={() => setStep(stepOrder[currentStepIndex - 1])}
+                onClick={() => updateStep(stepOrder[currentStepIndex - 1])}
               >
                 Back
               </Button>
             )}
 
             {step !== "review" ? (
-              <Button type="button" className="flex-1 sm:flex-none" onClick={handleContinue}>
+              <Button
+                type="button"
+                className="flex-1 sm:flex-none"
+                onClick={handleContinue}
+                isLoading={continuingToMedia}
+              >
                 Continue
               </Button>
             ) : (
@@ -1276,8 +1566,8 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                 type="button"
                 className="flex-1 sm:flex-none"
                 onClick={handlePublish}
-                disabled={!checklist.ready_to_publish || publishProperty.isPending}
-                isLoading={publishProperty.isPending}
+                disabled={!checklist.ready_to_publish || publishingListing || publishProperty.isPending}
+                isLoading={publishingListing || publishProperty.isPending}
               >
                 Publish Listing
               </Button>

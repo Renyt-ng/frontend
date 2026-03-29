@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { isTransientAuthError } from "@/lib/authSession";
 
 /**
  * Refreshes the Supabase auth session on every request via middleware.
@@ -30,12 +31,21 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh session — IMPORTANT: don't remove this
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  return {
-    response: supabaseResponse,
-    user,
-  };
+    return {
+      response: supabaseResponse,
+      user,
+      authError: null as "transient" | "fatal" | null,
+    };
+  } catch (error) {
+    return {
+      response: supabaseResponse,
+      user: null,
+      authError: isTransientAuthError(error) ? "transient" : "fatal",
+    };
+  }
 }

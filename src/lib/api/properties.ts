@@ -74,6 +74,7 @@ function mapSearchParams(params?: PropertySearchParams) {
     minPrice: params.min_price,
     maxPrice: params.max_price,
     bedrooms: params.bedrooms,
+    fresh: params.fresh,
     verified: params.status === undefined ? undefined : undefined,
     page: params.page,
     limit: params.limit,
@@ -228,6 +229,16 @@ export async function deletePropertyVideo(id: string, videoId: string) {
 export async function publishProperty(id: string) {
   const res = await apiClient.post<ApiSuccessResponse<PropertyWithImages>>(
     `/properties/${id}/publish`,
+  );
+  return {
+    ...res.data,
+    data: normalizeProperty(res.data.data as RawProperty),
+  };
+}
+
+export async function confirmPropertyAvailability(id: string) {
+  const res = await apiClient.post<ApiSuccessResponse<PropertyWithImages>>(
+    `/properties/${id}/confirm-availability`,
   );
   return {
     ...res.data,

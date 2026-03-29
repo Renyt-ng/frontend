@@ -8,13 +8,23 @@ import { updateSession } from "@/lib/supabase/middleware";
  */
 export async function proxy(request: NextRequest) {
   // Refresh auth session (sets/updates cookies)
-  const { response, user } = await updateSession(request);
+  const { response, user, authError } = await updateSession(request);
+
+  const hasSupabaseCookies = (request.cookies?.getAll?.() ?? [])
+    .some((cookie) => cookie.name.startsWith("sb-"));
 
   // Protect dashboard routes
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     if (!user) {
+      if (authError === "transient" && hasSupabaseCookies) {
+        return response;
+      }
+
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirectTo", request.nextUrl.pathname);
+      loginUrl.searchParams.set(
+        "redirectTo",
+        `${request.nextUrl.pathname}${request.nextUrl.search ?? ""}`,
+      );
       const redirectResponse = NextResponse.redirect(loginUrl);
 
       response.cookies.getAll().forEach((cookie) => {

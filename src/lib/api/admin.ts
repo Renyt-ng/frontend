@@ -5,9 +5,11 @@ import type {
   AvatarReviewStatus,
   Location,
   LocationKind,
+  ListingFreshnessPolicy,
   Property,
   Profile,
   ReferralCampaign,
+  ReferralClosureStatus,
   ReferralCommissionBasisSource,
   ReferralCommissionType,
   ReferralEventStatus,
@@ -43,7 +45,15 @@ export interface GetAdminAgentsParams {
 }
 
 export interface GetAdminPropertiesParams {
-  status?: "active" | "archived" | "rented";
+  status?:
+    | "active"
+    | "archived"
+    | "unavailable"
+    | "confirmation_due"
+    | "rented_renyt"
+    | "rented_off_platform"
+    | "sold_renyt"
+    | "sold_off_platform";
   verification_status?: PropertyVerificationStatus;
   agent_id?: string;
 }
@@ -183,6 +193,29 @@ export async function getReferralProgram() {
   return res.data;
 }
 
+export async function getListingFreshnessPolicy() {
+  const res = await apiClient.get<ApiSuccessResponse<ListingFreshnessPolicy>>(
+    "/admin/listing-freshness-policy",
+  );
+  return res.data;
+}
+
+export async function updateListingFreshnessPolicy(
+  data: {
+    fresh_window_days?: number;
+    confirmation_grace_days?: number;
+    reminder_start_days?: number;
+    reminder_interval_days?: number;
+    auto_mark_unavailable?: boolean;
+  },
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<ListingFreshnessPolicy>>(
+    "/admin/listing-freshness-policy",
+    data,
+  );
+  return res.data;
+}
+
 export async function updateReferralProgramSettings(
   data: {
     is_enabled?: boolean;
@@ -253,6 +286,7 @@ export async function updateReferralEvent(
   id: string,
   data: {
     status: ReferralEventStatus;
+    close_status?: ReferralClosureStatus | null;
     rejection_reason?: string | null;
     admin_note?: string | null;
   },

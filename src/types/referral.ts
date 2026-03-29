@@ -13,6 +13,16 @@ export type ReferralEventStatus =
   | "rejected"
   | "paid";
 
+export type ReferralClosureStatus =
+  | "rented_renyt"
+  | "rented_off_platform"
+  | "sold_renyt"
+  | "sold_off_platform";
+
+export type ReferralClosureSource = "renyt" | "off_platform";
+
+export type ReferralClosureType = "rented" | "sold";
+
 export type ReferralSourceChannel = "whatsapp" | "phone";
 
 export type ReferralShareChannel =
@@ -200,6 +210,10 @@ export interface AdminReferralEvent {
   commission_basis_label: string | null;
   commission_basis_amount: number | null;
   campaign_name: string | null;
+  close_status: ReferralClosureStatus | null;
+  close_source: ReferralClosureSource | null;
+  close_type: ReferralClosureType | null;
+  close_recorded_at: string | null;
   inquiry_id: string | null;
   referral_code: string;
   rejection_reason: string | null;

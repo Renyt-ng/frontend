@@ -56,7 +56,7 @@ export function SaleInquiryModal({
         },
       });
 
-      setFeedback("Your contact request has been sent. The agent will follow up directly.");
+      setFeedback("Your inquiry has been sent. The agent will follow up using your contact details.");
     } catch (submissionError) {
       setError(
         submissionError instanceof Error
@@ -67,9 +67,9 @@ export function SaleInquiryModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Contact agent about this home" className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Send inquiry" className="space-y-4" ariaLabel="Property inquiry">
       <p className="text-sm leading-6 text-[var(--color-text-secondary)]">
-        Share your contact details and the agent will reach out to you directly.
+        Your inquiry goes directly to the agent for this listing.
       </p>
 
       {feedback ? (
@@ -91,13 +91,13 @@ export function SaleInquiryModal({
           />
           <Input
             id="inquiry_phone"
-            label="Phone Number"
+            label="Phone"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
           />
           <Input
             id="inquiry_email"
-            label="Email Address"
+            label="Email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -107,13 +107,13 @@ export function SaleInquiryModal({
               htmlFor="inquiry_note"
               className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]"
             >
-              Optional Note
+              Add a short note
             </label>
             <textarea
               id="inquiry_note"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Optional: add a short message for the agent"
+              placeholder="Optional: move-in timing, preferred contact time, or any other context"
               className="min-h-24 w-full rounded-xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
             />
           </div>
@@ -124,7 +124,7 @@ export function SaleInquiryModal({
           )}
           <div className="flex gap-3">
             <Button className="flex-1" onClick={handleSubmit} isLoading={createInquiry.isPending}>
-              Send Contact Request
+              Send Inquiry
             </Button>
             <Button variant="secondary" className="flex-1" onClick={onClose}>
               Cancel

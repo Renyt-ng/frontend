@@ -3,15 +3,11 @@
 import { Suspense, useState, useEffect, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthOverlay } from "@/components/auth/AuthOverlay";
-import { authApi, clearAuthToken, setAuthToken } from "@/lib/api";
+import { clearAuthToken } from "@/lib/api";
+import { syncAuthenticatedProfile } from "@/lib/authProfile";
+import { isTransientAuthError } from "@/lib/authSession";
 import { createClient } from "@/lib/supabase/client";
 import { useAuthStore } from "@/stores/authStore";
-
-async function syncAuthenticatedUser(accessToken: string) {
-  setAuthToken(accessToken);
-  const response = await authApi.getProfile();
-  return response.data;
-}
 
 function AuthInitializer({ children }: { children: ReactNode }) {
   const setUser = useAuthStore((s) => s.setUser);
@@ -21,21 +17,36 @@ function AuthInitializer({ children }: { children: ReactNode }) {
     const supabase = createClient();
 
     // Check current session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) {
-        clearAuthToken();
-        setLoading(false);
-        return;
-      }
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (!session?.user) {
+          clearAuthToken();
+          setUser(null);
+          return;
+        }
 
-      try {
-        const profile = await syncAuthenticatedUser(session.access_token);
-        setUser(profile);
-      } catch {
-        clearAuthToken();
-        setUser(null);
-      }
-    });
+        try {
+          const profile = await syncAuthenticatedProfile(
+            session.access_token,
+            session.user,
+            useAuthStore.getState().user,
+          );
+          setUser(profile);
+        } catch {
+          clearAuthToken();
+          setUser(null);
+        }
+      })
+      .catch((error) => {
+        if (!isTransientAuthError(error)) {
+          clearAuthToken();
+          setUser(null);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     // Listen for auth changes
     const {
@@ -47,11 +58,22 @@ function AuthInitializer({ children }: { children: ReactNode }) {
         return;
       }
 
-      syncAuthenticatedUser(session.access_token)
+      syncAuthenticatedProfile(
+        session.access_token,
+        session.user,
+        useAuthStore.getState().user,
+      )
         .then((profile) => setUser(profile))
-        .catch(() => {
+        .catch((error) => {
+          if (isTransientAuthError(error)) {
+            return;
+          }
+
           clearAuthToken();
           setUser(null);
+        })
+        .finally(() => {
+          setLoading(false);
         });
     });
 

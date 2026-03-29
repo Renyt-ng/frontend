@@ -173,6 +173,19 @@ export function usePublishProperty() {
   });
 }
 
+export function useConfirmPropertyAvailability() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: propertiesApi.confirmPropertyAvailability,
+    onSuccess: (_data, propertyId) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(propertyId) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+    },
+  });
+}
+
 export function useUploadPropertyImage() {
   const queryClient = useQueryClient();
 

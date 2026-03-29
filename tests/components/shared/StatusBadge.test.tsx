@@ -7,6 +7,9 @@ describe("StatusBadge", () => {
     const { rerender } = render(<StatusBadge status="active" />);
     expect(screen.getByText("Active")).toBeTruthy();
 
+    rerender(<StatusBadge status="publishing" />);
+    expect(screen.getByText("Publishing")).toBeTruthy();
+
     rerender(<StatusBadge status="archived" />);
     expect(screen.getByText("Archived")).toBeTruthy();
 

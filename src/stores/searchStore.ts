@@ -9,6 +9,7 @@ interface SearchState {
   propertyTypes: PropertyType[];
   minPrice: number | undefined;
   maxPrice: number | undefined;
+  freshOnly: boolean;
   bedrooms: number | undefined;
   bathrooms: number | undefined;
   sortBy: "rent_amount" | "created_at";
@@ -21,6 +22,7 @@ interface SearchState {
   setListingPurpose: (purpose: PropertyListingPurpose) => void;
   setPropertyTypes: (types: PropertyType[]) => void;
   setPriceRange: (min?: number, max?: number) => void;
+  setFreshOnly: (freshOnly: boolean) => void;
   setBedrooms: (beds?: number) => void;
   setBathrooms: (baths?: number) => void;
   setSort: (by: "rent_amount" | "created_at", order: "asc" | "desc") => void;
@@ -35,6 +37,7 @@ const INITIAL_STATE = {
   propertyTypes: [] as PropertyType[],
   minPrice: undefined,
   maxPrice: undefined,
+  freshOnly: false,
   bedrooms: undefined,
   bathrooms: undefined,
   sortBy: "created_at" as const,
@@ -52,6 +55,7 @@ export const useSearchStore = create<SearchState>((set) => ({
     set({ listingPurpose, minPrice: undefined, maxPrice: undefined, page: 1 }),
   setPropertyTypes: (propertyTypes) => set({ propertyTypes, page: 1 }),
   setPriceRange: (minPrice, maxPrice) => set({ minPrice, maxPrice, page: 1 }),
+  setFreshOnly: (freshOnly) => set({ freshOnly, page: 1 }),
   setBedrooms: (bedrooms) => set({ bedrooms, page: 1 }),
   setBathrooms: (bathrooms) => set({ bathrooms, page: 1 }),
   setSort: (sortBy, sortOrder) => set({ sortBy, sortOrder }),

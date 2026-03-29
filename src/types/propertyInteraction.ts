@@ -1,3 +1,4 @@
+import type { PropertyListingPurpose, PropertyStatus } from "./property";
 import type { ReferralEvent } from "./referral";
 
 export interface PropertyEngagementStatus {
@@ -34,5 +35,29 @@ export interface PropertyInquiry {
   phone: string;
   email: string;
   note: string | null;
+  status: "sent";
   created_at: string;
+}
+
+export interface AgentPropertyInquiry {
+  id: string;
+  property_id: string;
+  user_id: string;
+  agent_id: string;
+  referrer_user_id?: string | null;
+  referral_code?: string | null;
+  full_name: string;
+  phone: string;
+  email: string;
+  note: string | null;
+  status: "sent";
+  created_at: string;
+  property: {
+    id: string;
+    title: string;
+    area: string;
+    status: PropertyStatus;
+    listing_purpose: PropertyListingPurpose;
+    availability_confirmed_at: string | null;
+  } | null;
 }

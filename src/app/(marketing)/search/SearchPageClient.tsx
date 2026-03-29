@@ -15,6 +15,7 @@ import type { Property, PropertyImage, PropertyListingPurpose, PropertyType } fr
 interface SearchPageClientProps {
   initialArea: string;
   initialLocationSlug: string;
+  initialFreshOnly: boolean;
   initialListingPurpose: PropertyListingPurpose;
   initialPropertyTypes: PropertyType[];
 }
@@ -22,6 +23,7 @@ interface SearchPageClientProps {
 export function SearchPageClient({
   initialArea,
   initialLocationSlug,
+  initialFreshOnly,
   initialListingPurpose,
   initialPropertyTypes,
 }: SearchPageClientProps) {
@@ -35,6 +37,7 @@ export function SearchPageClient({
     propertyTypes,
     minPrice,
     maxPrice,
+    freshOnly,
     bedrooms,
     sortBy,
     sortOrder,
@@ -43,6 +46,7 @@ export function SearchPageClient({
     setLocation,
     setListingPurpose,
     setPropertyTypes,
+    setFreshOnly,
     setSort,
     setPage,
   } = useSearchStore();
@@ -66,6 +70,7 @@ export function SearchPageClient({
     } else if (initialArea) {
       setArea(initialArea);
     }
+    setFreshOnly(initialFreshOnly);
     setListingPurpose(initialListingPurpose);
     setPropertyTypes(initialPropertyTypes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,6 +87,7 @@ export function SearchPageClient({
         property_type: propertyTypes.length > 0 ? propertyTypes : undefined,
         min_price: minPrice,
         max_price: maxPrice,
+        fresh: freshOnly || undefined,
         bedrooms,
         sort_by: sortBy,
         sort_order: sortOrder,
@@ -113,6 +119,7 @@ export function SearchPageClient({
     propertyTypes,
     minPrice,
     maxPrice,
+    freshOnly,
     bedrooms,
     sortBy,
     sortOrder,
@@ -133,6 +140,7 @@ export function SearchPageClient({
     if (minPrice) params.set("min_price", String(minPrice));
     if (maxPrice && maxPrice < Infinity)
       params.set("max_price", String(maxPrice));
+    if (freshOnly) params.set("fresh", "true");
     if (bedrooms) params.set("bedrooms", String(bedrooms));
     if (sortBy !== "created_at") params.set("sort_by", sortBy);
     if (sortOrder !== "desc") params.set("sort_order", sortOrder);
@@ -140,7 +148,7 @@ export function SearchPageClient({
     const qs = params.toString();
     router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [area, locationSlug, listingPurpose, propertyTypes, minPrice, maxPrice, bedrooms, sortBy, sortOrder]);
+  }, [area, locationSlug, listingPurpose, propertyTypes, minPrice, maxPrice, freshOnly, bedrooms, sortBy, sortOrder]);
 
   return (
     <div className="pb-16">

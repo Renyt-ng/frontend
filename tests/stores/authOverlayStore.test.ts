@@ -9,6 +9,7 @@ describe("authOverlayStore", () => {
       redirectTo: "/",
       resumeAction: null,
       onAuthenticated: null,
+      onClose: null,
       restoreFocusTo: null,
     });
   });
@@ -44,5 +45,14 @@ describe("authOverlayStore", () => {
     expect(onAuthenticated).toHaveBeenCalledOnce();
     expect(useAuthOverlayStore.getState().isOpen).toBe(false);
     expect(useAuthOverlayStore.getState().resumeAction).toBeNull();
+  });
+
+  it("runs the close callback when the overlay is dismissed", () => {
+    const onClose = vi.fn();
+
+    useAuthOverlayStore.getState().openOverlay({ onClose });
+    useAuthOverlayStore.getState().closeOverlay();
+
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

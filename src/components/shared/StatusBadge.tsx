@@ -5,8 +5,16 @@ const STATUS_MAP: Record<
   { variant: BadgeProps["variant"]; label: string }
 > = {
   active: { variant: "active", label: "Active" },
+  publishing: { variant: "pending", label: "Publishing" },
+  confirmation_due: { variant: "pending", label: "Confirmation Due" },
+  unavailable: { variant: "archived", label: "Unavailable" },
   archived: { variant: "archived", label: "Archived" },
   rented: { variant: "info", label: "Rented" },
+  rented_renyt: { variant: "info", label: "Rented via Renyt" },
+  rented_off_platform: { variant: "archived", label: "Rented off-platform" },
+  sold: { variant: "archived", label: "Sold" },
+  sold_renyt: { variant: "info", label: "Sold via Renyt" },
+  sold_off_platform: { variant: "archived", label: "Sold off-platform" },
   pending: { variant: "pending", label: "Pending" },
   approved: { variant: "verified", label: "Approved" },
   flagged: { variant: "rejected", label: "Flagged" },

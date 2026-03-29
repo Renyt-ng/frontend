@@ -25,8 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
 import { useAuthStore } from "@/stores/authStore";
-import { createBrowserClient } from "@supabase/ssr";
-import { useRouter } from "next/navigation";
+import { useLogout } from "@/lib/hooks";
 
 const NAV_ITEMS = [
   {
@@ -38,8 +37,15 @@ const NAV_ITEMS = [
   },
   {
     href: "/dashboard/properties",
-    label: "My Properties",
+    label: "Listing Health",
     icon: Building2,
+    roles: ["agent", "admin"],
+    section: "Workspace",
+  },
+  {
+    href: "/dashboard/inquiries",
+    label: "Inquiries",
+    icon: FileText,
     roles: ["agent", "admin"],
     section: "Workspace",
   },
@@ -138,9 +144,9 @@ function getRoleSubtitle(role: string) {
     case "admin":
       return "Trust operations, moderation, and platform oversight.";
     case "agent":
-      return "Listings, applications, referrals, and lease visibility.";
+      return "Listing health, inquiries, referrals, and operational outcomes.";
     default:
-      return "Applications, leases, and saved account activity.";
+      return "Requests, referrals, and saved account activity.";
   }
 }
 
@@ -161,8 +167,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout: logoutStore } = useAuthStore();
+  const { user } = useAuthStore();
+  const logout = useLogout();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const userRole = user?.role ?? "tenant";
@@ -178,14 +184,7 @@ export default function DashboardLayout({
   }).format(new Date());
 
   async function handleLogout() {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-    await supabase.auth.signOut();
-    logoutStore();
-    router.push("/");
-    router.refresh();
+    await logout();
   }
 
   return (
@@ -259,7 +258,7 @@ export default function DashboardLayout({
           <div className="border-t border-[var(--dashboard-border)] p-4">
             <div className="rounded-[20px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
               <div className="mb-4 flex items-center gap-3">
-                <Avatar fallback={user?.full_name ?? "User"} size="sm" />
+                <Avatar src={user?.avatar_url} fallback={user?.full_name ?? "User"} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-[var(--dashboard-text-primary)]">
                     {user?.full_name ?? "User"}

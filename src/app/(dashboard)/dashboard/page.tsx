@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
+  Archive,
   Building2,
   CheckCircle2,
   Clock3,
@@ -17,7 +18,7 @@ import {
   ShieldCheck,
   TrendingUp,
   Users,
-  Wallet,
+  MessagesSquare,
 } from "lucide-react";
 import { Badge, buttonVariants } from "@/components/ui";
 import {
@@ -29,8 +30,9 @@ import {
 } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import { useAdminOverview } from "@/lib/hooks";
+import { useAdminOverview, useAgentPropertyInquiries, useMyProperties } from "@/lib/hooks";
 import { formatAuditActor, formatEmailProvider } from "@/lib/adminUtils";
+import { summarizeListingHealth } from "@/lib/utils";
 import type { AdminOverview } from "@/types/admin";
 
 type DashboardRole = "admin" | "agent" | "tenant";
@@ -88,7 +90,7 @@ function IntroPanel({ role, name }: { role: DashboardRole; name: string }) {
       eyebrow: "Account Workspace",
       title: `Welcome back, ${name}`,
       description:
-        "Keep your property search, application progress, and lease steps in one clear place.",
+        "Keep your property search, request progress, and lease steps in one clear place.",
       badge: "Personal overview",
     },
   } as const;
@@ -339,37 +341,43 @@ function AdminView({
 }
 
 function AgentView() {
+  const propertiesQuery = useMyProperties();
+  const inquiriesQuery = useAgentPropertyInquiries();
+  const properties = propertiesQuery.data?.data ?? [];
+  const inquiries = inquiriesQuery.data?.data ?? [];
+  const summary = summarizeListingHealth(properties);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={Building2}
           label="Active listings"
-          value={0}
-          meta="Structured inventory visible from one workspace"
+          value={propertiesQuery.isLoading ? "..." : summary.active}
+          meta="Fresh, discovery-ready listings"
           href="/dashboard/properties"
           emphasis="highlight"
         />
         <MetricCard
-          icon={FileText}
-          label="Pending applications"
-          value={0}
-          meta="Applicants waiting for review"
-          href="/dashboard/applications"
+          icon={Clock3}
+          label="Needs confirmation"
+          value={propertiesQuery.isLoading ? "..." : summary.needs_confirmation}
+          meta="Listings at risk of going stale"
+          href="/dashboard/properties"
         />
         <MetricCard
-          icon={ScrollText}
-          label="Signed leases"
-          value={0}
-          meta="Completed agreements with clear status"
-          href="/dashboard/leases"
+          icon={MessagesSquare}
+          label="Inquiries"
+          value={inquiriesQuery.isLoading ? "..." : inquiries.length}
+          meta="Qualified demand awaiting follow-up"
+          href="/dashboard/inquiries"
         />
         <MetricCard
-          icon={Wallet}
-          label="Commission total"
-          value={formatNaira(0)}
-          meta="Transparent earnings and payout visibility"
-          href="/dashboard/referrals"
+          icon={Archive}
+          label="Final outcomes"
+          value={propertiesQuery.isLoading ? "..." : summary.final_outcomes}
+          meta="Renyt-close and off-platform closes tracked separately"
+          href="/dashboard/properties"
         />
       </div>
 
@@ -377,36 +385,41 @@ function AgentView() {
         <DashboardPanel padding="lg" className="space-y-6">
           <DashboardSectionHeading
             title="Business rhythm"
-            description="Listings, applications, lease movement, and earnings at a glance."
+            description="Availability health, inquiry flow, and final outcomes at a glance."
             action={<Badge variant="dashboard">This month</Badge>}
           />
           <MiniBarChart
             ariaLabel="Agent business metrics chart"
-            values={[0, 0, 0, 0]}
-            labels={["List", "Apply", "Lease", "Earn"]}
-            highlightIndex={0}
+            values={[
+              summary.active,
+              summary.needs_confirmation,
+              inquiries.length,
+              summary.final_outcomes,
+            ]}
+            labels={["Active", "Due", "Inquire", "Close"]}
+            highlightIndex={1}
           />
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Verification trust
+                Listing freshness
               </p>
               <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                Keep profile and listing verification current
+                Keep confirmation windows current
               </p>
               <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                Verified identity and complete listing evidence reinforce marketplace trust.
+                Availability confirmation now drives trust more than cosmetic edits or recency tricks.
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Commission visibility
+                Outcome integrity
               </p>
               <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                Earnings should remain traceable
+                Renyt and off-platform closes stay distinct
               </p>
               <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                Referrals and commissions belong in operational reporting, not gamified cards.
+                Final outcomes need explicit source tracking so referral review and lifecycle reporting remain defensible.
               </p>
             </div>
           </div>
@@ -429,15 +442,19 @@ function AgentView() {
             icon={TrendingUp}
             title="Listings workflow"
             badgeLabel="Action-ready"
-            description="Create listings with full pricing, recent timestamps, and structured media before expecting application volume."
-            action={<ActionLink href="/dashboard/properties/new">Add listing</ActionLink>}
+            description="Confirm availability before listings drift stale, and record whether closings happened through Renyt or off-platform."
+            action={<ActionLink href="/dashboard/properties">Open listing health</ActionLink>}
           />
           <StatusPanel
-            icon={Gift}
-            title="Referrals and commissions"
-            badgeLabel="Transparent"
-            description="Review referral performance and commission outcomes in one place without celebratory or distracting UI."
-            action={<ActionLink href="/dashboard/referrals">Open referrals</ActionLink>}
+            icon={MessagesSquare}
+            title="Inquiry follow-up"
+            badgeLabel={inquiries.length > 0 ? "Active" : "Quiet"}
+            description={
+              inquiries.length > 0
+                ? `${inquiries.length} inquiry record(s) are available for follow-up across your listings.`
+                : "No inquiry backlog right now. New inquiry records will appear here as qualified demand arrives."
+            }
+            action={<ActionLink href="/dashboard/inquiries">Open inquiries</ActionLink>}
           />
         </div>
       </div>
@@ -450,9 +467,9 @@ function AgentView() {
           />
           <div className="space-y-3">
             {[
-              "Create or update a listing with full structured pricing.",
-              "Review pending applications and respond quickly.",
-              "Check referral and commission tracking for accuracy.",
+              "Confirm overdue listings before they fall out of trusted discovery.",
+              "Review fresh inquiries while intent is still warm.",
+              "Record final outcomes with the correct Renyt or off-platform source.",
             ].map((item) => (
               <div
                 key={item}
@@ -468,16 +485,20 @@ function AgentView() {
         <DashboardPanel padding="lg" className="space-y-5">
           <DashboardSectionHeading
             title="Quick actions"
-            description="Direct paths into listings, applications, and account maintenance."
+            description="Direct paths into listing health, inquiry follow-up, and account maintenance."
           />
           <div className="grid gap-3">
             <ActionLink href="/dashboard/properties/new" variant="dashboardPrimary">
               <Building2 className="h-4 w-4" />
               Add new listing
             </ActionLink>
-            <ActionLink href="/dashboard/applications">
-              <FileText className="h-4 w-4" />
-              Review applications
+            <ActionLink href="/dashboard/properties">
+              <Clock3 className="h-4 w-4" />
+              Review listing health
+            </ActionLink>
+            <ActionLink href="/dashboard/inquiries">
+              <MessagesSquare className="h-4 w-4" />
+              Open inquiries
             </ActionLink>
             <ActionLink href="/dashboard/referrals">
               <Gift className="h-4 w-4" />
@@ -500,9 +521,9 @@ function TenantView() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           icon={FileText}
-          label="Applications"
+          label="Requests"
           value={0}
-          meta="Current housing applications"
+          meta="Current housing requests"
           href="/dashboard/applications"
           emphasis="highlight"
         />
@@ -517,7 +538,7 @@ function TenantView() {
           icon={CheckCircle2}
           label="Approved"
           value={0}
-          meta="Applications that can progress to lease"
+          meta="Requests that can progress to lease"
           href="/dashboard/applications"
         />
         <MetricCard
@@ -532,14 +553,14 @@ function TenantView() {
       <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
         <DashboardPanel padding="lg" className="space-y-6">
           <DashboardSectionHeading
-            title="Application progress"
+            title="Request progress"
             description="A calm view of where your housing journey currently stands."
             action={<Badge variant="dashboard">Summary</Badge>}
           />
           <MiniBarChart
-            ariaLabel="Tenant application progress chart"
+            ariaLabel="Tenant request progress chart"
             values={[0, 0, 0, 0]}
-            labels={["Apply", "Wait", "Approve", "Lease"]}
+            labels={["Request", "Wait", "Approve", "Lease"]}
             highlightIndex={2}
           />
         </DashboardPanel>
@@ -550,7 +571,7 @@ function TenantView() {
             tone="accent"
             badgeLabel="Next step"
             title="Continue browsing"
-            description="Search, save, and compare listings while keeping your application progress visible in the same account space."
+            description="Search, save, and compare listings while keeping your request progress visible in the same account space."
             action={
               <ActionLink href="/search" variant="dashboardPrimary">
                 Browse properties
@@ -559,10 +580,10 @@ function TenantView() {
           />
           <StatusPanel
             icon={FileText}
-            title="Application status"
+            title="Request status"
             badgeLabel="Trackable"
             description="Pending, approved, and lease-ready states should remain easy to scan without visual overload."
-            action={<ActionLink href="/dashboard/applications">View applications</ActionLink>}
+            action={<ActionLink href="/dashboard/applications">View requests</ActionLink>}
           />
           <StatusPanel
             icon={Gift}
