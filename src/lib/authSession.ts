@@ -117,6 +117,7 @@ export function buildFallbackProfile(
     is_verified: existingProfile?.is_verified,
     is_suspended: existingProfile?.is_suspended,
     suspended_at: existingProfile?.suspended_at,
+    email_notification_preferences: existingProfile?.email_notification_preferences,
     created_at: existingProfile?.created_at ?? authUser.created_at,
     updated_at: existingProfile?.updated_at,
   };

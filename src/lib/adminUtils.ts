@@ -4,6 +4,8 @@ import type {
   EmailProvider,
   EmailProviderSettings,
   EmailProviderStatus,
+  QueueConditionState,
+  QueueHealthStatus,
 } from "@/types/admin";
 
 export function formatEmailProvider(provider: EmailProvider) {
@@ -111,4 +113,48 @@ export function getProviderConfigurationPlaceholder(provider: EmailProvider) {
         2,
       );
   }
+}
+
+export function formatQueueHealthStatus(status: QueueHealthStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+export function getQueueHealthBadgeVariant(status: QueueHealthStatus) {
+  switch (status) {
+    case "healthy":
+      return "dashboardSuccess" as const;
+    case "degraded":
+      return "dashboardWarning" as const;
+    case "down":
+      return "dashboardCritical" as const;
+  }
+}
+
+export function getQueueConditionBadgeVariant(state: QueueConditionState) {
+  switch (state) {
+    case "met":
+      return "active" as const;
+    case "unmet":
+      return "pending" as const;
+    case "unverified":
+      return "info" as const;
+  }
+}
+
+export function formatQueueConditionState(state: QueueConditionState) {
+  switch (state) {
+    case "met":
+      return "Met";
+    case "unmet":
+      return "Unmet";
+    case "unverified":
+      return "Needs check";
+  }
+}
+
+export function formatQueueName(name: string) {
+  return name
+    .split("-")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
 }

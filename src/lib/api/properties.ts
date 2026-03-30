@@ -1,13 +1,16 @@
 import apiClient from "./client";
 import type {
+  AgentPropertyInsight,
   CreatePropertyInput,
   FeeType,
   Property,
+  ReferralOutcomeCandidate,
   PropertyTypeDefinition,
   PropertyWithImages,
   PropertySearchParams,
   PropertyImage,
   PropertyVideo,
+  UpdatePropertyInput,
   UploadPropertyMediaInput,
   PropertyAgentContact,
   ApiSuccessResponse,
@@ -132,7 +135,7 @@ export async function createProperty(
   return res.data;
 }
 
-export async function updateProperty(id: string, data: Partial<Property>) {
+export async function updateProperty(id: string, data: UpdatePropertyInput) {
   const res = await apiClient.patch<ApiSuccessResponse<Property>>(
     `/properties/${id}`,
     data,
@@ -152,6 +155,20 @@ export async function getMyProperties() {
       normalizeProperty(property as RawProperty),
     ),
   };
+}
+
+export async function getMyPropertyInsights() {
+  const res = await apiClient.get<ApiSuccessResponse<AgentPropertyInsight[]>>(
+    "/properties/insights/mine",
+  );
+  return res.data;
+}
+
+export async function getPropertyOutcomeCandidates(id: string) {
+  const res = await apiClient.get<ApiSuccessResponse<ReferralOutcomeCandidate[]>>(
+    `/properties/${id}/outcome-candidates`,
+  );
+  return res.data;
 }
 
 export async function getFeeTypes() {

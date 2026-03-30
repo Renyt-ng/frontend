@@ -1,3 +1,5 @@
+import type { EmailNotificationPreferences } from "./admin";
+
 export type UserRole = "admin" | "agent" | "tenant";
 export type AvatarReviewStatus = "pending" | "approved" | "flagged";
 
@@ -13,6 +15,7 @@ export interface Profile {
   is_verified?: boolean;
   is_suspended?: boolean;
   suspended_at?: string | null;
+  email_notification_preferences?: EmailNotificationPreferences;
   created_at: string;
   updated_at?: string;
 }

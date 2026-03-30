@@ -11,7 +11,8 @@ export type ReferralEventStatus =
   | "under_review"
   | "confirmed"
   | "rejected"
-  | "paid";
+  | "paid"
+  | "ineligible";
 
 export type ReferralClosureStatus =
   | "rented_renyt"
@@ -168,12 +169,64 @@ export interface ReferralPropertyPerformance {
   property_area: string;
   property_status: string;
   property_is_verified: boolean;
+  view_count: number;
   share_count: number;
+  cta_attempt_count: number;
+  wishlist_count: number;
+  like_count: number;
+  qualified_referrals: number;
   qualified_messages: number;
   potential_earnings: number;
   confirmed_earnings: number;
   paid_earnings: number;
   commission_preview: ReferralCommissionPreview;
+}
+
+export interface ReferralOutcomeCandidate {
+  user_id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  latest_contact_at: string;
+  source_channels: string[];
+  inquiry_count: number;
+  has_open_referral_candidate: boolean;
+  referral_event_id: string | null;
+  referral_status: ReferralEventStatus | null;
+  referrer_user_id: string | null;
+  referrer_name: string | null;
+  referrer_email: string | null;
+  referrer_phone: string | null;
+}
+
+export interface PropertyReferralResolutionSummary {
+  winning_referral_event_id: string | null;
+  winner_moved_to_under_review: number;
+  open_events_marked_ineligible: number;
+  preserved_terminal_events: number;
+  ineligible_reason: string | null;
+}
+
+export interface AgentPropertyInsight {
+  property_id: string;
+  property_title: string;
+  property_area: string;
+  property_status: string;
+  property_is_verified: boolean;
+  view_count: number;
+  share_count: number;
+  cta_attempt_count: number;
+  wishlist_count: number;
+  like_count: number;
+  qualified_referrals: number;
+  open_referral_count: number;
+  under_review_count: number;
+  confirmed_count: number;
+  paid_count: number;
+  ineligible_count: number;
+  candidate_count: number;
+  latest_contact_at: string | null;
+  resolution_summary: PropertyReferralResolutionSummary | null;
 }
 
 export interface ReferralDashboard {
@@ -194,6 +247,8 @@ export interface AdminReferralEvent {
   id: string;
   referrer_user_id: string;
   referrer_name: string;
+  referrer_email: string | null;
+  referrer_phone: string | null;
   referred_user_id: string | null;
   referred_name: string | null;
   property_id: string;
@@ -216,6 +271,12 @@ export interface AdminReferralEvent {
   close_recorded_at: string | null;
   inquiry_id: string | null;
   referral_code: string;
+  matched_user_id: string | null;
+  matched_user_name: string | null;
+  matched_user_email: string | null;
+  matched_user_phone: string | null;
+  is_winning_referral: boolean;
+  ineligible_reason: string | null;
   rejection_reason: string | null;
   admin_note: string | null;
   fraud_flags: string[];

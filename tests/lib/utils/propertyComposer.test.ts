@@ -25,7 +25,7 @@ describe("propertyComposer utilities", () => {
   });
 
   it("builds a pricing summary from rent and fee lines", () => {
-    const summary = buildDraftPricingSummary(1_200_000, [
+    const summary = buildDraftPricingSummary("rent", 1_200_000, 0, [
       {
         fee_type_id: "fee-1",
         value_type: "fixed",
@@ -41,6 +41,26 @@ describe("propertyComposer utilities", () => {
     expect(summary.fees_total).toBe(270_000);
     expect(summary.total_move_in_cost).toBe(1_470_000);
     expect(summary.monthly_equivalent).toBe(100_000);
+  });
+
+  it("builds a pricing summary from asking price and fee lines for sale listings", () => {
+    const summary = buildDraftPricingSummary("sale", 0, 95_000_000, [
+      {
+        fee_type_id: "fee-1",
+        value_type: "fixed",
+        amount: 4_000_000,
+      },
+      {
+        fee_type_id: "fee-2",
+        value_type: "percentage",
+        percentage: 1,
+      },
+    ]);
+
+    expect(summary.asking_price).toBe(95_000_000);
+    expect(summary.fees_total).toBe(4_950_000);
+    expect(summary.total_move_in_cost).toBe(99_950_000);
+    expect(summary.monthly_equivalent).toBe(0);
   });
 
   it("marks listing as publish-ready only when core checks pass", () => {

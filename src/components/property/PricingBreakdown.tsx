@@ -7,13 +7,15 @@ interface PricingBreakdownProps {
 
 export function PricingBreakdown({ property }: PricingBreakdownProps) {
   const rentAmount = property.rent_amount ?? 0;
+  const askingPrice = property.asking_price ?? 0;
+  const isSaleListing = property.listing_purpose === "sale";
   const feeItems = property.property_fees?.length
     ? property.property_fees.map((fee) => ({
         label: fee.label,
         amount: fee.calculated_amount,
         meta:
           fee.value_type === "percentage" && fee.percentage != null
-            ? `${fee.percentage}% of annual rent`
+            ? `${fee.percentage}% of ${isSaleListing ? "asking price" : "annual rent"}`
             : null,
       }))
     : [
@@ -22,8 +24,9 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
         { label: "Agency Fee", amount: property.agency_fee, meta: null },
       ].filter((item) => item.amount != null);
 
+  const baseAmount = isSaleListing ? askingPrice : rentAmount;
   const total = property.pricing_summary?.total_move_in_cost ?? (
-    rentAmount + feeItems.reduce((sum, item) => sum + (item.amount ?? 0), 0)
+    baseAmount + feeItems.reduce((sum, item) => sum + (item.amount ?? 0), 0)
   );
   const monthly = property.pricing_summary?.monthly_equivalent ?? rentAmount / 12;
 
@@ -36,20 +39,22 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm text-[var(--color-text-secondary)]">
-            Annual Rent
+            {isSaleListing ? "Asking Price" : "Annual Rent"}
           </span>
           <span className="text-base font-semibold text-[var(--color-text-primary)]">
-            {formatCurrency(rentAmount)}
+            {formatCurrency(baseAmount)}
           </span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-[var(--color-text-secondary)]">
-            Monthly Equivalent
-          </span>
-          <span className="text-sm text-[var(--color-text-primary)]">
-            {formatCurrency(monthly)}
-          </span>
-        </div>
+        {!isSaleListing ? (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-[var(--color-text-secondary)]">
+              Monthly Equivalent
+            </span>
+            <span className="text-sm text-[var(--color-text-primary)]">
+              {formatCurrency(monthly)}
+            </span>
+          </div>
+        ) : null}
         {feeItems.map((item) => (
           <div key={item.label} className="flex items-center justify-between">
             <div>
@@ -70,7 +75,7 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
       <div className="mt-4 border-t border-[var(--color-border)] pt-4">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-[var(--color-text-primary)]">
-            Total Move-in Cost
+            {isSaleListing ? "Total Buyer Cost" : "Total Move-in Cost"}
           </span>
           <span className="text-xl font-bold text-[var(--color-deep-slate-blue)]">
             {formatCurrency(total)}

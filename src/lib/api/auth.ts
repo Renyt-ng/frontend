@@ -1,5 +1,9 @@
 import apiClient, { setAuthToken, clearAuthToken } from "./client";
-import type { Profile, ApiSuccessResponse } from "@/types";
+import type {
+  EmailNotificationPreferences,
+  Profile,
+  ApiSuccessResponse,
+} from "@/types";
 
 export { setAuthToken, clearAuthToken };
 
@@ -25,6 +29,16 @@ export async function uploadProfileAvatar(data: {
 }) {
   const res = await apiClient.post<ApiSuccessResponse<Profile>>(
     "/profiles/me/avatar",
+    data,
+  );
+  return res.data;
+}
+
+export async function updateEmailNotificationPreferences(
+  data: EmailNotificationPreferences,
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<Profile>>(
+    "/profiles/me/email-notification-preferences",
     data,
   );
   return res.data;

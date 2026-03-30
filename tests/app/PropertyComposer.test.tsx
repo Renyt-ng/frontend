@@ -179,6 +179,7 @@ describe("PropertyComposer", () => {
     deletePropertyImageMutateAsync.mockReset();
     deletePropertyVideoMutateAsync.mockReset();
     createFeeTypeMutateAsync.mockReset();
+    window.scrollTo = vi.fn();
 
     hooks.useMyAgent.mockReturnValue({
       data: { data: { verification_status: "approved" } },
@@ -293,14 +294,15 @@ describe("PropertyComposer", () => {
 
     expect(await screen.findByRole("heading", { name: "Media" })).toBeInTheDocument();
     expect(updatePropertyMutateAsync).toHaveBeenCalledTimes(1);
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
 
     deferred.resolve({ data: baseProperty });
     await waitFor(() => expect(updatePropertyMutateAsync).toHaveBeenCalledTimes(1));
   });
 
-  it("shows publish loading immediately before the publish mutation starts", async () => {
-    const deferred = createDeferred<{ data: typeof baseProperty }>();
-    updatePropertyMutateAsync.mockReturnValueOnce(deferred.promise);
+  it("publishes immediately without a redundant save when the draft is already current", async () => {
+    const deferred = createDeferred<{ success: true }>();
+    publishPropertyMutateAsync.mockReturnValueOnce(deferred.promise);
     window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=review");
 
     render(<PropertyComposer propertyId="draft-1" />);
@@ -310,11 +312,24 @@ describe("PropertyComposer", () => {
 
     expect(publishButton).toBeDisabled();
     expect(publishButton.querySelector("svg.animate-spin")).toBeTruthy();
-    expect(publishPropertyMutateAsync).not.toHaveBeenCalled();
-
-    deferred.resolve({ data: baseProperty });
-
     await waitFor(() => expect(publishPropertyMutateAsync).toHaveBeenCalledWith("draft-1"));
+    expect(updatePropertyMutateAsync).not.toHaveBeenCalled();
+
+    deferred.resolve({ success: true });
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/dashboard/properties?publishing=draft-1"));
+  });
+
+  it("shows sale listings can keep fee lines in pricing", async () => {
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    const listingPurpose = await screen.findByLabelText("Listing Purpose");
+    fireEvent.click(listingPurpose);
+    fireEvent.click(screen.getByRole("option", { name: "For Sale" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByText(/full purchase cost upfront/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Add Fee/i })).toBeInTheDocument();
   });
 
   it("uploads dropped images from the media dropzone", async () => {

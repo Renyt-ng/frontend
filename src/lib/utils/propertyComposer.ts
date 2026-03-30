@@ -10,37 +10,36 @@ const MIN_DESCRIPTION_LENGTH = 150;
 const MIN_PHOTO_COUNT = 5;
 
 export function calculateDraftFeeAmount(
-  rentAmount: number,
+  pricingBaseAmount: number,
   fee: PropertyFeeInput,
 ) {
   if (fee.value_type === "percentage") {
-    return Number((((fee.percentage ?? 0) * rentAmount) / 100).toFixed(2));
+    return Number((((fee.percentage ?? 0) * pricingBaseAmount) / 100).toFixed(2));
   }
 
   return Number((fee.amount ?? 0).toFixed(2));
 }
 
 export function buildDraftPricingSummary(
+  listingPurpose: PropertyListingPurpose,
   rentAmount: number,
-  feesOrAskingPrice: PropertyFeeInput[] | number,
-  maybeFees?: PropertyFeeInput[],
+  askingPrice: number,
+  fees: PropertyFeeInput[],
 ): PropertyPricingSummary {
-  const askingPrice = Array.isArray(feesOrAskingPrice) ? 0 : feesOrAskingPrice;
-  const fees = Array.isArray(feesOrAskingPrice)
-    ? feesOrAskingPrice
-    : (maybeFees ?? []);
+  const pricingBaseAmount = listingPurpose === "sale" ? askingPrice : rentAmount;
 
   const feesTotal = fees.reduce(
-    (sum, fee) => sum + calculateDraftFeeAmount(rentAmount, fee),
+    (sum, fee) => sum + calculateDraftFeeAmount(pricingBaseAmount, fee),
     0,
   );
 
   return {
     annual_rent: rentAmount,
-    monthly_equivalent: Number((rentAmount / 12).toFixed(2)),
+    monthly_equivalent:
+      listingPurpose === "sale" ? 0 : Number((rentAmount / 12).toFixed(2)),
     asking_price: askingPrice,
     fees_total: Number(feesTotal.toFixed(2)),
-    total_move_in_cost: Number((rentAmount + feesTotal).toFixed(2)),
+    total_move_in_cost: Number((pricingBaseAmount + feesTotal).toFixed(2)),
   };
 }
 

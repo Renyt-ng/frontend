@@ -5,6 +5,7 @@ import { User, Mail, Phone, Camera, Save } from "lucide-react";
 import { Card, CardContent, Button, Avatar } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
 import { ProfileAvatarCropModal } from "@/components/profile/ProfileAvatarCropModal";
+import { EmailNotificationPreferencesCard } from "@/components/settings/EmailNotificationPreferencesCard";
 import { useProfile, useUpdateProfile, useUploadProfileAvatar } from "@/lib/hooks";
 import { validateProfileAvatarFile } from "@/lib/profileAvatar";
 import { useAuthStore } from "@/stores/authStore";
@@ -238,6 +239,8 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <EmailNotificationPreferencesCard profile={profile} />
 
       <ProfileAvatarCropModal
         isOpen={Boolean(pendingAvatarFile)}

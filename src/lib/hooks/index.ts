@@ -13,6 +13,8 @@ export {
   useProperty,
   useManageProperty,
   useMyProperties,
+  useMyPropertyInsights,
+  usePropertyOutcomeCandidates,
   useFeeTypes,
   usePropertyTypes,
   useCreateFeeType,
@@ -46,7 +48,13 @@ export {
 
 export { agentKeys, useMyAgent, useAgent, useCreateAgent } from "./useAgents";
 
-export { profileKeys, useProfile, useUpdateProfile, useUploadProfileAvatar } from "./useAuth";
+export {
+  profileKeys,
+  useProfile,
+  useUpdateProfile,
+  useUploadProfileAvatar,
+  useUpdateEmailNotificationPreferences,
+} from "./useAuth";
 
 export {
   adminKeys,
@@ -69,6 +77,9 @@ export {
   useAdminEmailNotifications,
   useUpdateAdminEmailNotification,
   useAdminEmailHealth,
+  useAdminQueueHealth,
+  useAdminQueueFailedJobs,
+  useAdminQueueAction,
   useAdminEmailEvents,
   useSendAdminTestEmail,
   useSuspendUser,
@@ -85,11 +96,9 @@ export {
 
 export {
   propertyInteractionKeys,
+  useMyPropertyEngagementSummary,
   usePropertyEngagementStatus,
   useTogglePropertyEngagement,
-  useCreatePropertyInquiry,
-  useMyPropertyInquiry,
-  useAgentPropertyInquiries,
   useTrackPropertyMessageIntent,
 } from "./usePropertyInteractions";
 

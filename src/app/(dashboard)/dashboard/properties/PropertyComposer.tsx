@@ -134,6 +134,14 @@ function syncComposerStepInUrl(nextStep: ComposerStep) {
   window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
+function scrollComposerToTop() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 function fileToBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -230,6 +238,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   const initializedRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const autosaveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -287,7 +296,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       return;
     }
 
-    const timeout = window.setTimeout(async () => {
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+    }
+
+    autosaveTimeoutRef.current = window.setTimeout(async () => {
       try {
         setSaveState("saving");
         await updateProperty.mutateAsync({
@@ -303,7 +316,12 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       }
     }, 1200);
 
-    return () => window.clearTimeout(timeout);
+    return () => {
+      if (autosaveTimeoutRef.current) {
+        window.clearTimeout(autosaveTimeoutRef.current);
+        autosaveTimeoutRef.current = null;
+      }
+    };
   }, [draftId, updateProperty, values]);
 
   const agentProfile = myAgentQuery.data?.data ?? null;
@@ -335,8 +353,14 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   }, [hydratedProperty?.completion, imageItems.length, values]);
 
   const pricingSummary = useMemo(
-    () => buildDraftPricingSummary(values.rent_amount ?? 0, values.asking_price ?? 0, values.fees),
-    [values.asking_price, values.fees, values.rent_amount],
+    () =>
+      buildDraftPricingSummary(
+        values.listing_purpose,
+        values.rent_amount ?? 0,
+        values.asking_price ?? 0,
+        values.fees,
+      ),
+    [values.asking_price, values.fees, values.listing_purpose, values.rent_amount],
   );
 
   const currentStepIndex = stepOrder.indexOf(step);
@@ -361,6 +385,8 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
     return options;
   }, [locationsQuery.data?.data, values.area]);
+
+  const hasUnsavedChanges = serializeValues(values) !== lastSavedSnapshot.current;
 
   function updateField<K extends keyof ComposerValues>(key: K, value: ComposerValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -454,11 +480,16 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   }
 
   async function ensureDraftSaved(nextStep?: ComposerStep) {
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+
     const payload = buildPayload(values);
     setServerError("");
-    setSaveState("saving");
 
     if (!draftId) {
+      setSaveState("saving");
       const response = await createProperty.mutateAsync(payload);
       const property = response.data;
       setDraftId(property.id);
@@ -473,6 +504,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       return property.id;
     }
 
+    if (!hasUnsavedChanges) {
+      return draftId;
+    }
+
+    setSaveState("saving");
     await updateProperty.mutateAsync({ id: draftId, data: payload });
     lastSavedSnapshot.current = serializeValues(values);
     setSaveState("saved");
@@ -490,6 +526,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
         }
 
         updateStep("pricing");
+        scrollComposerToTop();
         return;
       }
 
@@ -502,6 +539,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
         if (draftId) {
           updateStep("media");
+          scrollComposerToTop();
           void ensureDraftSaved("media").catch((error) => {
             setSaveState("error");
             setServerError(getApiErrorMessage(error, "Could not save draft"));
@@ -513,12 +551,14 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
         await ensureDraftSaved("media");
         updateStep("media");
+        scrollComposerToTop();
         setContinuingToMedia(false);
         return;
       }
 
       if (step === "media") {
         updateStep("review");
+        scrollComposerToTop();
       }
     } catch (error) {
       setContinuingToMedia(false);
@@ -969,7 +1009,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                           event.target.value === "rent"
                             ? current.rent_amount
                             : null,
-                        fees: event.target.value === "sale" ? [] : current.fees,
+                        fees: current.fees,
                       }))
                     }
                   />
@@ -1039,7 +1079,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                   title="Pricing Breakdown"
                   description={
                     values.listing_purpose === "sale"
-                      ? "Set the asking price in naira. Buyer contact starts from the property page."
+                      ? "Set the asking price in naira, then add structured fee lines so buyers can understand the full purchase cost upfront."
                       : "Use annual rent in naira, then add structured fee lines so tenants see the full move-in cost upfront."
                   }
                 />
@@ -1054,17 +1094,17 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                     error={fieldErrors.asking_price}
                   />
                 ) : (
-                  <>
-                    <NumericInput
-                      id="rent_amount"
-                      label="Annual Rent (NGN)"
-                      value={values.rent_amount}
-                      onValueChange={(value) => updateField("rent_amount", value)}
-                      format="currency"
-                      error={fieldErrors.rent_amount}
-                    />
+                  <NumericInput
+                    id="rent_amount"
+                    label="Annual Rent (NGN)"
+                    value={values.rent_amount}
+                    onValueChange={(value) => updateField("rent_amount", value)}
+                    format="currency"
+                    error={fieldErrors.rent_amount}
+                  />
+                )}
 
-                    <div className="space-y-3">
+                <div className="space-y-3">
                   {values.fees.map((fee, index) => {
                     const feeType = feeTypesQuery.data?.data?.find(
                       (item) => item.id === fee.fee_type_id,
@@ -1074,7 +1114,13 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                         ? { value: "fixed", label: "Fixed amount" }
                         : null,
                       feeType?.supports_percentage
-                        ? { value: "percentage", label: "Percentage of rent" }
+                        ? {
+                            value: "percentage",
+                            label:
+                              values.listing_purpose === "sale"
+                                ? "Percentage of asking price"
+                                : "Percentage of rent",
+                          }
                         : null,
                     ].filter(Boolean) as { value: string; label: string }[];
 
@@ -1142,54 +1188,58 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                           </div>
                         </div>
                         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-                          This fee adds {formatCurrency(buildDraftPricingSummary(values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the move-in total.
+                          This fee adds {formatCurrency(buildDraftPricingSummary(values.listing_purpose, values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the {values.listing_purpose === "sale" ? "buyer" : "move-in"} total.
                         </p>
                       </div>
                     );
                   })}
-                    </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button type="button" variant="secondary" onClick={addFee} disabled={!feeTypesQuery.data?.data?.length}>
-                        <Plus className="h-4 w-4" />
-                        Add Fee
+                  {values.fees.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] px-4 py-4 text-sm text-[var(--color-text-secondary)]">
+                      Add fee lines to make the full {values.listing_purpose === "sale" ? "purchase" : "move-in"} cost clear before someone contacts the agent.
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button type="button" variant="secondary" onClick={addFee} disabled={!feeTypesQuery.data?.data?.length}>
+                    <Plus className="h-4 w-4" />
+                    Add Fee
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFeeTypeCreator((current) => !current)}
+                    className="text-sm font-medium text-[var(--color-deep-slate-blue)]"
+                  >
+                    Can&apos;t find the right fee type? Add one
+                  </button>
+                </div>
+
+                {showFeeTypeCreator && (
+                  <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] p-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Input
+                        id="new_fee_type_name"
+                        label="New Fee Type Name"
+                        value={newFeeTypeName}
+                        onChange={(event) => setNewFeeTypeName(event.target.value)}
+                      />
+                      <Input
+                        id="new_fee_type_description"
+                        label="Short Description"
+                        value={newFeeTypeDescription}
+                        onChange={(event) => setNewFeeTypeDescription(event.target.value)}
+                      />
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <Button type="button" onClick={handleCreateFeeType} isLoading={createFeeType.isPending}>
+                        Save Fee Type
                       </Button>
-                      <button
-                        type="button"
-                        onClick={() => setShowFeeTypeCreator((current) => !current)}
-                        className="text-sm font-medium text-[var(--color-deep-slate-blue)]"
-                      >
-                        Can&apos;t find the right fee type? Add one
-                      </button>
+                      <Button type="button" variant="secondary" onClick={() => setShowFeeTypeCreator(false)}>
+                        Cancel
+                      </Button>
                     </div>
-
-                    {showFeeTypeCreator && (
-                      <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] p-4">
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <Input
-                            id="new_fee_type_name"
-                            label="New Fee Type Name"
-                            value={newFeeTypeName}
-                            onChange={(event) => setNewFeeTypeName(event.target.value)}
-                          />
-                          <Input
-                            id="new_fee_type_description"
-                            label="Short Description"
-                            value={newFeeTypeDescription}
-                            onChange={(event) => setNewFeeTypeDescription(event.target.value)}
-                          />
-                        </div>
-                        <div className="mt-4 flex gap-3">
-                          <Button type="button" onClick={handleCreateFeeType} isLoading={createFeeType.isPending}>
-                            Save Fee Type
-                          </Button>
-                          <Button type="button" variant="secondary" onClick={() => setShowFeeTypeCreator(false)}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -1492,23 +1542,29 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                 <h2 className="font-semibold text-[var(--color-text-primary)]">Pricing summary</h2>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                   {values.listing_purpose === "sale"
-                    ? "Buyer-facing asking price for agent contact intent"
+                    ? "Buyer-facing asking price plus structured fees"
                     : "Transparent move-in cost shown to tenants"}
                 </p>
               </div>
 
               {values.listing_purpose === "sale" ? (
-                <SummaryRow
-                  label="Asking price"
-                  value={
-                    formatPropertyPriceLabel({
-                      listingPurpose: values.listing_purpose,
-                      rentAmount: values.rent_amount,
-                      askingPrice: values.asking_price,
-                    }).amount
-                  }
-                  strong
-                />
+                <>
+                  <SummaryRow
+                    label="Asking price"
+                    value={
+                      formatPropertyPriceLabel({
+                        listingPurpose: values.listing_purpose,
+                        rentAmount: values.rent_amount,
+                        askingPrice: values.asking_price,
+                      }).amount
+                    }
+                  />
+                  <SummaryRow label="Fees total" value={formatCurrency(pricingSummary.fees_total)} />
+
+                  <div className="border-t border-[var(--color-border)] pt-4">
+                    <SummaryRow label="Total buyer cost" value={formatCurrency(pricingSummary.total_move_in_cost)} strong />
+                  </div>
+                </>
               ) : (
                 <>
                   <SummaryRow label="Annual rent" value={formatCurrency(pricingSummary.annual_rent)} />

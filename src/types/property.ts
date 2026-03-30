@@ -1,3 +1,5 @@
+import type { PropertyReferralResolutionSummary } from "./referral";
+
 export type PropertyType = string;
 
 export interface PropertyTypeDefinition {
@@ -118,6 +120,7 @@ export interface Property {
   status: PropertyStatus;
   publish_error?: string | null;
   availability_confirmed_at: string | null;
+  last_freshness_reminder_sent_at?: string | null;
   freshness_state?: ListingFreshnessState;
   last_updated_at: string;
   created_at: string;
@@ -126,7 +129,12 @@ export interface Property {
   property_videos?: PropertyVideo[];
   pricing_summary?: PropertyPricingSummary;
   completion?: PropertyCompletion;
+  referral_resolution_summary?: PropertyReferralResolutionSummary | null;
 }
+
+export type UpdatePropertyInput = Partial<Property> & {
+  matched_user_id?: string | null;
+};
 
 export interface PropertyFeeInput {
   fee_type_id: string;

@@ -6,7 +6,11 @@ import {
 } from "@tanstack/react-query";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/stores/authStore";
-import type { Profile, ApiSuccessResponse } from "@/types";
+import type {
+  EmailNotificationPreferences,
+  Profile,
+  ApiSuccessResponse,
+} from "@/types";
 
 /** Query key factory for auth/profile */
 export const profileKeys = {
@@ -50,6 +54,20 @@ export function useUploadProfileAvatar() {
 
   return useMutation({
     mutationFn: authApi.uploadProfileAvatar,
+    onSuccess: (res) => {
+      setUser(res.data);
+      queryClient.setQueryData(profileKeys.me, res);
+    },
+  });
+}
+
+export function useUpdateEmailNotificationPreferences() {
+  const queryClient = useQueryClient();
+  const setUser = useAuthStore((s) => s.setUser);
+
+  return useMutation({
+    mutationFn: (data: EmailNotificationPreferences) =>
+      authApi.updateEmailNotificationPreferences(data),
     onSuccess: (res) => {
       setUser(res.data);
       queryClient.setQueryData(profileKeys.me, res);

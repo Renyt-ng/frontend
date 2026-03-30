@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { Activity, ShieldCheck } from "lucide-react";
 import {
+  DashboardContextualHelp,
   DashboardPanel,
   DashboardSectionHeading,
+  DashboardSectionNav,
   MetricCard,
   MiniBarChart,
   StatusPanel,
@@ -25,6 +27,17 @@ describe("Dashboard primitives", () => {
 
     expect(screen.getByText("Operations")).toBeTruthy();
     expect(screen.getByText("High-signal workflow summary")).toBeTruthy();
+  });
+
+  it("renders section heading helper content", () => {
+    render(
+      <DashboardSectionHeading
+        title="Operations"
+        helper={<span>Helper</span>}
+      />,
+    );
+
+    expect(screen.getByText("Helper")).toBeTruthy();
   });
 
   it("renders metric card as a link when href is provided", { timeout: 10000 }, () => {
@@ -59,6 +72,25 @@ describe("Dashboard primitives", () => {
     expect(
       screen.getByText(/No volume yet. This panel will populate/i),
     ).toBeTruthy();
+    expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+  });
+
+  it("renders visible values when chart data exists", () => {
+    const { container } = render(
+      <MiniBarChart
+        ariaLabel="Active chart"
+        values={[4, 2, 1, 3]}
+        labels={["One", "Two", "Three", "Four"]}
+      />,
+    );
+
+    expect(screen.getByText("4")).toBeTruthy();
+    expect(screen.getByText("2")).toBeTruthy();
+    expect(screen.queryByText(/No volume yet/i)).toBeNull();
+
+    const valuedBars = container.querySelectorAll('[data-bar-state="value"]');
+    expect(valuedBars.length).toBe(4);
+    expect(valuedBars[1]).toHaveClass("bg-[var(--dashboard-accent)]");
   });
 
   it("renders status panel with badge and action", () => {
@@ -75,5 +107,38 @@ describe("Dashboard primitives", () => {
     expect(screen.getByText("Verification queue")).toBeTruthy();
     expect(screen.getByText("Needs review")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open queue" })).toBeTruthy();
+  });
+
+  it("reveals contextual help content when toggled", () => {
+    render(
+      <DashboardContextualHelp label="More information" title="Why this matters">
+        This metric updates after each review cycle.
+      </DashboardContextualHelp>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "More information" }));
+
+    expect(screen.getByRole("tooltip")).toBeTruthy();
+    expect(screen.getByText("Why this matters")).toBeTruthy();
+    expect(
+      screen.getByText("This metric updates after each review cycle."),
+    ).toBeTruthy();
+  });
+
+  it("marks the clicked section as active in section navigation", () => {
+    render(
+      <DashboardSectionNav
+        items={[
+          { id: "health", label: "Health", count: 3 },
+          { id: "events", label: "Events", count: 12 },
+        ]}
+      />,
+    );
+
+    const eventsLink = screen.getByRole("link", { name: /Events/i });
+    fireEvent.click(eventsLink);
+
+    expect(eventsLink).toHaveAttribute("href", "#events");
+    expect(eventsLink).toHaveAttribute("aria-current", "true");
   });
 });

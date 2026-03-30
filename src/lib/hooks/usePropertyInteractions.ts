@@ -1,18 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { propertyInteractionsApi } from "@/lib/api";
-import type {
-  CreatePropertyInquiryInput,
-  CreatePropertyMessageIntentInput,
-} from "@/types";
+import type { CreatePropertyMessageIntentInput } from "@/types";
 
 export const propertyInteractionKeys = {
   all: ["property-interactions"] as const,
+  summary: () => [...propertyInteractionKeys.all, "summary"] as const,
   engagementStatus: (propertyId: string) =>
     [...propertyInteractionKeys.all, "engagement-status", propertyId] as const,
-  inquiry: (propertyId: string) =>
-    [...propertyInteractionKeys.all, "inquiry", propertyId] as const,
-  agentInquiries: () => [...propertyInteractionKeys.all, "agent-inquiries"] as const,
 };
+
+export function useMyPropertyEngagementSummary(enabled = true) {
+  return useQuery({
+    queryKey: propertyInteractionKeys.summary(),
+    queryFn: () => propertyInteractionsApi.getMyEngagementSummary(),
+    enabled,
+    staleTime: 30_000,
+  });
+}
 
 export function usePropertyEngagementStatus(propertyId: string, enabled = true) {
   return useQuery({
@@ -48,39 +52,6 @@ export function useTogglePropertyEngagement() {
         data,
       );
     },
-  });
-}
-
-export function useCreatePropertyInquiry() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ propertyId, data }: { propertyId: string; data: CreatePropertyInquiryInput }) =>
-      propertyInteractionsApi.createInquiry(propertyId, data),
-    onSuccess: (data, variables) => {
-      queryClient.setQueryData(
-        propertyInteractionKeys.inquiry(variables.propertyId),
-        data,
-      );
-    },
-  });
-}
-
-export function useMyPropertyInquiry(propertyId: string, enabled = true) {
-  return useQuery({
-    queryKey: propertyInteractionKeys.inquiry(propertyId),
-    queryFn: () => propertyInteractionsApi.getMyInquiry(propertyId),
-    enabled: enabled && Boolean(propertyId),
-    staleTime: 30_000,
-  });
-}
-
-export function useAgentPropertyInquiries(enabled = true) {
-  return useQuery({
-    queryKey: propertyInteractionKeys.agentInquiries(),
-    queryFn: () => propertyInteractionsApi.getAgentInquiries(),
-    enabled,
-    staleTime: 30_000,
   });
 }
 

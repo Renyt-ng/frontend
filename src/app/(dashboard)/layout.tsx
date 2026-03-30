@@ -43,13 +43,6 @@ const NAV_ITEMS = [
     section: "Workspace",
   },
   {
-    href: "/dashboard/inquiries",
-    label: "Inquiries",
-    icon: FileText,
-    roles: ["agent", "admin"],
-    section: "Workspace",
-  },
-  {
     href: "/dashboard/applications",
     label: "Applications",
     icon: FileText,
@@ -144,9 +137,9 @@ function getRoleSubtitle(role: string) {
     case "admin":
       return "Trust operations, moderation, and platform oversight.";
     case "agent":
-      return "Listing health, inquiries, referrals, and operational outcomes.";
+      return "Listing health, referrals, and operational outcomes.";
     default:
-      return "Requests, referrals, and saved account activity.";
+      return "Saved activity, agent contact, and account updates.";
   }
 }
 

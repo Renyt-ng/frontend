@@ -229,3 +229,68 @@ body {
 .stagger-children > *:nth-child(6) {
   animation-delay: 300ms;
 }
+
+.email-template-editor-root {
+  min-height: 32rem;
+  font-family: "SFMono-Regular", "Menlo", "Monaco", "Consolas", monospace;
+  font-size: 13px;
+  line-height: 1.5rem;
+}
+
+.email-template-editor-root textarea,
+.email-template-editor-root pre {
+  min-height: 32rem;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre !important;
+  overflow: auto !important;
+}
+
+.email-template-editor-textarea {
+  outline: none;
+  color: transparent;
+  caret-color: #f8fafc;
+}
+
+.email-template-editor-pre {
+  pointer-events: none;
+  color: #e2e8f0;
+}
+
+.email-template-editor-root textarea,
+.email-template-editor-root pre {
+  padding-right: 1.25rem !important;
+}
+
+.email-template-editor-root .token.tag,
+.email-template-editor-root .token.selector,
+.email-template-editor-root .token.keyword {
+  color: #fda4af;
+}
+
+.email-template-editor-root .token.attr-name,
+.email-template-editor-root .token.property {
+  color: #93c5fd;
+}
+
+.email-template-editor-root .token.attr-value,
+.email-template-editor-root .token.string {
+  color: #86efac;
+}
+
+.email-template-editor-root .token.punctuation {
+  color: #cbd5e1;
+}
+
+.email-template-editor-root .token.comment {
+  color: #64748b;
+}
+
+.email-template-editor-root .token.entity,
+.email-template-editor-root .token.operator,
+.email-template-editor-root .token.url,
+.email-template-editor-root .token.variable {
+  color: #fcd34d;
+}

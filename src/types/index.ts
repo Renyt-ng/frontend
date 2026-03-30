@@ -20,6 +20,7 @@ export type {
   PropertyVerificationStatus,
   PropertySearchParams,
   PropertyAgentContact,
+  UpdatePropertyInput,
   UploadPropertyMediaInput,
 } from "./property";
 export type { AvatarReviewStatus, Profile, UserRole } from "./user";
@@ -28,11 +29,9 @@ export type { Application, ApplicationStatus } from "./application";
 export type { Lease, LeaseSignature, LeaseStatus } from "./lease";
 export type {
   PropertyEngagementStatus,
-  CreatePropertyInquiryInput,
+  PropertyEngagementSummary,
   CreatePropertyMessageIntentInput,
   PropertyMessageIntentResult,
-  PropertyInquiry,
-  AgentPropertyInquiry,
 } from "./propertyInteraction";
 export type {
   ReferralCommissionType,
@@ -54,6 +53,9 @@ export type {
   ReferralDashboardSummary,
   ReferralDashboardActivity,
   ReferralPropertyPerformance,
+  ReferralOutcomeCandidate,
+  PropertyReferralResolutionSummary,
+  AgentPropertyInsight,
   ReferralDashboard,
   ReferralShareLink,
   AdminReferralEvent,
@@ -64,6 +66,11 @@ export type {
   EmailProvider,
   EmailProviderStatus,
   EmailNotificationCategory,
+  EmailNotificationClassification,
+  EmailNotificationAudienceRole,
+  UserConfigurableEmailCategory,
+  EmailNotificationPreferences,
+  EmailTemplateVariableDefinition,
   EmailProviderSettings,
   EmailNotificationSettings,
   EmailHealthReport,

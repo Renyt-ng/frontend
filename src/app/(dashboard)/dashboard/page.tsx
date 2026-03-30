@@ -5,32 +5,38 @@ import type { ReactNode } from "react";
 import {
   AlertTriangle,
   Archive,
+  Bookmark,
   Building2,
-  CheckCircle2,
   Clock3,
   FileText,
   Gift,
+  Heart,
   Mail,
-  ScrollText,
   Search,
   Settings,
   ShieldAlert,
   ShieldCheck,
   TrendingUp,
   Users,
-  MessagesSquare,
 } from "lucide-react";
 import { Badge, buttonVariants } from "@/components/ui";
 import {
+  DashboardContextualHelp,
   DashboardPanel,
   DashboardSectionHeading,
+  DashboardSectionNav,
   MetricCard,
   MiniBarChart,
   StatusPanel,
 } from "@/components/dashboard";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
-import { useAdminOverview, useAgentPropertyInquiries, useMyProperties } from "@/lib/hooks";
+import {
+  useAdminOverview,
+  useMyProperties,
+  useMyPropertyEngagementSummary,
+  useReferralDashboard,
+} from "@/lib/hooks";
 import { formatAuditActor, formatEmailProvider } from "@/lib/adminUtils";
 import { summarizeListingHealth } from "@/lib/utils";
 import type { AdminOverview } from "@/types/admin";
@@ -76,21 +82,21 @@ function IntroPanel({ role, name }: { role: DashboardRole; name: string }) {
       eyebrow: "Admin Workspace",
       title: `Welcome back, ${name}`,
       description:
-        "Review queues, monitor trust operations, and keep the marketplace procedurally calm.",
+        "Review queues, trust signals, and platform health without the noise.",
       badge: "Operational overview",
     },
     agent: {
       eyebrow: "Agent Workspace",
       title: `Welcome back, ${name}`,
       description:
-        "Track listings, applications, leases, referrals, and commissions without dashboard clutter.",
+        "Track listing health, referrals, and outcomes in one glance.",
       badge: "Business overview",
     },
     tenant: {
       eyebrow: "Account Workspace",
       title: `Welcome back, ${name}`,
       description:
-        "Keep your property search, request progress, and lease steps in one clear place.",
+        "Keep saved listings, referrals, and contact paths easy to reach.",
       badge: "Personal overview",
     },
   } as const;
@@ -119,6 +125,21 @@ function IntroPanel({ role, name }: { role: DashboardRole; name: string }) {
   );
 }
 
+function OverviewShell({
+  items,
+  children,
+}: {
+  items: Array<{ id: string; label: string; count?: number | string }>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
+      <DashboardSectionNav items={items} className="order-2 xl:order-1" />
+      <div className="order-1 space-y-6 xl:order-2">{children}</div>
+    </div>
+  );
+}
+
 function AdminView({
   overview,
   isLoading,
@@ -134,146 +155,189 @@ function AdminView({
 
   const pendingVerifications = metrics?.pending_verifications ?? 0;
   const degradedProviders = emailHealth?.degraded_count ?? 0;
+  const totalListings = metrics?.total_listings ?? 0;
   const suspendedUsers = metrics?.suspended_users ?? 0;
+  const sectionItems = [
+    {
+      id: "admin-priority-queues",
+      label: "Priority queues",
+      count: pendingVerifications,
+    },
+    {
+      id: "admin-critical-activity",
+      label: "Critical activity",
+      count: activity.length,
+    },
+    {
+      id: "admin-quick-actions",
+      label: "Quick actions",
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={ShieldCheck}
-          label="Pending verifications"
-          value={isLoading ? "..." : pendingVerifications}
-          meta="Highest-priority review queue"
-          href="/dashboard/verifications"
-          emphasis={pendingVerifications > 0 ? "highlight" : "default"}
-        />
-        <MetricCard
-          icon={FileText}
-          label="Active applications"
-          value={isLoading ? "..." : metrics?.active_applications ?? 0}
-          meta="Pipeline currently in motion"
-          href="/dashboard/applications"
-        />
-        <MetricCard
-          icon={ScrollText}
-          label="Signed leases"
-          value={isLoading ? "..." : metrics?.signed_leases ?? 0}
-          meta="Completed agreements on record"
-          href="/dashboard/leases"
-        />
-        <MetricCard
-          icon={Users}
-          label="Suspended users"
-          value={isLoading ? "..." : suspendedUsers}
-          meta="Accounts requiring caution or follow-up"
-          href="/dashboard/users"
-          emphasis={suspendedUsers > 0 ? "warning" : "default"}
-        />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+    <OverviewShell items={sectionItems}>
+      <section id="admin-priority-queues" className="scroll-mt-28 space-y-4">
         <DashboardPanel padding="lg" className="space-y-6">
           <DashboardSectionHeading
-            title="Operational volume"
-            description="A quick read of the queues and outcomes currently shaping marketplace trust."
+            title="Priority queues"
+            description="Start with the queues that can block trust or safety."
+            helper={
+              <DashboardContextualHelp
+                label="More information about admin priority queues"
+                title="Why this section comes first"
+              >
+                This section keeps the most action-sensitive workflow signals together so admins do not need to scan the entire page before deciding what to review.
+              </DashboardContextualHelp>
+            }
             action={<Badge variant="dashboard">Today</Badge>}
           />
-          <MiniBarChart
-            ariaLabel="Admin operational metrics chart"
-            values={[
-              metrics?.total_listings ?? 0,
-              pendingVerifications,
-              metrics?.active_applications ?? 0,
-              metrics?.signed_leases ?? 0,
-            ]}
-            labels={["List", "Verify", "Apply", "Lease"]}
-            highlightIndex={1}
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Primary provider
-              </p>
-              <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                {emailHealth?.primary_provider
-                  ? formatEmailProvider(emailHealth.primary_provider)
-                  : "Not configured"}
-              </p>
-              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                {emailHealth?.primary_status?.replace(/_/g, " ") ?? "Unknown"}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Fallback readiness
-              </p>
-              <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                {emailHealth?.fallback_ready_count ?? 0} provider(s)
-              </p>
-              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                Degraded: {degradedProviders}
-              </p>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon={Building2}
+              label="Total listings"
+              value={isLoading ? "..." : totalListings}
+              meta="Listings in scope"
+            />
+            <MetricCard
+              icon={ShieldCheck}
+              label="Pending verifications"
+              value={isLoading ? "..." : pendingVerifications}
+              meta="Top review queue"
+              href="/dashboard/verifications"
+              emphasis={pendingVerifications > 0 ? "highlight" : "default"}
+            />
+            <MetricCard
+              icon={Mail}
+              label="Degraded providers"
+              value={isLoading ? "..." : degradedProviders}
+              meta="Email paths needing attention"
+              href="/dashboard/email-settings"
+              emphasis={degradedProviders > 0 ? "warning" : "default"}
+            />
+            <MetricCard
+              icon={Users}
+              label="Suspended users"
+              value={isLoading ? "..." : suspendedUsers}
+              meta="Accounts needing follow-up"
+              href="/dashboard/users"
+              emphasis={suspendedUsers > 0 ? "warning" : "default"}
+            />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+            <DashboardPanel padding="lg" className="space-y-6">
+              <DashboardSectionHeading
+                title="Operational volume"
+                description="Key counts shaping trust today."
+                helper={
+                  <DashboardContextualHelp
+                    label="More information about operational volume"
+                    title="How to read this"
+                  >
+                    Treat this chart as a directional summary. Queue and incident panels still take priority over passive reporting when choosing what to work on next.
+                  </DashboardContextualHelp>
+                }
+              />
+              <MiniBarChart
+                ariaLabel="Admin operational metrics chart"
+                isLoading={isLoading}
+                values={[
+                  totalListings,
+                  pendingVerifications,
+                  degradedProviders,
+                  suspendedUsers,
+                ]}
+                labels={["List", "Verify", "Email", "Safety"]}
+                highlightIndex={1}
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Primary provider
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    {emailHealth?.primary_provider
+                      ? formatEmailProvider(emailHealth.primary_provider)
+                      : "Not configured"}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    {emailHealth?.primary_status?.replace(/_/g, " ") ?? "Unknown"}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Fallback readiness
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    {emailHealth?.fallback_ready_count ?? 0} provider(s)
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Degraded: {degradedProviders}
+                  </p>
+                </div>
+              </div>
+            </DashboardPanel>
+
+            <div className="space-y-4">
+              <StatusPanel
+                icon={ShieldAlert}
+                tone={pendingVerifications > 0 ? "accent" : "default"}
+                title="Verification queue"
+                badgeLabel={pendingVerifications > 0 ? "Needs review" : "Stable"}
+                description={
+                  pendingVerifications > 0
+                    ? `${pendingVerifications} item(s) are waiting for review.`
+                    : "No verification backlog right now."
+                }
+                action={
+                  <ActionLink href="/dashboard/verifications" variant="dashboardPrimary">
+                    Review queue
+                  </ActionLink>
+                }
+              />
+              <StatusPanel
+                icon={Mail}
+                tone={degradedProviders > 0 ? "critical" : "default"}
+                badgeLabel={degradedProviders > 0 ? "Attention" : "Healthy"}
+                title="Email delivery health"
+                description={
+                  degradedProviders > 0
+                    ? `${degradedProviders} provider(s) are degraded. Check routing and fallback.`
+                    : "Primary and fallback coverage are stable."
+                }
+                action={<ActionLink href="/dashboard/email-settings">Open email settings</ActionLink>}
+              />
+              <StatusPanel
+                icon={AlertTriangle}
+                tone={suspendedUsers > 0 ? "warning" : "default"}
+                badgeLabel={suspendedUsers > 0 ? "Review users" : "No blockers"}
+                title="Identity and safety"
+                description={
+                  suspendedUsers > 0
+                    ? `${suspendedUsers} suspended account(s) may need follow-up.`
+                    : "No active user safety blockers right now."
+                }
+                action={<ActionLink href="/dashboard/users">Manage users</ActionLink>}
+              />
             </div>
           </div>
         </DashboardPanel>
+      </section>
 
-        <div className="space-y-4">
-          <StatusPanel
-            icon={ShieldAlert}
-            tone={pendingVerifications > 0 ? "accent" : "default"}
-            title="Verification queue"
-            badgeLabel={pendingVerifications > 0 ? "Needs review" : "Stable"}
-            description={
-              pendingVerifications > 0
-                ? `${pendingVerifications} verification item(s) are waiting for admin action.`
-                : "No verification backlog right now. Audit history and provider health remain available below."
-            }
-            action={
-              <ActionLink href="/dashboard/verifications" variant="dashboardPrimary">
-                Review queue
-              </ActionLink>
-            }
-          />
-          <StatusPanel
-            icon={Mail}
-            tone={degradedProviders > 0 ? "critical" : "default"}
-            badgeLabel={degradedProviders > 0 ? "Attention" : "Healthy"}
-            title="Email delivery health"
-            description={
-              degradedProviders > 0
-                ? `${degradedProviders} provider(s) are degraded. Check routing and fallback coverage.`
-                : "Transactional email routing is calm. Primary and fallback coverage are currently stable."
-            }
-            action={
-              <ActionLink href="/dashboard/email-settings">
-                Open email settings
-              </ActionLink>
-            }
-          />
-          <StatusPanel
-            icon={AlertTriangle}
-            tone={suspendedUsers > 0 ? "warning" : "default"}
-            badgeLabel={suspendedUsers > 0 ? "Review users" : "No blockers"}
-            title="Identity and safety"
-            description={
-              suspendedUsers > 0
-                ? `${suspendedUsers} suspended account(s) remain in the system and may require follow-up.`
-                : "User safety actions are quiet. Continue monitoring audit history for unusual activity."
-            }
-            action={
-              <ActionLink href="/dashboard/users">
-                Manage users
-              </ActionLink>
-            }
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <section id="admin-critical-activity" className="scroll-mt-28">
         <DashboardPanel padding="lg" className="space-y-5">
           <DashboardSectionHeading
             title="Recent critical activity"
-            description="High-signal actions across admin workflows and system operations."
+            description="High-signal actions across admin workflows."
+            helper={
+              <DashboardContextualHelp
+                label="More information about recent critical activity"
+                title="What belongs here"
+              >
+                Show only the actions that help an admin understand trust-impacting changes quickly. Deeper audit detail still lives in the full audit log.
+              </DashboardContextualHelp>
+            }
             action={<ActionLink href="/dashboard/audit-log">Open audit log</ActionLink>}
           />
 
@@ -306,15 +370,25 @@ function AdminView({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface-alt)] px-5 py-8 text-sm text-[var(--dashboard-text-secondary)]">
-              No recent admin activity yet. This panel will summarize approvals, suspensions, rejections, and provider changes once actions occur.
+              No recent admin activity yet.
             </div>
           )}
         </DashboardPanel>
+      </section>
 
+      <section id="admin-quick-actions" className="scroll-mt-28">
         <DashboardPanel padding="lg" className="space-y-5">
           <DashboardSectionHeading
             title="Quick actions"
-            description="Jump directly into the queues and controls that keep the platform accountable."
+            description="Go straight to the controls that need repeat attention."
+            helper={
+              <DashboardContextualHelp
+                label="More information about admin quick actions"
+                title="How these should behave"
+              >
+                Quick actions should route into focused workflows, not into long ambiguous surfaces. Keep only the actions admins need repeatedly.
+              </DashboardContextualHelp>
+            }
           />
           <div className="grid gap-3">
             <ActionLink href="/dashboard/verifications" variant="dashboardPrimary">
@@ -329,147 +403,194 @@ function AdminView({
               <Mail className="h-4 w-4" />
               Configure email health
             </ActionLink>
+            <ActionLink href="/dashboard/email-settings#email-advanced">
+              <AlertTriangle className="h-4 w-4" />
+              Review queue diagnostics
+            </ActionLink>
             <ActionLink href="/dashboard/referrals">
               <Gift className="h-4 w-4" />
               Review referrals
             </ActionLink>
           </div>
         </DashboardPanel>
-      </div>
-    </div>
+      </section>
+    </OverviewShell>
   );
 }
 
 function AgentView() {
   const propertiesQuery = useMyProperties();
-  const inquiriesQuery = useAgentPropertyInquiries();
   const properties = propertiesQuery.data?.data ?? [];
-  const inquiries = inquiriesQuery.data?.data ?? [];
   const summary = summarizeListingHealth(properties);
+  const sectionItems = [
+    {
+      id: "agent-focus-now",
+      label: "Focus now",
+      count: summary.needs_confirmation,
+    },
+    {
+      id: "agent-next-steps",
+      label: "Next steps",
+    },
+    {
+      id: "agent-quick-actions",
+      label: "Quick actions",
+    },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={Building2}
-          label="Active listings"
-          value={propertiesQuery.isLoading ? "..." : summary.active}
-          meta="Fresh, discovery-ready listings"
-          href="/dashboard/properties"
-          emphasis="highlight"
-        />
-        <MetricCard
-          icon={Clock3}
-          label="Needs confirmation"
-          value={propertiesQuery.isLoading ? "..." : summary.needs_confirmation}
-          meta="Listings at risk of going stale"
-          href="/dashboard/properties"
-        />
-        <MetricCard
-          icon={MessagesSquare}
-          label="Inquiries"
-          value={inquiriesQuery.isLoading ? "..." : inquiries.length}
-          meta="Qualified demand awaiting follow-up"
-          href="/dashboard/inquiries"
-        />
-        <MetricCard
-          icon={Archive}
-          label="Final outcomes"
-          value={propertiesQuery.isLoading ? "..." : summary.final_outcomes}
-          meta="Renyt-close and off-platform closes tracked separately"
-          href="/dashboard/properties"
-        />
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+    <OverviewShell items={sectionItems}>
+      <section id="agent-focus-now" className="scroll-mt-28 space-y-4">
         <DashboardPanel padding="lg" className="space-y-6">
           <DashboardSectionHeading
-            title="Business rhythm"
-            description="Availability health, inquiry flow, and final outcomes at a glance."
+            title="Focus now"
+            description="Start with listing health, then keep trust signals visible."
+            helper={
+              <DashboardContextualHelp
+                label="More information about agent focus"
+                title="Why these cards come first"
+              >
+                The overview should help an agent decide what needs attention without scanning a long report. Prioritize freshness, blocked listings, and operational trust cues.
+              </DashboardContextualHelp>
+            }
             action={<Badge variant="dashboard">This month</Badge>}
           />
-          <MiniBarChart
-            ariaLabel="Agent business metrics chart"
-            values={[
-              summary.active,
-              summary.needs_confirmation,
-              inquiries.length,
-              summary.final_outcomes,
-            ]}
-            labels={["Active", "Due", "Inquire", "Close"]}
-            highlightIndex={1}
-          />
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Listing freshness
-              </p>
-              <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                Keep confirmation windows current
-              </p>
-              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                Availability confirmation now drives trust more than cosmetic edits or recency tricks.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
-                Outcome integrity
-              </p>
-              <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
-                Renyt and off-platform closes stay distinct
-              </p>
-              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
-                Final outcomes need explicit source tracking so referral review and lifecycle reporting remain defensible.
-              </p>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon={Building2}
+              label="Active listings"
+              value={propertiesQuery.isLoading ? "..." : summary.active}
+              meta="Fresh and visible"
+              href="/dashboard/properties"
+              emphasis="highlight"
+            />
+            <MetricCard
+              icon={Clock3}
+              label="Needs confirmation"
+              value={propertiesQuery.isLoading ? "..." : summary.needs_confirmation}
+              meta="At risk of going stale"
+              href="/dashboard/properties"
+            />
+            <MetricCard
+              icon={FileText}
+              label="Drafts"
+              value={propertiesQuery.isLoading ? "..." : summary.draft}
+              meta="Still blocked from publish"
+              href="/dashboard/properties"
+            />
+            <MetricCard
+              icon={Archive}
+              label="Final outcomes"
+              value={propertiesQuery.isLoading ? "..." : summary.final_outcomes}
+              meta="Closed with source tracked"
+              href="/dashboard/properties"
+            />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+            <DashboardPanel padding="lg" className="space-y-6">
+              <DashboardSectionHeading
+                title="Business rhythm"
+                description="Availability, progress, and closes at a glance."
+                helper={
+                  <DashboardContextualHelp
+                    label="More information about business rhythm"
+                    title="How to read this"
+                  >
+                    This chart is a compact pulse check. Use the listing health page for the full grouped workflow and the exact actions needed for each property.
+                  </DashboardContextualHelp>
+                }
+              />
+              <MiniBarChart
+                ariaLabel="Agent business metrics chart"
+                isLoading={propertiesQuery.isLoading}
+                values={[
+                  summary.active,
+                  summary.needs_confirmation,
+                  summary.draft,
+                  summary.final_outcomes,
+                ]}
+                labels={["Active", "Due", "Draft", "Close"]}
+                highlightIndex={1}
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Listing freshness
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    Keep confirmation windows current
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Confirmation matters more than cosmetic recency.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Outcome integrity
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    Renyt and off-platform closes stay distinct
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Keep Renyt and off-platform closes separate.
+                  </p>
+                </div>
+              </div>
+            </DashboardPanel>
+
+            <div className="space-y-4">
+              <StatusPanel
+                icon={ShieldCheck}
+                tone="accent"
+                badgeLabel="Trust cue"
+                title="Verification status"
+                description="Keep verification and listing evidence complete."
+                action={
+                  <ActionLink href="/dashboard/agent-verification" variant="dashboardPrimary">
+                    View verification
+                  </ActionLink>
+                }
+              />
+              <StatusPanel
+                icon={TrendingUp}
+                title="Listings workflow"
+                badgeLabel="Action-ready"
+                description="Confirm stale listings and record close source clearly."
+                action={<ActionLink href="/dashboard/properties">Open listing health</ActionLink>}
+              />
+              <StatusPanel
+                icon={Gift}
+                title="Referral visibility"
+                badgeLabel="Keep traceable"
+                description="Keep referral performance visible without letting it dominate operations."
+                action={<ActionLink href="/dashboard/referrals">Open referrals</ActionLink>}
+              />
             </div>
           </div>
         </DashboardPanel>
+      </section>
 
-        <div className="space-y-4">
-          <StatusPanel
-            icon={ShieldCheck}
-            tone="accent"
-            badgeLabel="Trust cue"
-            title="Verification status"
-            description="Keep your agent verification and listing evidence complete so tenants can trust what they see."
-            action={
-              <ActionLink href="/dashboard/agent-verification" variant="dashboardPrimary">
-                View verification
-              </ActionLink>
-            }
-          />
-          <StatusPanel
-            icon={TrendingUp}
-            title="Listings workflow"
-            badgeLabel="Action-ready"
-            description="Confirm availability before listings drift stale, and record whether closings happened through Renyt or off-platform."
-            action={<ActionLink href="/dashboard/properties">Open listing health</ActionLink>}
-          />
-          <StatusPanel
-            icon={MessagesSquare}
-            title="Inquiry follow-up"
-            badgeLabel={inquiries.length > 0 ? "Active" : "Quiet"}
-            description={
-              inquiries.length > 0
-                ? `${inquiries.length} inquiry record(s) are available for follow-up across your listings.`
-                : "No inquiry backlog right now. New inquiry records will appear here as qualified demand arrives."
-            }
-            action={<ActionLink href="/dashboard/inquiries">Open inquiries</ActionLink>}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <section id="agent-next-steps" className="scroll-mt-28">
         <DashboardPanel padding="lg" className="space-y-5">
           <DashboardSectionHeading
             title="Operational next steps"
-            description="The dashboard stays calm by focusing on what needs action, not on vanity metrics."
+            description="Keep attention on action, not vanity metrics."
+            helper={
+              <DashboardContextualHelp
+                label="More information about operational next steps"
+                title="What belongs here"
+              >
+                Keep this list short and action-led. Each item should point the agent toward a concrete operational decision, not toward passive reading.
+              </DashboardContextualHelp>
+            }
           />
           <div className="space-y-3">
             {[
-              "Confirm overdue listings before they fall out of trusted discovery.",
-              "Review fresh inquiries while intent is still warm.",
-              "Record final outcomes with the correct Renyt or off-platform source.",
+              "Confirm overdue listings before trust drops.",
+              "Finish blocked drafts so they can go live.",
+              "Record each close with the right source.",
             ].map((item) => (
               <div
                 key={item}
@@ -481,11 +602,21 @@ function AgentView() {
             ))}
           </div>
         </DashboardPanel>
+      </section>
 
+      <section id="agent-quick-actions" className="scroll-mt-28">
         <DashboardPanel padding="lg" className="space-y-5">
           <DashboardSectionHeading
             title="Quick actions"
-            description="Direct paths into listing health, inquiry follow-up, and account maintenance."
+            description="Fast paths into listing health, referrals, and settings."
+            helper={
+              <DashboardContextualHelp
+                label="More information about agent quick actions"
+                title="How these should feel"
+              >
+                Quick actions should feel procedural and obvious. Avoid long explanation around them and route into focused dashboard surfaces instead of mixed-purpose pages.
+              </DashboardContextualHelp>
+            }
           />
           <div className="grid gap-3">
             <ActionLink href="/dashboard/properties/new" variant="dashboardPrimary">
@@ -496,9 +627,9 @@ function AgentView() {
               <Clock3 className="h-4 w-4" />
               Review listing health
             </ActionLink>
-            <ActionLink href="/dashboard/inquiries">
-              <MessagesSquare className="h-4 w-4" />
-              Open inquiries
+            <ActionLink href="/dashboard/agent-verification">
+              <ShieldCheck className="h-4 w-4" />
+              View verification
             </ActionLink>
             <ActionLink href="/dashboard/referrals">
               <Gift className="h-4 w-4" />
@@ -510,91 +641,181 @@ function AgentView() {
             </ActionLink>
           </div>
         </DashboardPanel>
-      </div>
-    </div>
+      </section>
+    </OverviewShell>
   );
 }
 
 function TenantView() {
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard
-          icon={FileText}
-          label="Requests"
-          value={0}
-          meta="Current housing requests"
-          href="/dashboard/applications"
-          emphasis="highlight"
-        />
-        <MetricCard
-          icon={Clock3}
-          label="Pending"
-          value={0}
-          meta="Responses you are waiting on"
-          href="/dashboard/applications"
-        />
-        <MetricCard
-          icon={CheckCircle2}
-          label="Approved"
-          value={0}
-          meta="Requests that can progress to lease"
-          href="/dashboard/applications"
-        />
-        <MetricCard
-          icon={ScrollText}
-          label="Leases"
-          value={0}
-          meta="Signed and active lease records"
-          href="/dashboard/leases"
-        />
-      </div>
+  const engagementQuery = useMyPropertyEngagementSummary();
+  const referralQuery = useReferralDashboard({ retry: false });
+  const engagementSummary = engagementQuery.data?.data ?? {
+    wishlist_count: 0,
+    like_count: 0,
+    total_count: 0,
+  };
+  const referralSummary = referralQuery.data?.data.summary ?? {
+    share_count: 0,
+    qualified_referrals: 0,
+  };
+  const sectionItems = [
+    {
+      id: "user-activity",
+      label: "Activity",
+      count: engagementSummary.total_count,
+    },
+    {
+      id: "user-actions",
+      label: "Actions",
+    },
+  ];
 
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+  return (
+    <OverviewShell items={sectionItems}>
+      <section id="user-activity" className="scroll-mt-28 space-y-4">
         <DashboardPanel padding="lg" className="space-y-6">
           <DashboardSectionHeading
-            title="Request progress"
-            description="A calm view of where your housing journey currently stands."
-            action={<Badge variant="dashboard">Summary</Badge>}
+            title="Saved and shared activity"
+            description="Track browsing engagement and referral momentum."
+            action={<Badge variant="dashboard">Live activity</Badge>}
           />
-          <MiniBarChart
-            ariaLabel="Tenant request progress chart"
-            values={[0, 0, 0, 0]}
-            labels={["Request", "Wait", "Approve", "Lease"]}
-            highlightIndex={2}
-          />
-        </DashboardPanel>
 
-        <div className="space-y-4">
-          <StatusPanel
-            icon={Search}
-            tone="accent"
-            badgeLabel="Next step"
-            title="Continue browsing"
-            description="Search, save, and compare listings while keeping your request progress visible in the same account space."
-            action={
-              <ActionLink href="/search" variant="dashboardPrimary">
-                Browse properties
-              </ActionLink>
-            }
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              icon={Bookmark}
+              label="Saved listings"
+              value={engagementQuery.isLoading ? "..." : engagementSummary.wishlist_count}
+              meta="Listings to revisit"
+              href="/search"
+              emphasis="highlight"
+            />
+            <MetricCard
+              icon={Heart}
+              label="Liked listings"
+              value={engagementQuery.isLoading ? "..." : engagementSummary.like_count}
+              meta="Quick reactions while browsing"
+              href="/search"
+            />
+            <MetricCard
+              icon={Gift}
+              label="Referral shares"
+              value={referralQuery.isLoading ? "..." : referralSummary.share_count}
+              meta="Links you have shared"
+              href="/dashboard/referrals"
+            />
+            <MetricCard
+              icon={TrendingUp}
+              label="Qualified referrals"
+              value={referralQuery.isLoading ? "..." : referralSummary.qualified_referrals}
+              meta="Tracked outcomes from shares"
+              href="/dashboard/referrals"
+            />
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+            <DashboardPanel padding="lg" className="space-y-6">
+              <DashboardSectionHeading
+                title="Engagement rhythm"
+                description="Saved listings, likes, and referral traction in one scan."
+              />
+              <MiniBarChart
+                ariaLabel="User engagement metrics chart"
+                isLoading={engagementQuery.isLoading || referralQuery.isLoading}
+                values={[
+                  engagementSummary.wishlist_count,
+                  engagementSummary.like_count,
+                  referralSummary.share_count,
+                  referralSummary.qualified_referrals,
+                ]}
+                labels={["Saved", "Liked", "Shared", "Qualified"]}
+                highlightIndex={0}
+                emptyMessage="No saved, liked, or shared activity yet. Browse listings to start building a shortlist."
+              />
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Saved activity
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    {engagementQuery.isLoading
+                      ? "Loading activity"
+                      : `${engagementSummary.total_count} engagement signal(s)`}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Saves and likes keep promising listings easy to find.
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
+                    Referral visibility
+                  </p>
+                  <p className="mt-3 text-base font-semibold text-[var(--dashboard-text-primary)]">
+                    {referralQuery.isLoading
+                      ? "Loading referrals"
+                      : `${referralSummary.qualified_referrals} qualified from ${referralSummary.share_count} share(s)`}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Referral activity stays visible without overpowering browsing.
+                  </p>
+                </div>
+              </div>
+            </DashboardPanel>
+
+            <div className="space-y-4">
+              <StatusPanel
+                icon={Search}
+                tone="accent"
+                badgeLabel="Primary"
+                title="Browse properties"
+                description="Search active listings, save promising ones, and message agents when ready."
+                action={
+                  <ActionLink href="/search" variant="dashboardPrimary">
+                    Browse properties
+                  </ActionLink>
+                }
+              />
+              <StatusPanel
+                icon={Gift}
+                title="Referral activity"
+                badgeLabel="Visible"
+                description="Keep referral sharing and progress easy to find."
+                action={<ActionLink href="/dashboard/referrals">Open referrals</ActionLink>}
+              />
+              <StatusPanel
+                icon={Settings}
+                title="Account settings"
+                badgeLabel="Manage"
+                description="Update profile details and optional email reminders."
+                action={<ActionLink href="/dashboard/settings">Open settings</ActionLink>}
+              />
+            </div>
+          </div>
+        </DashboardPanel>
+      </section>
+
+      <section id="user-actions" className="scroll-mt-28">
+        <DashboardPanel padding="lg" className="space-y-5">
+          <DashboardSectionHeading
+            title="Quick actions"
+            description="Keep browsing, referrals, and settings within reach."
           />
-          <StatusPanel
-            icon={FileText}
-            title="Request status"
-            badgeLabel="Trackable"
-            description="Pending, approved, and lease-ready states should remain easy to scan without visual overload."
-            action={<ActionLink href="/dashboard/applications">View requests</ActionLink>}
-          />
-          <StatusPanel
-            icon={Gift}
-            title="Referral activity"
-            badgeLabel="Optional"
-            description="Referral history stays visible, but the interface avoids incentives feeling louder than core housing tasks."
-            action={<ActionLink href="/dashboard/referrals">Open referrals</ActionLink>}
-          />
-        </div>
-      </div>
-    </div>
+          <div className="grid gap-3">
+            <ActionLink href="/search" variant="dashboardPrimary">
+              <Search className="h-4 w-4" />
+              Browse properties
+            </ActionLink>
+            <ActionLink href="/dashboard/referrals">
+              <Gift className="h-4 w-4" />
+              Open referrals
+            </ActionLink>
+            <ActionLink href="/dashboard/settings">
+              <Settings className="h-4 w-4" />
+              Account settings
+            </ActionLink>
+          </div>
+        </DashboardPanel>
+      </section>
+    </OverviewShell>
   );
 }
 

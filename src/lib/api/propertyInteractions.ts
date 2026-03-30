@@ -1,13 +1,18 @@
 import apiClient from "./client";
 import type {
-  AgentPropertyInquiry,
   ApiSuccessResponse,
-  CreatePropertyInquiryInput,
+  PropertyEngagementSummary,
   CreatePropertyMessageIntentInput,
   PropertyEngagementStatus,
-  PropertyInquiry,
   PropertyMessageIntentResult,
 } from "@/types";
+
+export async function getMyEngagementSummary() {
+  const res = await apiClient.get<ApiSuccessResponse<PropertyEngagementSummary>>(
+    "/properties/engagements/summary",
+  );
+  return res.data;
+}
 
 export async function getEngagementStatus(propertyId: string) {
   const res = await apiClient.get<ApiSuccessResponse<PropertyEngagementStatus>>(
@@ -32,31 +37,6 @@ export async function removeEngagement(
 ) {
   const res = await apiClient.delete<ApiSuccessResponse<PropertyEngagementStatus>>(
     `/properties/${propertyId}/engagements/${engagementType}`,
-  );
-  return res.data;
-}
-
-export async function createInquiry(
-  propertyId: string,
-  data: CreatePropertyInquiryInput,
-) {
-  const res = await apiClient.post<ApiSuccessResponse<PropertyInquiry>>(
-    `/properties/${propertyId}/inquiries`,
-    data,
-  );
-  return res.data;
-}
-
-export async function getMyInquiry(propertyId: string) {
-  const res = await apiClient.get<ApiSuccessResponse<PropertyInquiry | null>>(
-    `/properties/${propertyId}/inquiries/me`,
-  );
-  return res.data;
-}
-
-export async function getAgentInquiries() {
-  const res = await apiClient.get<ApiSuccessResponse<AgentPropertyInquiry[]>>(
-    "/properties/inquiries/mine",
   );
   return res.data;
 }

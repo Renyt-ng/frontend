@@ -36,3 +36,20 @@ export function formatListingFreshnessPolicySummary(
 
   return `Listings stay fresh for ${policy.fresh_window_days} days, enter confirmation due for ${policy.confirmation_grace_days} days, start reminders after ${policy.reminder_start_days} days, repeat reminders every ${policy.reminder_interval_days} days, and ${staleBehavior}.`;
 }
+
+export function getIneligibleReasonLabel(reason: string | null | undefined) {
+  switch (reason) {
+    case "closed_off_platform":
+      return "Closed off-platform";
+    case "listing_unavailable":
+      return "Listing unavailable";
+    case "listing_archived":
+      return "Listing archived";
+    case "non_winning_contact":
+      return "Non-winning contact";
+    case "matched_account_has_no_referral":
+      return "Matched account had no referral";
+    default:
+      return "Automatically closed";
+  }
+}

@@ -1,10 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ClipboardList, Plus, ShieldAlert, Wallet } from "lucide-react";
-import { Badge, Button, Card, CardContent, Input } from "@/components/ui";
+import {
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Flag,
+  Plus,
+  ReceiptText,
+  Search,
+  Settings2,
+  ShieldAlert,
+  Wallet,
+} from "lucide-react";
+import {
+  DashboardContextualHelp,
+  DashboardPanel,
+  DashboardSectionHeading,
+  DashboardSectionNav,
+  MetricCard,
+} from "@/components/dashboard";
 import { EmptyState } from "@/components/shared/EmptyState";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  Input,
+  Modal,
+  NumericInput,
+  Select,
+} from "@/components/ui";
 import {
   useAdminListingFreshnessPolicy,
   useAdminReferralEvents,
@@ -20,6 +47,7 @@ import {
   formatCurrency,
   formatDate,
   formatListingFreshnessPolicySummary,
+  getIneligibleReasonLabel,
   getReferralCloseStatusLabel,
 } from "@/lib/utils";
 import type {
@@ -39,6 +67,7 @@ const FILTERS: Array<{ label: string; value: ReferralEventStatus | "all" }> = [
   { label: "Under review", value: "under_review" },
   { label: "Confirmed", value: "confirmed" },
   { label: "Paid", value: "paid" },
+  { label: "Ineligible", value: "ineligible" },
   { label: "Rejected", value: "rejected" },
 ];
 
@@ -104,15 +133,23 @@ function statusVariant(status: ReferralEventStatus) {
       return "verified" as const;
     case "paid":
       return "active" as const;
+    case "ineligible":
+      return "default" as const;
     case "rejected":
       return "rejected" as const;
   }
 }
 
 function statusLabel(status: ReferralEventStatus) {
-  return status === "under_review"
-    ? "Under review"
-    : status.charAt(0).toUpperCase() + status.slice(1);
+  if (status === "under_review") {
+    return "Under review";
+  }
+
+  if (status === "ineligible") {
+    return "Ineligible";
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function commissionSummary(preview: ReferralCommissionPreview) {
@@ -145,6 +182,198 @@ function policyToForm(policy: ListingFreshnessPolicy) {
     reminder_interval_days: String(policy.reminder_interval_days),
     auto_mark_unavailable: policy.auto_mark_unavailable,
   };
+}
+
+function sumAmounts(
+  events: AdminReferralEvent[],
+  statuses: ReferralEventStatus[],
+) {
+  return events
+    .filter((event) => statuses.includes(event.status))
+    .reduce((total, event) => total + event.amount, 0);
+}
+
+function toNullableNumber(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? Number(trimmed) : null;
+}
+
+function AffixedNumericField({
+  label,
+  value,
+  onChange,
+  prefix,
+  suffix,
+  format = "number",
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (nextValue: string) => void;
+  prefix?: string;
+  suffix?: string;
+  format?: "number" | "currency" | "decimal";
+  placeholder?: string;
+}) {
+  const hasPrefix = Boolean(prefix);
+  const hasSuffix = Boolean(suffix);
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+        {label}
+      </label>
+      <div className="relative">
+        {hasPrefix ? (
+          <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-[var(--color-text-secondary)]">
+            {prefix}
+          </span>
+        ) : null}
+        <NumericInput
+          value={toNullableNumber(value)}
+          onValueChange={(nextValue) => onChange(nextValue === null ? "" : String(nextValue))}
+          format={format}
+          placeholder={placeholder}
+          className={cn(hasPrefix ? "pl-8" : undefined, hasSuffix ? "pr-14" : undefined)}
+        />
+        {hasSuffix ? (
+          <span className="pointer-events-none absolute right-3 top-1/2 z-10 -translate-y-1/2 text-sm font-medium text-[var(--color-text-secondary)]">
+            {suffix}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (nextValue: string) => void;
+  options: Array<{ label: string; value: string }>;
+  placeholder?: string;
+}) {
+  return (
+    <Select
+      label={label}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      options={options}
+      placeholder={placeholder}
+    />
+  );
+}
+
+function ToggleCard({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-4 transition-colors",
+        checked
+          ? "border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface-alt)]"
+          : "border-[var(--color-border)] bg-white",
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1"
+      />
+      <div>
+        <p className="font-medium text-[var(--color-text-primary)]">{title}</p>
+        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{description}</p>
+      </div>
+    </label>
+  );
+}
+
+function CompactConfigCard({
+  title,
+  description,
+  summary,
+  badge,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  summary: string;
+  badge?: ReactNode;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</p>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{description}</p>
+          </div>
+          {badge ? <div>{badge}</div> : null}
+        </div>
+
+        <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+          {summary}
+        </div>
+
+        <div className="flex justify-end">
+          <Button variant="secondary" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function formatCampaignScopeSummary(campaign: ReferralCampaign) {
+  const scope = [] as string[];
+
+  if (campaign.property_id) {
+    scope.push(`Property ${campaign.property_id}`);
+  }
+  if (campaign.area) {
+    scope.push(campaign.area);
+  }
+  if (campaign.listing_purpose) {
+    scope.push(campaign.listing_purpose === "sale" ? "Sale only" : "Rent only");
+  }
+
+  return scope.length > 0 ? scope.join(" · ") : "All listings";
+}
+
+function formatCampaignWindowSummary(campaign: ReferralCampaign) {
+  if (campaign.starts_at && campaign.ends_at) {
+    return `${formatDate(campaign.starts_at)} to ${formatDate(campaign.ends_at)}`;
+  }
+
+  if (campaign.starts_at) {
+    return `Starts ${formatDate(campaign.starts_at)}`;
+  }
+
+  if (campaign.ends_at) {
+    return `Ends ${formatDate(campaign.ends_at)}`;
+  }
+
+  return "No campaign window";
 }
 
 function CampaignEditorCard({
@@ -182,15 +411,15 @@ function CampaignEditorCard({
 
   return (
     <Card>
-      <CardContent className="space-y-4 p-5">
+      <CardContent className="space-y-5 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-semibold text-[var(--color-text-primary)]">{campaign.name}</p>
+            <p className="text-lg font-semibold text-[var(--color-text-primary)]">{campaign.name}</p>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
               {ruleSummary(campaign)}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={campaign.is_active ? "active" : "default"}>
               {campaign.is_active ? "Active" : "Paused"}
             </Badge>
@@ -198,13 +427,22 @@ function CampaignEditorCard({
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <Input
             label="Campaign name"
             value={form.name}
             onChange={(event) =>
               setForm((current) => ({ ...current, name: event.target.value }))
             }
+          />
+          <AffixedNumericField
+            label="Priority"
+            value={form.priority}
+            onChange={(nextValue) =>
+              setForm((current) => ({ ...current, priority: nextValue }))
+            }
+            suffix="rank"
+            placeholder="0"
           />
           <Input
             label="Area"
@@ -222,113 +460,99 @@ function CampaignEditorCard({
             }
             placeholder="Optional exact property"
           />
-          <Input
-            label="Priority"
-            value={form.priority}
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+            Campaign description
+          </label>
+          <textarea
+            value={form.description}
             onChange={(event) =>
-              setForm((current) => ({ ...current, priority: event.target.value }))
+              setForm((current) => ({ ...current, description: event.target.value }))
             }
-            inputMode="numeric"
+            rows={3}
+            placeholder="Optional campaign description"
+            className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
           />
         </div>
 
-        <textarea
-          value={form.description}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, description: event.target.value }))
-          }
-          rows={3}
-          placeholder="Optional campaign description"
-          className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-        />
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-            <span>Listing purpose</span>
-            <select
-              value={form.listing_purpose}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  listing_purpose: event.target.value as CampaignFormState["listing_purpose"],
-                }))
-              }
-              className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-            >
-              <option value="all">All listings</option>
-              <option value="rent">Rent only</option>
-              <option value="sale">Sale only</option>
-            </select>
-          </label>
-          <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-            <span>Commission type</span>
-            <select
-              value={form.commission_type}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  commission_type: event.target.value as ReferralCommissionType,
-                }))
-              }
-              className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-            >
-              <option value="fixed">Fixed</option>
-              <option value="percentage">Percentage</option>
-            </select>
-          </label>
-          <Input
-            label={form.commission_type === "percentage" ? "Commission %" : "Fixed amount"}
-            value={form.commission_value}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, commission_value: event.target.value }))
-            }
-            inputMode="decimal"
-          />
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-            <span>Percentage basis</span>
-            <select
-              value={form.commission_basis_source}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  commission_basis_source: event.target.value as ReferralCommissionBasisSource,
-                }))
-              }
-              className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-            >
-              <option value="none">None</option>
-              <option value="agency_fee">Agency fee</option>
-              <option value="rent_amount">Annual rent</option>
-              <option value="asking_price">Asking price</option>
-            </select>
-          </label>
-          <Input
-            label="Fallback amount"
-            value={form.fallback_commission_amount}
-            onChange={(event) =>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <SelectField
+            label="Listing purpose"
+            value={form.listing_purpose}
+            onChange={(nextValue) =>
               setForm((current) => ({
                 ...current,
-                fallback_commission_amount: event.target.value,
+                listing_purpose: nextValue as CampaignFormState["listing_purpose"],
               }))
             }
-            inputMode="decimal"
+            options={[
+              { value: "all", label: "All listings" },
+              { value: "rent", label: "Rent only" },
+              { value: "sale", label: "Sale only" },
+            ]}
           />
-          <label className="flex items-center gap-2 self-end rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, is_active: event.target.checked }))
-              }
-            />
-            Campaign active
-          </label>
+          <SelectField
+            label="Commission type"
+            value={form.commission_type}
+            onChange={(nextValue) =>
+              setForm((current) => ({
+                ...current,
+                commission_type: nextValue as ReferralCommissionType,
+              }))
+            }
+            options={[
+              { value: "fixed", label: "Fixed" },
+              { value: "percentage", label: "Percentage" },
+            ]}
+          />
+          <AffixedNumericField
+            label={form.commission_type === "percentage" ? "Commission" : "Commission value"}
+            value={form.commission_value}
+            onChange={(nextValue) =>
+              setForm((current) => ({ ...current, commission_value: nextValue }))
+            }
+            prefix={form.commission_type === "fixed" ? "₦" : undefined}
+            suffix={form.commission_type === "percentage" ? "%" : undefined}
+            format={form.commission_type === "percentage" ? "decimal" : "currency"}
+          />
+          <SelectField
+            label="Percentage basis"
+            value={form.commission_basis_source}
+            onChange={(nextValue) =>
+              setForm((current) => ({
+                ...current,
+                commission_basis_source: nextValue as ReferralCommissionBasisSource,
+              }))
+            }
+            options={[
+              { value: "none", label: "None" },
+              { value: "agency_fee", label: "Agency fee" },
+              { value: "rent_amount", label: "Annual rent" },
+              { value: "asking_price", label: "Asking price" },
+            ]}
+          />
+          <AffixedNumericField
+            label="Fallback amount"
+            value={form.fallback_commission_amount}
+            onChange={(nextValue) =>
+              setForm((current) => ({ ...current, fallback_commission_amount: nextValue }))
+            }
+            prefix="₦"
+            format="currency"
+          />
+          <ToggleCard
+            checked={form.is_active}
+            onChange={(checked) =>
+              setForm((current) => ({ ...current, is_active: checked }))
+            }
+            title="Campaign active"
+            description="Apply this override immediately when its scope matches a property."
+          />
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid gap-4 xl:grid-cols-2">
           <Input
             label="Starts at"
             type="datetime-local"
@@ -347,6 +571,15 @@ function CampaignEditorCard({
           />
         </div>
 
+        <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+          Rule preview: {ruleSummary({
+            commission_type: form.commission_type,
+            commission_value: Number(form.commission_value || 0),
+            commission_basis_source: form.commission_basis_source,
+            fallback_commission_amount: Number(form.fallback_commission_amount || 0),
+          })}
+        </div>
+
         <div className="flex justify-end">
           <Button onClick={handleSave} isLoading={isSaving}>
             Save campaign
@@ -361,6 +594,10 @@ export function AdminReferralReview() {
   const [statusFilter, setStatusFilter] = useState<ReferralEventStatus | "all">("all");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeConfigModal, setActiveConfigModal] = useState<
+    "freshness" | "program" | "campaign-create" | null
+  >(null);
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [adminNote, setAdminNote] = useState("");
   const [closeStatus, setCloseStatus] = useState<ReferralClosureStatus | "">("");
@@ -399,6 +636,10 @@ export function AdminReferralReview() {
   const settings = program?.settings ?? null;
   const campaigns = program?.campaigns ?? [];
   const events = eventsQuery.data?.data ?? [];
+  const editingCampaign = useMemo(
+    () => campaigns.find((campaign) => campaign.id === editingCampaignId) ?? null,
+    [campaigns, editingCampaignId],
+  );
 
   useEffect(() => {
     if (!freshnessPolicy) {
@@ -449,18 +690,29 @@ export function AdminReferralReview() {
     setCloseStatus(selectedEvent.close_status ?? "");
   }, [selectedEvent?.id]);
 
+  const reviewQueueCount = events.filter(
+    (event) => event.status === "potential" || event.status === "under_review",
+  ).length;
+  const activeCampaignCount = campaigns.filter((campaign) => campaign.is_active).length;
+  const confirmedValue = sumAmounts(events, ["confirmed"]);
+  const paidValue = sumAmounts(events, ["paid"]);
+  const sectionItems = [
+    { id: "referrals-overview", label: "Overview", count: reviewQueueCount },
+    { id: "referrals-freshness", label: "Freshness" },
+    { id: "referrals-program", label: "Program", count: activeCampaignCount },
+    { id: "referrals-campaigns", label: "Campaigns", count: campaigns.length },
+    { id: "referrals-review", label: "Review", count: events.length },
+  ];
+
   async function handleFreshnessPolicySave() {
     await updateFreshnessPolicy.mutateAsync({
       fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
-      confirmation_grace_days: Number(
-        freshnessPolicyForm.confirmation_grace_days || 0,
-      ),
+      confirmation_grace_days: Number(freshnessPolicyForm.confirmation_grace_days || 0),
       reminder_start_days: Number(freshnessPolicyForm.reminder_start_days || 0),
-      reminder_interval_days: Number(
-        freshnessPolicyForm.reminder_interval_days || 0,
-      ),
+      reminder_interval_days: Number(freshnessPolicyForm.reminder_interval_days || 0),
       auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
     });
+    setActiveConfigModal(null);
   }
 
   async function handleProgramSave() {
@@ -472,9 +724,10 @@ export function AdminReferralReview() {
       fallback_commission_amount: Number(settingsForm.fallback_commission_amount || 0),
       terms_version: settingsForm.terms_version.trim(),
     });
+    setActiveConfigModal(null);
   }
 
-  async function handleCreateCampaign(event: React.FormEvent) {
+  async function handleCreateCampaign(event: FormEvent) {
     event.preventDefault();
 
     await createCampaign.mutateAsync({
@@ -495,10 +748,12 @@ export function AdminReferralReview() {
     });
 
     setCampaignForm(emptyCampaignForm());
+    setActiveConfigModal(null);
   }
 
   async function handleCampaignSave(id: string, data: Partial<ReferralCampaign>) {
     await updateCampaign.mutateAsync({ id, data });
+    setEditingCampaignId(null);
   }
 
   async function handleStatusUpdate(status: ReferralEventStatus) {
@@ -519,260 +774,473 @@ export function AdminReferralReview() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6">
-        <p className="text-sm font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-          Referral operations
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold text-[var(--color-text-primary)]">
-          Manage referral rules, campaigns, and payout review
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--color-text-secondary)]">
-          Configure the default commission policy, layer campaign overrides on top of it, and review qualified referral events before payout.
-        </p>
-      </div>
-
-      <Card>
-        <CardContent className="space-y-4 p-5">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Listing freshness policy
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Tune how long listings stay fresh, when reminders start, and whether stale listings are automatically hidden from inquiry.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Input
-              label="Fresh window"
-              value={freshnessPolicyForm.fresh_window_days}
-              onChange={(event) =>
-                setFreshnessPolicyForm((current) => ({
-                  ...current,
-                  fresh_window_days: event.target.value,
-                }))
-              }
-              inputMode="numeric"
-            />
-            <Input
-              label="Grace period"
-              value={freshnessPolicyForm.confirmation_grace_days}
-              onChange={(event) =>
-                setFreshnessPolicyForm((current) => ({
-                  ...current,
-                  confirmation_grace_days: event.target.value,
-                }))
-              }
-              inputMode="numeric"
-            />
-            <Input
-              label="Reminder start"
-              value={freshnessPolicyForm.reminder_start_days}
-              onChange={(event) =>
-                setFreshnessPolicyForm((current) => ({
-                  ...current,
-                  reminder_start_days: event.target.value,
-                }))
-              }
-              inputMode="numeric"
-            />
-            <Input
-              label="Reminder interval"
-              value={freshnessPolicyForm.reminder_interval_days}
-              onChange={(event) =>
-                setFreshnessPolicyForm((current) => ({
-                  ...current,
-                  reminder_interval_days: event.target.value,
-                }))
-              }
-              inputMode="numeric"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
-            <input
-              type="checkbox"
-              checked={freshnessPolicyForm.auto_mark_unavailable}
-              onChange={(event) =>
-                setFreshnessPolicyForm((current) => ({
-                  ...current,
-                  auto_mark_unavailable: event.target.checked,
-                }))
-              }
-            />
-            Automatically mark stale listings unavailable after the grace period
-          </label>
-
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-            {formatListingFreshnessPolicySummary({
-              fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
-              confirmation_grace_days: Number(
-                freshnessPolicyForm.confirmation_grace_days || 0,
-              ),
-              reminder_start_days: Number(
-                freshnessPolicyForm.reminder_start_days || 0,
-              ),
-              reminder_interval_days: Number(
-                freshnessPolicyForm.reminder_interval_days || 0,
-              ),
-              auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
-            })}
-          </div>
-
-          <div className="flex justify-end">
-            <Button
-              onClick={handleFreshnessPolicySave}
-              isLoading={
-                updateFreshnessPolicy.isPending || freshnessPolicyQuery.isLoading
-              }
+      <DashboardPanel
+        id="referrals-overview"
+        padding="lg"
+        tone="accent"
+        className="space-y-5 scroll-mt-28"
+      >
+        <DashboardSectionHeading
+          title="Referral operations"
+          description="Separate policy, campaign incentives, and payout review so admins can understand what to change before touching numbers."
+          helper={
+            <DashboardContextualHelp
+              label="More information about referral operations"
+              title="Why this page is grouped"
             >
-              Save freshness policy
-            </Button>
+              Referral management mixes freshness policy, commission rules, campaign overrides, and payout review. These sections keep operational settings away from event-by-event adjudication.
+            </DashboardContextualHelp>
+          }
+          action={
+            <Badge variant={settingsForm.is_enabled ? "dashboardSuccess" : "dashboardWarning"}>
+              {settingsForm.is_enabled ? "Program live" : "Program paused"}
+            </Badge>
+          }
+        />
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            icon={ClipboardList}
+            label="Review queue"
+            value={eventsQuery.isLoading ? "..." : reviewQueueCount}
+            meta="Potential or under-review referrals"
+            emphasis={reviewQueueCount > 0 ? "highlight" : "default"}
+          />
+          <MetricCard
+            icon={Settings2}
+            label="Active campaigns"
+            value={programQuery.isLoading ? "..." : activeCampaignCount}
+            meta="Overrides currently in effect"
+          />
+          <MetricCard
+            icon={ReceiptText}
+            label="Confirmed value"
+            value={eventsQuery.isLoading ? "..." : formatCurrency(confirmedValue)}
+            meta="Awaiting payout transition"
+          />
+          <MetricCard
+            icon={Wallet}
+            label="Paid value"
+            value={eventsQuery.isLoading ? "..." : formatCurrency(paidValue)}
+            meta="Referral payouts already completed"
+          />
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
+          <DashboardSectionNav items={sectionItems} className="order-2 xl:order-1" />
+
+          <div className="order-1 grid gap-4 md:grid-cols-3 xl:order-2">
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
+              <div className="flex items-center gap-3">
+                <Clock3 className="h-5 w-5 text-[var(--dashboard-accent)]" />
+                <div>
+                  <p className="font-medium text-[var(--color-text-primary)]">Freshness control</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    Keep listing reminder timing distinct from commission policy.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
+              <div className="flex items-center gap-3">
+                <Settings2 className="h-5 w-5 text-[var(--dashboard-accent)]" />
+                <div>
+                  <p className="font-medium text-[var(--color-text-primary)]">Commission defaults</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    Use ₦ and % fields so the payout rule is obvious at a glance.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="h-5 w-5 text-[var(--dashboard-accent)]" />
+                <div>
+                  <p className="font-medium text-[var(--color-text-primary)]">Review actions</p>
+                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                    Outcome, notes, and payout actions stay in one adjudication panel.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </DashboardPanel>
 
-      <div className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <Card>
-          <CardContent className="space-y-4 p-5">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                Program defaults
-              </h2>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                This rule applies when no active campaign matches a property.
-              </p>
+      <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
+        <DashboardSectionNav items={sectionItems} className="hidden xl:block" />
+
+        <div className="space-y-6">
+          <section id="referrals-freshness" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Listing freshness policy"
+                description="Tune how long listings stay fresh, when reminder emails start, and when stale inventory should leave direct-contact surfaces."
+                helper={
+                  <DashboardContextualHelp
+                    label="More information about listing freshness policy"
+                    title="Why this lives here"
+                  >
+                    Referral quality depends on inventory trust. Keeping freshness policy visible here makes it easier to reason about conversion quality and payout fairness together.
+                  </DashboardContextualHelp>
+                }
+              />
+
+              <CompactConfigCard
+                title="Listing freshness policy"
+                description="Keep this compact until you need to tune reminder timing or automatic stale-listing removal."
+                summary={formatListingFreshnessPolicySummary({
+                  fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
+                  confirmation_grace_days: Number(freshnessPolicyForm.confirmation_grace_days || 0),
+                  reminder_start_days: Number(freshnessPolicyForm.reminder_start_days || 0),
+                  reminder_interval_days: Number(freshnessPolicyForm.reminder_interval_days || 0),
+                  auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
+                })}
+                badge={
+                  <Badge variant={freshnessPolicyForm.auto_mark_unavailable ? "dashboardSuccess" : "dashboardWarning"}>
+                    {freshnessPolicyForm.auto_mark_unavailable ? "Auto-close stale listings" : "Manual stale close"}
+                  </Badge>
+                }
+                actionLabel="Configure policy"
+                onAction={() => setActiveConfigModal("freshness")}
+              />
+            </DashboardPanel>
+          </section>
+
+          <section id="referrals-program" className="scroll-mt-28">
+            <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+              <DashboardPanel padding="lg" className="space-y-5">
+                <DashboardSectionHeading
+                  title="Program defaults"
+                  description="The fallback rule that applies whenever no active campaign override matches a property."
+                />
+
+                <CompactConfigCard
+                  title="Program defaults"
+                  description="Global referral rule used whenever no active override matches the listing."
+                  summary={`${settingsForm.is_enabled ? "Program enabled" : "Program paused"} · ${ruleSummary({
+                    commission_type: settingsForm.default_commission_type,
+                    commission_value: Number(settingsForm.default_commission_value || 0),
+                    commission_basis_source: settingsForm.default_basis_source,
+                    fallback_commission_amount: Number(settingsForm.fallback_commission_amount || 0),
+                  })} · Terms ${settingsForm.terms_version}`}
+                  badge={
+                    <Badge variant={settingsForm.is_enabled ? "dashboardSuccess" : "dashboardWarning"}>
+                      {settingsForm.is_enabled ? "Live" : "Paused"}
+                    </Badge>
+                  }
+                  actionLabel="Configure defaults"
+                  onAction={() => setActiveConfigModal("program")}
+                />
+              </DashboardPanel>
+
+              <DashboardPanel padding="lg" className="space-y-5">
+                <DashboardSectionHeading
+                  title="Add campaign override"
+                  description="Create a more targeted payout rule for a property, listing purpose, or area without losing the global default rule."
+                />
+
+                <CompactConfigCard
+                  title="Add campaign override"
+                  description="Create a scoped incentive without leaving the review page crowded by an always-open form."
+                  summary={campaignForm.name.trim()
+                    ? `${campaignForm.name.trim()} · ${campaignForm.listing_purpose === "all" ? "All listings" : campaignForm.listing_purpose === "sale" ? "Sale only" : "Rent only"} · ${ruleSummary({
+                        commission_type: campaignForm.commission_type,
+                        commission_value: Number(campaignForm.commission_value || 0),
+                        commission_basis_source: campaignForm.commission_basis_source,
+                        fallback_commission_amount: Number(campaignForm.fallback_commission_amount || 0),
+                      })}`
+                    : "Start a new override for a property, area, or listing purpose when the default payout rule should not apply."}
+                  badge={<Badge variant="dashboard">New override</Badge>}
+                  actionLabel="Configure override"
+                  onAction={() => setActiveConfigModal("campaign-create")}
+                />
+              </DashboardPanel>
             </div>
+          </section>
 
-            <label className="flex items-center gap-2 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
-              <input
-                type="checkbox"
+          <section id="referrals-campaigns" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Campaign overrides"
+                description="Campaigns stay separate from default rules so temporary incentives do not obscure the base payout policy."
+                action={
+                  <Badge variant="dashboard">{campaigns.length} configured</Badge>
+                }
+              />
+
+              {campaigns.length === 0 ? (
+                <Card>
+                  <CardContent>
+                    <EmptyState
+                      icon={<Plus className="h-7 w-7" />}
+                      title="No campaign overrides yet"
+                      description="Create a campaign when referral payouts need to vary by property, area, or listing purpose."
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-4 2xl:grid-cols-2">
+                  {campaigns.map((campaign) => (
+                    <Card key={campaign.id}>
+                      <CardContent className="space-y-4 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-semibold text-[var(--color-text-primary)]">{campaign.name}</p>
+                            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                              {ruleSummary(campaign)}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant={campaign.is_active ? "active" : "default"}>
+                              {campaign.is_active ? "Active" : "Paused"}
+                            </Badge>
+                            <Badge variant="info">Priority {campaign.priority}</Badge>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+                          <p>Scope: {formatCampaignScopeSummary(campaign)}</p>
+                          <p>Window: {formatCampaignWindowSummary(campaign)}</p>
+                          {campaign.description ? <p>{campaign.description}</p> : null}
+                        </div>
+
+                        <div className="flex justify-end">
+                          <Button variant="secondary" onClick={() => setEditingCampaignId(campaign.id)}>
+                            Configure override
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </DashboardPanel>
+          </section>
+
+          <Modal
+            isOpen={activeConfigModal === "freshness"}
+            onClose={() => setActiveConfigModal(null)}
+            title="Configure listing freshness policy"
+            dialogClassName="max-w-3xl"
+            ariaLabel="Configure listing freshness policy"
+          >
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <AffixedNumericField
+                  label="Fresh window"
+                  value={freshnessPolicyForm.fresh_window_days}
+                  onChange={(nextValue) =>
+                    setFreshnessPolicyForm((current) => ({
+                      ...current,
+                      fresh_window_days: nextValue,
+                    }))
+                  }
+                  suffix="days"
+                />
+                <AffixedNumericField
+                  label="Grace period"
+                  value={freshnessPolicyForm.confirmation_grace_days}
+                  onChange={(nextValue) =>
+                    setFreshnessPolicyForm((current) => ({
+                      ...current,
+                      confirmation_grace_days: nextValue,
+                    }))
+                  }
+                  suffix="days"
+                />
+                <AffixedNumericField
+                  label="Reminder start"
+                  value={freshnessPolicyForm.reminder_start_days}
+                  onChange={(nextValue) =>
+                    setFreshnessPolicyForm((current) => ({
+                      ...current,
+                      reminder_start_days: nextValue,
+                    }))
+                  }
+                  suffix="days"
+                />
+                <AffixedNumericField
+                  label="Reminder interval"
+                  value={freshnessPolicyForm.reminder_interval_days}
+                  onChange={(nextValue) =>
+                    setFreshnessPolicyForm((current) => ({
+                      ...current,
+                      reminder_interval_days: nextValue,
+                    }))
+                  }
+                  suffix="days"
+                />
+              </div>
+
+              <ToggleCard
+                checked={freshnessPolicyForm.auto_mark_unavailable}
+                onChange={(checked) =>
+                  setFreshnessPolicyForm((current) => ({
+                    ...current,
+                    auto_mark_unavailable: checked,
+                  }))
+                }
+                title="Auto-mark stale listings unavailable"
+                description="Stop stale inventory from continuing to attract direct renter contact after the grace period."
+              />
+
+              <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                {formatListingFreshnessPolicySummary({
+                  fresh_window_days: Number(freshnessPolicyForm.fresh_window_days || 0),
+                  confirmation_grace_days: Number(freshnessPolicyForm.confirmation_grace_days || 0),
+                  reminder_start_days: Number(freshnessPolicyForm.reminder_start_days || 0),
+                  reminder_interval_days: Number(freshnessPolicyForm.reminder_interval_days || 0),
+                  auto_mark_unavailable: freshnessPolicyForm.auto_mark_unavailable,
+                })}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="secondary" onClick={() => setActiveConfigModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleFreshnessPolicySave}
+                  isLoading={updateFreshnessPolicy.isPending || freshnessPolicyQuery.isLoading}
+                >
+                  Save freshness policy
+                </Button>
+              </div>
+            </div>
+          </Modal>
+
+          <Modal
+            isOpen={activeConfigModal === "program"}
+            onClose={() => setActiveConfigModal(null)}
+            title="Configure program defaults"
+            dialogClassName="max-w-3xl"
+            ariaLabel="Configure program defaults"
+          >
+            <div className="space-y-5">
+              <ToggleCard
                 checked={settingsForm.is_enabled}
-                onChange={(event) =>
-                  setSettingsForm((current) => ({
-                    ...current,
-                    is_enabled: event.target.checked,
-                  }))
+                onChange={(checked) =>
+                  setSettingsForm((current) => ({ ...current, is_enabled: checked }))
                 }
+                title="Referral program enabled"
+                description="Pause this only when you want to stop all new referral qualification from producing payout expectations."
               />
-              Referral program enabled
-            </label>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-                <span>Default commission type</span>
-                <select
+              <div className="grid gap-4 md:grid-cols-2">
+                <SelectField
+                  label="Default commission type"
                   value={settingsForm.default_commission_type}
-                  onChange={(event) =>
+                  onChange={(nextValue) =>
                     setSettingsForm((current) => ({
                       ...current,
-                      default_commission_type: event.target.value as ReferralCommissionType,
+                      default_commission_type: nextValue as ReferralCommissionType,
                     }))
                   }
-                  className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                >
-                  <option value="fixed">Fixed</option>
-                  <option value="percentage">Percentage</option>
-                </select>
-              </label>
-              <Input
-                label={
-                  settingsForm.default_commission_type === "percentage"
-                    ? "Default commission %"
-                    : "Default fixed amount"
-                }
-                value={settingsForm.default_commission_value}
-                onChange={(event) =>
-                  setSettingsForm((current) => ({
-                    ...current,
-                    default_commission_value: event.target.value,
-                  }))
-                }
-                inputMode="decimal"
-              />
-              <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-                <span>Percentage basis</span>
-                <select
+                  options={[
+                    { value: "fixed", label: "Fixed" },
+                    { value: "percentage", label: "Percentage" },
+                  ]}
+                />
+                <AffixedNumericField
+                  label="Default commission"
+                  value={settingsForm.default_commission_value}
+                  onChange={(nextValue) =>
+                    setSettingsForm((current) => ({
+                      ...current,
+                      default_commission_value: nextValue,
+                    }))
+                  }
+                  prefix={settingsForm.default_commission_type === "fixed" ? "₦" : undefined}
+                  suffix={settingsForm.default_commission_type === "percentage" ? "%" : undefined}
+                  format={settingsForm.default_commission_type === "percentage" ? "decimal" : "currency"}
+                />
+                <SelectField
+                  label="Percentage basis"
                   value={settingsForm.default_basis_source}
-                  onChange={(event) =>
+                  onChange={(nextValue) =>
                     setSettingsForm((current) => ({
                       ...current,
-                      default_basis_source: event.target.value as ReferralCommissionBasisSource,
+                      default_basis_source: nextValue as ReferralCommissionBasisSource,
                     }))
                   }
-                  className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                >
-                  <option value="none">None</option>
-                  <option value="agency_fee">Agency fee</option>
-                  <option value="rent_amount">Annual rent</option>
-                  <option value="asking_price">Asking price</option>
-                </select>
-              </label>
+                  options={[
+                    { value: "none", label: "None" },
+                    { value: "agency_fee", label: "Agency fee" },
+                    { value: "rent_amount", label: "Annual rent" },
+                    { value: "asking_price", label: "Asking price" },
+                  ]}
+                />
+                <AffixedNumericField
+                  label="Fallback amount"
+                  value={settingsForm.fallback_commission_amount}
+                  onChange={(nextValue) =>
+                    setSettingsForm((current) => ({
+                      ...current,
+                      fallback_commission_amount: nextValue,
+                    }))
+                  }
+                  prefix="₦"
+                  format="currency"
+                />
+              </div>
+
               <Input
-                label="Fallback amount"
-                value={settingsForm.fallback_commission_amount}
+                label="Terms version"
+                value={settingsForm.terms_version}
                 onChange={(event) =>
                   setSettingsForm((current) => ({
                     ...current,
-                    fallback_commission_amount: event.target.value,
+                    terms_version: event.target.value,
                   }))
                 }
-                inputMode="decimal"
               />
+
+              <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                Current default: {ruleSummary({
+                  commission_type: settingsForm.default_commission_type,
+                  commission_value: Number(settingsForm.default_commission_value || 0),
+                  commission_basis_source: settingsForm.default_basis_source,
+                  fallback_commission_amount: Number(settingsForm.fallback_commission_amount || 0),
+                })}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="secondary" onClick={() => setActiveConfigModal(null)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleProgramSave}
+                  isLoading={updateProgramSettings.isPending || programQuery.isLoading}
+                >
+                  Save defaults
+                </Button>
+              </div>
             </div>
+          </Modal>
 
-            <Input
-              label="Terms version"
-              value={settingsForm.terms_version}
-              onChange={(event) =>
-                setSettingsForm((current) => ({
-                  ...current,
-                  terms_version: event.target.value,
-                }))
-              }
-            />
-
-            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-              Current default: {ruleSummary({
-                commission_type: settingsForm.default_commission_type,
-                commission_value: Number(settingsForm.default_commission_value || 0),
-                commission_basis_source: settingsForm.default_basis_source,
-                fallback_commission_amount: Number(
-                  settingsForm.fallback_commission_amount || 0,
-                ),
-              })}
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={handleProgramSave}
-                isLoading={updateProgramSettings.isPending || programQuery.isLoading}
-              >
-                Save defaults
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="space-y-4 p-5">
-            <div>
-              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                Add campaign override
-              </h2>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                Use campaigns to override the default rule by property, listing purpose, or area.
-              </p>
-            </div>
-
-            <form onSubmit={handleCreateCampaign} className="space-y-4">
-              <div className="grid gap-3 lg:grid-cols-2">
+          <Modal
+            isOpen={activeConfigModal === "campaign-create"}
+            onClose={() => setActiveConfigModal(null)}
+            title="Create campaign override"
+            dialogClassName="max-w-4xl"
+            ariaLabel="Create campaign override"
+          >
+            <form onSubmit={handleCreateCampaign} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Campaign name"
                   value={campaignForm.name}
                   onChange={(event) =>
                     setCampaignForm((current) => ({ ...current, name: event.target.value }))
                   }
+                />
+                <AffixedNumericField
+                  label="Priority"
+                  value={campaignForm.priority}
+                  onChange={(nextValue) =>
+                    setCampaignForm((current) => ({ ...current, priority: nextValue }))
+                  }
+                  suffix="rank"
                 />
                 <Input
                   label="Area"
@@ -793,125 +1261,111 @@ export function AdminReferralReview() {
                   }
                   placeholder="Optional exact property"
                 />
-                <Input
-                  label="Priority"
-                  value={campaignForm.priority}
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+                  Campaign description
+                </label>
+                <textarea
+                  value={campaignForm.description}
                   onChange={(event) =>
                     setCampaignForm((current) => ({
                       ...current,
-                      priority: event.target.value,
+                      description: event.target.value,
                     }))
                   }
-                  inputMode="numeric"
+                  rows={3}
+                  placeholder="Optional campaign description"
+                  className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
                 />
               </div>
 
-              <textarea
-                value={campaignForm.description}
-                onChange={(event) =>
-                  setCampaignForm((current) => ({
-                    ...current,
-                    description: event.target.value,
-                  }))
-                }
-                rows={3}
-                placeholder="Optional campaign description"
-                className="w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-              />
-
-              <div className="grid gap-3 lg:grid-cols-3">
-                <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-                  <span>Listing purpose</span>
-                  <select
-                    value={campaignForm.listing_purpose}
-                    onChange={(event) =>
-                      setCampaignForm((current) => ({
-                        ...current,
-                        listing_purpose: event.target.value as CampaignFormState["listing_purpose"],
-                      }))
-                    }
-                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                  >
-                    <option value="all">All listings</option>
-                    <option value="rent">Rent only</option>
-                    <option value="sale">Sale only</option>
-                  </select>
-                </label>
-                <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-                  <span>Commission type</span>
-                  <select
-                    value={campaignForm.commission_type}
-                    onChange={(event) =>
-                      setCampaignForm((current) => ({
-                        ...current,
-                        commission_type: event.target.value as ReferralCommissionType,
-                      }))
-                    }
-                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                  >
-                    <option value="fixed">Fixed</option>
-                    <option value="percentage">Percentage</option>
-                  </select>
-                </label>
-                <Input
-                  label={campaignForm.commission_type === "percentage" ? "Commission %" : "Fixed amount"}
+              <div className="grid gap-4 xl:grid-cols-3">
+                <SelectField
+                  label="Listing purpose"
+                  value={campaignForm.listing_purpose}
+                  onChange={(nextValue) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      listing_purpose: nextValue as CampaignFormState["listing_purpose"],
+                    }))
+                  }
+                  options={[
+                    { value: "all", label: "All listings" },
+                    { value: "rent", label: "Rent only" },
+                    { value: "sale", label: "Sale only" },
+                  ]}
+                />
+                <SelectField
+                  label="Commission type"
+                  value={campaignForm.commission_type}
+                  onChange={(nextValue) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      commission_type: nextValue as ReferralCommissionType,
+                    }))
+                  }
+                  options={[
+                    { value: "fixed", label: "Fixed" },
+                    { value: "percentage", label: "Percentage" },
+                  ]}
+                />
+                <AffixedNumericField
+                  label="Commission"
                   value={campaignForm.commission_value}
-                  onChange={(event) =>
+                  onChange={(nextValue) =>
                     setCampaignForm((current) => ({
                       ...current,
-                      commission_value: event.target.value,
+                      commission_value: nextValue,
                     }))
                   }
-                  inputMode="decimal"
+                  prefix={campaignForm.commission_type === "fixed" ? "₦" : undefined}
+                  suffix={campaignForm.commission_type === "percentage" ? "%" : undefined}
+                  format={campaignForm.commission_type === "percentage" ? "decimal" : "currency"}
                 />
-              </div>
-
-              <div className="grid gap-3 lg:grid-cols-3">
-                <label className="space-y-1.5 text-sm font-medium text-[var(--color-text-primary)]">
-                  <span>Percentage basis</span>
-                  <select
-                    value={campaignForm.commission_basis_source}
-                    onChange={(event) =>
-                      setCampaignForm((current) => ({
-                        ...current,
-                        commission_basis_source: event.target.value as ReferralCommissionBasisSource,
-                      }))
-                    }
-                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                  >
-                    <option value="none">None</option>
-                    <option value="agency_fee">Agency fee</option>
-                    <option value="rent_amount">Annual rent</option>
-                    <option value="asking_price">Asking price</option>
-                  </select>
-                </label>
-                <Input
+                <SelectField
+                  label="Percentage basis"
+                  value={campaignForm.commission_basis_source}
+                  onChange={(nextValue) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      commission_basis_source: nextValue as ReferralCommissionBasisSource,
+                    }))
+                  }
+                  options={[
+                    { value: "none", label: "None" },
+                    { value: "agency_fee", label: "Agency fee" },
+                    { value: "rent_amount", label: "Annual rent" },
+                    { value: "asking_price", label: "Asking price" },
+                  ]}
+                />
+                <AffixedNumericField
                   label="Fallback amount"
                   value={campaignForm.fallback_commission_amount}
-                  onChange={(event) =>
+                  onChange={(nextValue) =>
                     setCampaignForm((current) => ({
                       ...current,
-                      fallback_commission_amount: event.target.value,
+                      fallback_commission_amount: nextValue,
                     }))
                   }
-                  inputMode="decimal"
+                  prefix="₦"
+                  format="currency"
                 />
-                <label className="flex items-center gap-2 self-end rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
-                  <input
-                    type="checkbox"
-                    checked={campaignForm.is_active}
-                    onChange={(event) =>
-                      setCampaignForm((current) => ({
-                        ...current,
-                        is_active: event.target.checked,
-                      }))
-                    }
-                  />
-                  Start active
-                </label>
+                <ToggleCard
+                  checked={campaignForm.is_active}
+                  onChange={(checked) =>
+                    setCampaignForm((current) => ({
+                      ...current,
+                      is_active: checked,
+                    }))
+                  }
+                  title="Start active"
+                  description="Make the override immediately eligible for matching properties."
+                />
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Starts at"
                   type="datetime-local"
@@ -936,370 +1390,410 @@ export function AdminReferralReview() {
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                Preview: {ruleSummary({
+                  commission_type: campaignForm.commission_type,
+                  commission_value: Number(campaignForm.commission_value || 0),
+                  commission_basis_source: campaignForm.commission_basis_source,
+                  fallback_commission_amount: Number(campaignForm.fallback_commission_amount || 0),
+                })}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button variant="secondary" type="button" onClick={() => setActiveConfigModal(null)}>
+                  Cancel
+                </Button>
                 <Button type="submit" isLoading={createCampaign.isPending}>
                   <Plus className="h-4 w-4" />
                   Add campaign
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-      </div>
+          </Modal>
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Campaign overrides
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              {campaigns.length} campaign{campaigns.length === 1 ? "" : "s"} configured.
-            </p>
-          </div>
-        </div>
-
-        {campaigns.length === 0 ? (
-          <Card>
-            <CardContent>
-              <EmptyState
-                icon={<Plus className="h-7 w-7" />}
-                title="No campaign overrides yet"
-                description="Create a campaign when you want referral payouts to vary by property, area, or listing purpose."
-              />
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
-            {campaigns.map((campaign) => (
+          <Modal
+            isOpen={Boolean(editingCampaign)}
+            onClose={() => setEditingCampaignId(null)}
+            title={editingCampaign ? `Configure ${editingCampaign.name}` : "Configure campaign override"}
+            dialogClassName="max-w-4xl"
+            ariaLabel="Configure campaign override"
+          >
+            {editingCampaign ? (
               <CampaignEditorCard
-                key={campaign.id}
-                campaign={campaign}
+                campaign={editingCampaign}
                 onSave={handleCampaignSave}
                 isSaving={updateCampaign.isPending}
               />
-            ))}
-          </div>
-        )}
-      </div>
+            ) : null}
+          </Modal>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => setStatusFilter(filter.value)}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                statusFilter === filter.value
-                  ? "bg-[var(--color-deep-slate-blue)] text-white"
-                  : "bg-white text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]",
+          <section id="referrals-review" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Referral review queue"
+                description="Filter events, inspect evidence, and record the close outcome before approving or rejecting a payout."
+                helper={
+                  <DashboardContextualHelp
+                    label="More information about referral review"
+                    title="How to use review"
+                  >
+                    Keep the left side for finding the right event quickly and the right side for adjudication. That prevents search noise from mixing with payout actions.
+                  </DashboardContextualHelp>
+                }
+              />
+
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {FILTERS.map((filter) => (
+                    <button
+                      key={filter.value}
+                      type="button"
+                      onClick={() => setStatusFilter(filter.value)}
+                      className={cn(
+                        "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+                        statusFilter === filter.value
+                          ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
+                          : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]",
+                      )}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-full lg:max-w-sm">
+                  <label className="mb-1.5 block text-sm font-medium text-[var(--color-text-primary)]">
+                    Search referrals
+                  </label>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]" />
+                    <Input
+                      id="referral-search"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      placeholder="Search by referrer, code, property, or campaign"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {eventsQuery.isLoading ? (
+                <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+                  <div className="h-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                  <div className="h-[520px] animate-pulse rounded-2xl bg-gray-100" />
+                </div>
+              ) : events.length === 0 ? (
+                <Card>
+                  <CardContent>
+                    <EmptyState
+                      icon={<ClipboardList className="h-7 w-7" />}
+                      title="No referral events match this filter"
+                      description="Referral review items will appear here as users start sharing properties and creating qualified message events."
+                    />
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+                  <Card>
+                    <CardContent className="space-y-3 p-4">
+                      {events.map((event) => (
+                        <button
+                          key={event.id}
+                          type="button"
+                          onClick={() => setSelectedId(event.id)}
+                          className={cn(
+                            "w-full rounded-2xl border px-4 py-4 text-left transition-colors",
+                            selectedId === event.id
+                              ? "border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface-alt)]"
+                              : "border-[var(--color-border)] hover:bg-gray-50",
+                          )}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-medium text-[var(--color-text-primary)]">
+                                {event.property_title}
+                              </p>
+                              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                                {event.referrer_name} → {event.referred_name ?? "Signed-in visitor"}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--color-text-secondary)]">
+                                <span>{event.property_area}</span>
+                                <span>•</span>
+                                <span>{formatDate(event.created_at)}</span>
+                                <span>•</span>
+                                <span>{event.source_channel.replace(/_/g, " ")}</span>
+                              </div>
+                              {event.campaign_name ? (
+                                <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                                  Campaign: {event.campaign_name}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                                {formatCurrency(event.amount)}
+                              </p>
+                              <Badge variant={statusVariant(event.status)}>
+                                {statusLabel(event.status)}
+                              </Badge>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  {selectedEvent ? (
+                    <Card>
+                      <CardContent className="space-y-5 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+                              {selectedEvent.property_title}
+                            </h2>
+                            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                              {selectedEvent.property_area} · {selectedEvent.property_status}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedEvent.property_is_verified ? (
+                              <Badge variant="verified">Verified</Badge>
+                            ) : null}
+                            <Badge variant={statusVariant(selectedEvent.status)}>
+                              {statusLabel(selectedEvent.status)}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Referrer
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.referrer_name}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              Code: {selectedEvent.referral_code}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {selectedEvent.referrer_email ?? "No email"} · {selectedEvent.referrer_phone ?? "No phone"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Referred user
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.referred_name ?? "Signed-in visitor"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              Source: {selectedEvent.source_channel.replace(/_/g, " ")}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Commission
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.commission_type === "percentage"
+                                ? `${selectedEvent.commission_value}% of ${selectedEvent.commission_basis_label ?? "eligible amount"}`
+                                : `Fixed ${formatCurrency(selectedEvent.amount)}`}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              Estimated payout: {formatCurrency(selectedEvent.amount)}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Rule source
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.campaign_name ?? "Default program rule"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {commissionSummary({
+                                commission_type: selectedEvent.commission_type,
+                                commission_value: selectedEvent.commission_value,
+                                commission_basis_label: selectedEvent.commission_basis_label,
+                                commission_basis_amount: selectedEvent.commission_basis_amount,
+                                estimated_amount: selectedEvent.amount,
+                              })}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Timeline
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              Created {formatDate(selectedEvent.created_at)}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {selectedEvent.confirmed_at
+                                ? `Confirmed ${formatDate(selectedEvent.confirmed_at)}`
+                                : "Not confirmed yet"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Close outcome
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {getReferralCloseStatusLabel(selectedEvent.close_status)}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {selectedEvent.close_recorded_at
+                                ? `Recorded ${formatDate(selectedEvent.close_recorded_at)}`
+                                : "Record whether this closed through Renyt or off-platform before confirming payout."}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Matched account
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.matched_user_name ?? "No matched account selected"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {selectedEvent.matched_user_email ?? "No email"} · {selectedEvent.matched_user_phone ?? "No phone"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {selectedEvent.is_winning_referral ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                            This referral is currently the winning matched-account candidate.
+                          </div>
+                        ) : null}
+
+                        {selectedEvent.status === "ineligible" ? (
+                          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                            Ineligible reason: {getIneligibleReasonLabel(selectedEvent.ineligible_reason)}
+                          </div>
+                        ) : null}
+
+                        {selectedEvent.fraud_flags.length > 0 ? (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                            <div className="flex items-start gap-3">
+                              <ShieldAlert className="mt-0.5 h-5 w-5 text-[var(--color-pending)]" />
+                              <div>
+                                <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                                  Fraud flags
+                                </p>
+                                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                                  {selectedEvent.fraud_flags.join(", ")}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {selectedEvent.rejection_reason ? (
+                          <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
+                            {selectedEvent.rejection_reason}
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <SelectField
+                            label="Close outcome"
+                            value={closeStatus}
+                            onChange={(nextValue) =>
+                              setCloseStatus(nextValue as ReferralClosureStatus | "")
+                            }
+                            placeholder="Select outcome"
+                            options={[
+                              { value: "rented_renyt", label: "Rented via Renyt" },
+                              { value: "rented_off_platform", label: "Rented off-platform" },
+                              { value: "sold_renyt", label: "Sold via Renyt" },
+                              { value: "sold_off_platform", label: "Sold off-platform" },
+                            ]}
+                          />
+
+                          <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                            Commission approval depends on whether the close happened through Renyt or outside the platform.
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+                            Admin note
+                          </label>
+                          <textarea
+                            value={adminNote}
+                            onChange={(event) => setAdminNote(event.target.value)}
+                            className="min-h-24 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+                            placeholder="Add internal review notes"
+                          />
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+                            Rejection reason
+                          </label>
+                          <textarea
+                            value={rejectionReason}
+                            onChange={(event) => setRejectionReason(event.target.value)}
+                            className="min-h-20 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+                            placeholder="Required if this referral should not count"
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <Button
+                            variant="secondary"
+                            onClick={() => handleStatusUpdate("under_review")}
+                            isLoading={updateReferralEvent.isPending}
+                            disabled={selectedEvent.status !== "potential"}
+                          >
+                            Move to review
+                          </Button>
+                          <Button
+                            variant="success"
+                            onClick={() => handleStatusUpdate("confirmed")}
+                            isLoading={updateReferralEvent.isPending}
+                            disabled={!closeStatus || selectedEvent.status !== "under_review"}
+                          >
+                            Confirm earning
+                          </Button>
+                          <Button
+                            onClick={() => handleStatusUpdate("paid")}
+                            isLoading={updateReferralEvent.isPending}
+                            disabled={!closeStatus || selectedEvent.status !== "confirmed"}
+                          >
+                            <Wallet className="h-4 w-4" />
+                            Mark as paid
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => handleStatusUpdate("rejected")}
+                            isLoading={updateReferralEvent.isPending}
+                            disabled={!rejectionReason.trim() || selectedEvent.status === "confirmed" || selectedEvent.status === "paid" || selectedEvent.status === "ineligible"}
+                          >
+                            <Flag className="h-4 w-4" />
+                            Reject referral
+                          </Button>
+                        </div>
+
+                        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                          View the live listing:{" "}
+                          <Link
+                            href={`/properties/${selectedEvent.property_id}`}
+                            className="font-medium text-[var(--color-deep-slate-blue)]"
+                          >
+                            open property detail
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                </div>
               )}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-        <div className="w-full lg:max-w-sm">
-          <Input
-            id="referral-search"
-            label="Search referrals"
-            placeholder="Search by referrer, code, property, or campaign"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+            </DashboardPanel>
+          </section>
         </div>
       </div>
-
-      {eventsQuery.isLoading ? (
-        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="h-[480px] animate-pulse rounded-2xl bg-gray-100" />
-          <div className="h-[480px] animate-pulse rounded-2xl bg-gray-100" />
-        </div>
-      ) : events.length === 0 ? (
-        <Card>
-          <CardContent>
-            <EmptyState
-              icon={<ClipboardList className="h-7 w-7" />}
-              title="No referral events match this filter"
-              description="Referral review items will appear here as users start sharing properties and creating qualified message events."
-            />
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardContent className="space-y-3 p-4">
-              {events.map((event) => (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => setSelectedId(event.id)}
-                  className={cn(
-                    "w-full rounded-2xl border px-4 py-4 text-left transition-colors",
-                    selectedId === event.id
-                      ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)]/5"
-                      : "border-[var(--color-border)] hover:bg-gray-50",
-                  )}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-[var(--color-text-primary)]">
-                        {event.property_title}
-                      </p>
-                      <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                        {event.referrer_name} → {event.referred_name ?? "Signed-in visitor"}
-                      </p>
-                      {event.campaign_name ? (
-                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                          Campaign: {event.campaign_name}
-                        </p>
-                      ) : null}
-                      {event.close_status ? (
-                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                          Outcome: {getReferralCloseStatusLabel(event.close_status)}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                        {formatCurrency(event.amount)}
-                      </p>
-                      <Badge variant={statusVariant(event.status)}>
-                        {statusLabel(event.status)}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-[var(--color-text-secondary)]">
-                    <span>{event.property_area}</span>
-                    <span>•</span>
-                    <span>{formatDate(event.created_at)}</span>
-                    <span>•</span>
-                    <span>{event.source_channel.replace(/_/g, " ")}</span>
-                  </div>
-                </button>
-              ))}
-            </CardContent>
-          </Card>
-
-          {selectedEvent ? (
-            <Card>
-              <CardContent className="space-y-5 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
-                      {selectedEvent.property_title}
-                    </h2>
-                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                      {selectedEvent.property_area} · {selectedEvent.property_status}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedEvent.property_is_verified ? <Badge variant="verified">Verified</Badge> : null}
-                    <Badge variant={statusVariant(selectedEvent.status)}>
-                      {statusLabel(selectedEvent.status)}
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Referrer
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      {selectedEvent.referrer_name}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      Code: {selectedEvent.referral_code}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Referred user
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      {selectedEvent.referred_name ?? "Signed-in visitor"}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      Source: {selectedEvent.source_channel.replace(/_/g, " ")}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Commission
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      {selectedEvent.commission_type === "percentage"
-                        ? `${selectedEvent.commission_value}% of ${selectedEvent.commission_basis_label ?? "eligible amount"}`
-                        : "Fixed commission"}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      Estimated payout: {formatCurrency(selectedEvent.amount)}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Rule source
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      {selectedEvent.campaign_name ?? "Default program rule"}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      {commissionSummary({
-                        commission_type: selectedEvent.commission_type,
-                        commission_value: selectedEvent.commission_value,
-                        commission_basis_label: selectedEvent.commission_basis_label,
-                        commission_basis_amount: selectedEvent.commission_basis_amount,
-                        estimated_amount: selectedEvent.amount,
-                      })}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Timeline
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      Created {formatDate(selectedEvent.created_at)}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      {selectedEvent.confirmed_at
-                        ? `Confirmed ${formatDate(selectedEvent.confirmed_at)}`
-                        : "Not confirmed yet"}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                      Close outcome
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
-                      {getReferralCloseStatusLabel(selectedEvent.close_status)}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      {selectedEvent.close_recorded_at
-                        ? `Recorded ${formatDate(selectedEvent.close_recorded_at)}`
-                        : "Record whether this closed through Renyt or off-platform before confirming payout."}
-                    </p>
-                  </div>
-                </div>
-
-                {selectedEvent.fraud_flags.length > 0 ? (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <ShieldAlert className="mt-0.5 h-5 w-5 text-[var(--color-pending)]" />
-                      <div>
-                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                          Fraud flags
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                          {selectedEvent.fraud_flags.join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {selectedEvent.rejection_reason ? (
-                  <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
-                    {selectedEvent.rejection_reason}
-                  </div>
-                ) : null}
-
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-[var(--color-text-primary)]">
-                    Close outcome
-                  </label>
-                  <select
-                    value={closeStatus}
-                    onChange={(event) =>
-                      setCloseStatus(event.target.value as ReferralClosureStatus | "")
-                    }
-                    className="h-12 w-full rounded-2xl border border-[var(--color-border)] bg-white px-4 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                  >
-                    <option value="">Select outcome</option>
-                    <option value="rented_renyt">Rented via Renyt</option>
-                    <option value="rented_off_platform">Rented off-platform</option>
-                    <option value="sold_renyt">Sold via Renyt</option>
-                    <option value="sold_off_platform">Sold off-platform</option>
-                  </select>
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    Commission approval depends on whether the close happened through Renyt or outside the platform.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-[var(--color-text-primary)]">
-                    Admin note
-                  </label>
-                  <textarea
-                    value={adminNote}
-                    onChange={(event) => setAdminNote(event.target.value)}
-                    className="min-h-24 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                    placeholder="Add internal review notes"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-[var(--color-text-primary)]">
-                    Rejection reason
-                  </label>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={(event) => setRejectionReason(event.target.value)}
-                    className="min-h-20 w-full rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
-                    placeholder="Required if this referral should not count"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleStatusUpdate("under_review")}
-                    isLoading={updateReferralEvent.isPending}
-                  >
-                    Move to review
-                  </Button>
-                  <Button
-                    variant="success"
-                    onClick={() => handleStatusUpdate("confirmed")}
-                    isLoading={updateReferralEvent.isPending}
-                    disabled={!closeStatus}
-                  >
-                    Confirm earning
-                  </Button>
-                  <Button
-                    onClick={() => handleStatusUpdate("paid")}
-                    isLoading={updateReferralEvent.isPending}
-                    disabled={!closeStatus}
-                  >
-                    <Wallet className="h-4 w-4" />
-                    Mark as paid
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleStatusUpdate("rejected")}
-                    isLoading={updateReferralEvent.isPending}
-                    disabled={!rejectionReason.trim()}
-                  >
-                    Reject referral
-                  </Button>
-                </div>
-
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                  View the live listing:{" "}
-                  <Link
-                    href={`/properties/${selectedEvent.property_id}`}
-                    className="font-medium text-[var(--color-deep-slate-blue)]"
-                  >
-                    open property detail
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 }

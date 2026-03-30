@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { propertiesApi } from "@/lib/api";
 import type {
+  AgentPropertyInsight,
   FeeType,
   Property,
   PropertyTypeDefinition,
@@ -13,7 +14,9 @@ import type {
   PropertySearchParams,
   PropertyImage,
   PropertyVideo,
+  ReferralOutcomeCandidate,
   ApiSuccessResponse,
+  UpdatePropertyInput,
   UploadPropertyMediaInput,
 } from "@/types";
 
@@ -27,6 +30,8 @@ export const propertyKeys = {
   detail: (id: string) => [...propertyKeys.details(), id] as const,
   manage: (id: string) => [...propertyKeys.all, "manage", id] as const,
   mine: () => [...propertyKeys.all, "mine"] as const,
+  insights: () => [...propertyKeys.all, "insights"] as const,
+  outcomeCandidates: (id: string) => [...propertyKeys.all, "outcome-candidates", id] as const,
   feeTypes: () => [...propertyKeys.all, "fee-types"] as const,
   propertyTypes: () => [...propertyKeys.all, "property-types"] as const,
 };
@@ -91,6 +96,34 @@ export function useMyProperties(
   });
 }
 
+export function useMyPropertyInsights(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AgentPropertyInsight[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.insights(),
+    queryFn: () => propertiesApi.getMyPropertyInsights(),
+    ...options,
+  });
+}
+
+export function usePropertyOutcomeCandidates(
+  propertyId: string,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<ReferralOutcomeCandidate[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.outcomeCandidates(propertyId),
+    queryFn: () => propertiesApi.getPropertyOutcomeCandidates(propertyId),
+    enabled: Boolean(propertyId),
+    ...options,
+  });
+}
+
 /** Create a new property listing */
 export function useCreateProperty() {
   const queryClient = useQueryClient();
@@ -108,7 +141,7 @@ export function useUpdateProperty() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Property> }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdatePropertyInput }) =>
       propertiesApi.updateProperty(id, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -119,6 +152,8 @@ export function useUpdateProperty() {
       });
       queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
       queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.insights() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.outcomeCandidates(variables.id) });
     },
   });
 }

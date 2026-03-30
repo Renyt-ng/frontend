@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   formatEmailEventStatus,
   formatEmailProvider,
+  formatQueueConditionState,
+  formatQueueHealthStatus,
+  formatQueueName,
   getProviderConfigurationPlaceholder,
   getEmailEventBadgeVariant,
+  getQueueConditionBadgeVariant,
+  getQueueHealthBadgeVariant,
   getProviderBadgeVariant,
   sortProviders,
 } from "@/lib/adminUtils";
@@ -102,5 +107,13 @@ describe("adminUtils", () => {
     expect(getProviderConfigurationPlaceholder("brevo")).toContain(
       '"webhook_secret"',
     );
+  });
+
+  it("formats queue diagnostics helpers", () => {
+    expect(formatQueueHealthStatus("degraded")).toBe("Degraded");
+    expect(getQueueHealthBadgeVariant("healthy")).toBe("dashboardSuccess");
+    expect(getQueueConditionBadgeVariant("unmet")).toBe("pending");
+    expect(formatQueueConditionState("unverified")).toBe("Needs check");
+    expect(formatQueueName("property-publish")).toBe("Property Publish");
   });
 });

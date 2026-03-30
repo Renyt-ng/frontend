@@ -17,11 +17,36 @@ export type EmailNotificationCategory =
   | "agent_verification_rejected"
   | "property_verification_approved"
   | "property_verification_rejected"
+  | "listing_freshness_reminder"
+  | "referral_status_update"
   | "lease_sent"
   | "lease_fully_signed"
   | "user_suspended"
   | "user_restored"
   | "admin_operational_alert";
+
+export type EmailNotificationClassification =
+  | "mandatory"
+  | "optional"
+  | "operational"
+  | "legacy";
+
+export type EmailNotificationAudienceRole = "admin" | "agent" | "tenant";
+
+export type UserConfigurableEmailCategory =
+  | "listing_freshness_reminder"
+  | "referral_status_update";
+
+export type EmailNotificationPreferences = Partial<
+  Record<UserConfigurableEmailCategory, boolean>
+>;
+
+export interface EmailTemplateVariableDefinition {
+  key: string;
+  label: string;
+  description: string;
+  required: boolean;
+}
 
 export interface AdminOverview {
   metrics: {
@@ -87,6 +112,100 @@ export interface EmailHealthReport {
   last_healthcheck_at: string | null;
 }
 
+export type QueueHealthStatus = "healthy" | "degraded" | "down";
+
+export type QueueConditionState = "met" | "unmet" | "unverified";
+
+export interface QueueOperationalCondition {
+  key: string;
+  state: QueueConditionState;
+  message: string;
+}
+
+export interface QueueSnapshot {
+  name: string;
+  jobName: string;
+  counts: Record<string, number> | null;
+  isPaused: boolean | null;
+  error: {
+    name?: string;
+    message?: string;
+    stack?: string;
+  } | null;
+}
+
+export type ManagedQueueName = "property-publish" | "email-notifications";
+
+export type QueueActionName = "pause" | "resume" | "retry-failed" | "retry-job";
+
+export interface QueueFailedJobSummary {
+  id: string;
+  queueName: ManagedQueueName;
+  name: string;
+  failedReason: string | null;
+  attemptsMade: number;
+  attemptsConfigured: number | null;
+  timestamp: string | null;
+  processedOn: string | null;
+  finishedOn: string | null;
+  payloadSummary: {
+    title: string;
+    subtitle: string;
+    fields: Array<{
+      label: string;
+      value: string;
+    }>;
+  };
+  error: {
+    name?: string;
+    message?: string;
+    stack?: string;
+  } | null;
+}
+
+export interface QueueActionResult {
+  queueName: ManagedQueueName;
+  action: QueueActionName;
+  affectedJobIds: string[];
+  queuePaused: boolean | null;
+  message: string;
+}
+
+export interface QueueHealthReport {
+  checkedAt: string;
+  status: QueueHealthStatus;
+  redis: {
+    configured: boolean;
+    reachable: boolean;
+    latencyMs: number | null;
+    queuePrefix: string;
+    error: {
+      name?: string;
+      message?: string;
+      stack?: string;
+    } | null;
+  };
+  workerTopology: {
+    mode: "embedded" | "external";
+    apiStartsWorkers: boolean;
+    standaloneWorkerCommand: string;
+    publishWorkerConcurrency: number;
+    emailWorkerConcurrency: number;
+  };
+  emailDelivery: {
+    providersConfigured: number;
+    deliverableProviders: number;
+    ready: boolean;
+    error: {
+      name?: string;
+      message?: string;
+      stack?: string;
+    } | null;
+  };
+  queues: QueueSnapshot[];
+  conditions: QueueOperationalCondition[];
+}
+
 export type EmailDeliveryEventStatus =
   | "queued"
   | "sent"
@@ -128,12 +247,27 @@ export interface EmailTestSendResult {
 export interface EmailNotificationSettings {
   id: string;
   category: EmailNotificationCategory;
+  label: string;
+  description: string | null;
+  classification: EmailNotificationClassification;
+  audience_roles: EmailNotificationAudienceRole[];
+  is_user_configurable: boolean;
   is_enabled: boolean;
   provider_override: EmailProvider | null;
   subject_template: string | null;
+  preheader_template: string | null;
+  html_template: string | null;
+  text_template: string | null;
+  draft_subject_template: string | null;
+  draft_preheader_template: string | null;
+  draft_html_template: string | null;
+  draft_text_template: string | null;
   template_mappings: Record<string, unknown>;
+  sample_data: Record<string, unknown>;
+  variable_definitions: EmailTemplateVariableDefinition[];
   paused_until: string | null;
   pause_reason: string | null;
+  last_published_at: string | null;
   updated_by: string | null;
   created_at: string;
   updated_at: string;

@@ -27,6 +27,10 @@ import type {
   EmailNotificationSettings,
   EmailProviderSettings,
   EmailTestSendResult,
+  ManagedQueueName,
+  QueueActionResult,
+  QueueFailedJobSummary,
+  QueueHealthReport,
 } from "@/types/admin";
 import type {
   AdminUser,
@@ -34,6 +38,7 @@ import type {
   GetAdminUsersParams,
   GetAdminAgentsParams,
   GetAdminEmailEventsParams,
+  GetAdminQueueFailedJobsParams,
   GetAdminLocationsParams,
   GetAdminPropertiesParams,
   GetAdminReferralEventsParams,
@@ -57,6 +62,9 @@ export const adminKeys = {
   emailProviders: () => ["admin", "email-providers"] as const,
   emailNotifications: () => ["admin", "email-notifications"] as const,
   emailHealth: () => ["admin", "email-health"] as const,
+  queueHealth: () => ["admin", "queue-health"] as const,
+  queueFailedJobs: (queueName?: ManagedQueueName, params?: GetAdminQueueFailedJobsParams) =>
+    ["admin", "queue-failed-jobs", queueName, params] as const,
   emailEvents: (params?: GetAdminEmailEventsParams) =>
     ["admin", "email-events", params] as const,
 };
@@ -508,6 +516,41 @@ export function useAdminEmailHealth(
   });
 }
 
+export function useAdminQueueHealth(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<QueueHealthReport>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.queueHealth(),
+    queryFn: () => adminApi.getQueueHealth(),
+    ...options,
+  });
+}
+
+export function useAdminQueueFailedJobs(
+  queueName?: ManagedQueueName,
+  params?: GetAdminQueueFailedJobsParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<QueueFailedJobSummary[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.queueFailedJobs(queueName, params),
+    queryFn: () => {
+      if (!queueName) {
+        throw new Error("Queue name is required");
+      }
+
+      return adminApi.getQueueFailedJobs(queueName, params);
+    },
+    enabled: Boolean(queueName),
+    ...options,
+  });
+}
+
 export function useAdminEmailEvents(
   params?: GetAdminEmailEventsParams,
   options?: Omit<
@@ -536,6 +579,29 @@ export function useSendAdminTestEmail() {
   });
 }
 
+export function useAdminQueueAction() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      queueName,
+      data,
+    }: {
+      queueName: ManagedQueueName;
+      data: {
+        action: "pause" | "resume" | "retry-failed" | "retry-job";
+        job_id?: string;
+        limit?: number;
+      };
+    }) => adminApi.applyQueueAction(queueName, data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "queue-health"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "queue-failed-jobs", variables.queueName] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "email-events"] });
+    },
+  });
+}
+
 export function useUpdateAdminEmailNotification() {
   const queryClient = useQueryClient();
 
@@ -546,12 +612,27 @@ export function useUpdateAdminEmailNotification() {
     }: {
       id: string;
       data: {
+        label?: string;
+        description?: string | null;
+        classification?: EmailNotificationSettings["classification"];
+        audience_roles?: EmailNotificationSettings["audience_roles"];
+        is_user_configurable?: boolean;
         is_enabled?: boolean;
         provider_override?: EmailNotificationSettings["provider_override"];
         subject_template?: string | null;
+        preheader_template?: string | null;
+        html_template?: string | null;
+        text_template?: string | null;
+        draft_subject_template?: string | null;
+        draft_preheader_template?: string | null;
+        draft_html_template?: string | null;
+        draft_text_template?: string | null;
         template_mappings?: Record<string, unknown>;
+        sample_data?: Record<string, unknown>;
+        variable_definitions?: EmailNotificationSettings["variable_definitions"];
         paused_until?: string | null;
         pause_reason?: string | null;
+        publish_changes?: boolean;
       };
     }) => adminApi.updateEmailNotification(id, data),
     onSuccess: () => {

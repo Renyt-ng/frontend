@@ -27,7 +27,12 @@ import type {
   EmailHealthReport,
   EmailNotificationSettings,
   EmailProviderSettings,
+  ManagedQueueName,
+  QueueActionName,
+  QueueActionResult,
+  QueueFailedJobSummary,
   EmailTestSendResult,
+  QueueHealthReport,
 } from "@/types/admin";
 
 export interface AdminUser extends Profile {
@@ -75,6 +80,10 @@ export interface GetAdminEmailEventsParams {
   provider?: string;
   event_status?: string;
   search?: string;
+  limit?: number;
+}
+
+export interface GetAdminQueueFailedJobsParams {
   limit?: number;
 }
 
@@ -423,6 +432,39 @@ export async function getEmailHealth() {
   return res.data;
 }
 
+export async function getQueueHealth() {
+  const res = await apiClient.get<ApiSuccessResponse<QueueHealthReport>>(
+    "/admin/queues/health",
+  );
+  return res.data;
+}
+
+export async function getQueueFailedJobs(
+  queueName: ManagedQueueName,
+  params?: GetAdminQueueFailedJobsParams,
+) {
+  const res = await apiClient.get<ApiSuccessResponse<QueueFailedJobSummary[]>>(
+    `/admin/queues/${queueName}/failed-jobs`,
+    { params },
+  );
+  return res.data;
+}
+
+export async function applyQueueAction(
+  queueName: ManagedQueueName,
+  data: {
+    action: QueueActionName;
+    job_id?: string;
+    limit?: number;
+  },
+) {
+  const res = await apiClient.post<ApiSuccessResponse<QueueActionResult>>(
+    `/admin/queues/${queueName}/actions`,
+    data,
+  );
+  return res.data;
+}
+
 export async function getEmailEvents(params?: GetAdminEmailEventsParams) {
   const res = await apiClient.get<ApiSuccessResponse<EmailDeliveryEvent[]>>(
     "/admin/email/events",
@@ -448,12 +490,27 @@ export async function sendEmailTest(data: {
 export async function updateEmailNotification(
   id: string,
   data: {
+    label?: string;
+    description?: string | null;
+    classification?: EmailNotificationSettings["classification"];
+    audience_roles?: EmailNotificationSettings["audience_roles"];
+    is_user_configurable?: boolean;
     is_enabled?: boolean;
     provider_override?: EmailNotificationSettings["provider_override"];
     subject_template?: string | null;
+    preheader_template?: string | null;
+    html_template?: string | null;
+    text_template?: string | null;
+    draft_subject_template?: string | null;
+    draft_preheader_template?: string | null;
+    draft_html_template?: string | null;
+    draft_text_template?: string | null;
     template_mappings?: Record<string, unknown>;
+    sample_data?: Record<string, unknown>;
+    variable_definitions?: EmailNotificationSettings["variable_definitions"];
     paused_until?: string | null;
     pause_reason?: string | null;
+    publish_changes?: boolean;
   },
 ) {
   const res = await apiClient.patch<
