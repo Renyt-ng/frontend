@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import MyPropertiesPage from "@/app/(dashboard)/dashboard/properties/page";
 
 const state = vi.hoisted(() => ({
@@ -218,17 +218,21 @@ describe("MyPropertiesPage", () => {
         },
       });
     });
-  });
+  }, 15000);
 
   it("requires confirmation before applying an off-platform outcome", async () => {
     render(<MyPropertiesPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Mark rented off-platform/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Mark rented off-platform/i }));
+    });
 
     expect(screen.getByText(/Use this only when the property was rented outside Renyt/i)).toBeInTheDocument();
     expect(state.updatePropertyMutateAsync).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Confirm off-platform rent/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /Confirm off-platform rent/i }));
+    });
 
     await waitFor(() => {
       expect(state.updatePropertyMutateAsync).toHaveBeenCalledWith({

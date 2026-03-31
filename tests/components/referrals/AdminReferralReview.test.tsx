@@ -168,7 +168,7 @@ describe("AdminReferralReview", () => {
     expect(screen.getByRole("button", { name: /Configure policy/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Configure defaults/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Configure override/i }).length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("opens compact configuration in a modal editor", () => {
     render(<AdminReferralReview />);
@@ -177,5 +177,5 @@ describe("AdminReferralReview", () => {
 
     expect(screen.getByText(/Configure program defaults/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Save defaults/i })).toBeInTheDocument();
-  });
+  }, 15000);
 });

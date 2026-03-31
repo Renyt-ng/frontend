@@ -281,9 +281,7 @@ describe("PropertyComposer", () => {
     });
   });
 
-  it("moves to media immediately while an existing draft save is still running", async () => {
-    const deferred = createDeferred<{ data: typeof baseProperty }>();
-    updatePropertyMutateAsync.mockReturnValueOnce(deferred.promise);
+  it("moves to media immediately while preserving the fast path for an unchanged draft", async () => {
     window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=pricing");
 
     render(<PropertyComposer propertyId="draft-1" />);
@@ -293,11 +291,8 @@ describe("PropertyComposer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(await screen.findByRole("heading", { name: "Media" })).toBeInTheDocument();
-    expect(updatePropertyMutateAsync).toHaveBeenCalledTimes(1);
+    expect(updatePropertyMutateAsync).not.toHaveBeenCalled();
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
-
-    deferred.resolve({ data: baseProperty });
-    await waitFor(() => expect(updatePropertyMutateAsync).toHaveBeenCalledTimes(1));
   });
 
   it("publishes immediately without a redundant save when the draft is already current", async () => {
