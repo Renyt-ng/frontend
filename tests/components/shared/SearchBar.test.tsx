@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SearchBar } from "@/components/search/SearchBar";
 
 const push = vi.fn();
+const useSearchParams = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
+  useSearchParams: () => useSearchParams(),
 }));
 
 vi.mock("@/lib/hooks", () => ({
@@ -37,6 +39,8 @@ vi.mock("@/lib/hooks", () => ({
 describe("SearchBar", () => {
   beforeEach(() => {
     push.mockReset();
+    useSearchParams.mockReset();
+    useSearchParams.mockReturnValue(new URLSearchParams());
   });
 
   it("does not show location suggestions before typing", () => {
@@ -61,6 +65,20 @@ describe("SearchBar", () => {
 
     expect(push).toHaveBeenCalledWith(
       "/search?area=Eti-Osa&location_slug=eti-osa-lga",
+    );
+  });
+
+  it("preserves the active search intent when submitting a new location", () => {
+    useSearchParams.mockReturnValue(
+      new URLSearchParams("listing_purpose=sale&verified=true"),
+    );
+
+    render(<SearchBar defaultArea="Ikoyi" />);
+
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(push).toHaveBeenCalledWith(
+      "/search?listing_purpose=sale&verified=true&area=Ikoyi",
     );
   });
 });

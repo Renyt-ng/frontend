@@ -1,7 +1,7 @@
 "use client";
 
-import { useDeferredValue, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocations } from "@/lib/hooks";
@@ -23,10 +23,19 @@ export function SearchBar({
   className,
 }: SearchBarProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [area, setArea] = useState(defaultArea);
   const [locationSlug, setLocationSlug] = useState(defaultLocationSlug);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const deferredArea = useDeferredValue(area.trim());
+
+  useEffect(() => {
+    setArea(defaultArea);
+  }, [defaultArea]);
+
+  useEffect(() => {
+    setLocationSlug(defaultLocationSlug);
+  }, [defaultLocationSlug]);
 
   const locationsQuery = useLocations({
     q: deferredArea || undefined,
@@ -36,16 +45,22 @@ export function SearchBar({
   const filtered = locationsQuery.data?.data ?? [];
 
   function buildSearchUrl(nextArea: string, nextLocationSlug?: string) {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(searchParams.toString());
     const trimmedArea = nextArea.trim();
 
     if (trimmedArea) {
       params.set("area", trimmedArea);
+    } else {
+      params.delete("area");
     }
 
     if (nextLocationSlug) {
       params.set("location_slug", nextLocationSlug);
+    } else {
+      params.delete("location_slug");
     }
+
+    params.delete("page");
 
     return `/search${params.toString() ? `?${params.toString()}` : ""}`;
   }

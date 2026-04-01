@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { Container } from "@/components/layout";
@@ -60,6 +60,8 @@ export function SearchPageClient({
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [hasHydratedInitialFilters, setHasHydratedInitialFilters] = useState(false);
+  const latestRequestIdRef = useRef(0);
   const sortOptions = [
     { value: "created_at:desc", label: "Newest First" },
     { value: "created_at:asc", label: "Oldest First" },
@@ -69,7 +71,7 @@ export function SearchPageClient({
 
   // Sync URL params → store on mount
   useEffect(() => {
-    if (initialArea || initialLocationSlug) {
+    if (initialLocationSlug) {
       setLocation(initialArea, initialLocationSlug);
     } else if (initialArea) {
       setArea(initialArea);
@@ -78,12 +80,16 @@ export function SearchPageClient({
     setVerifiedOnly(initialVerifiedOnly);
     setListingPurpose(initialListingPurpose);
     setPropertyTypes(initialPropertyTypes);
+    setHasHydratedInitialFilters(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch properties when filters change
   const fetchProperties = useCallback(async () => {
+    const requestId = latestRequestIdRef.current + 1;
+    latestRequestIdRef.current = requestId;
     setIsLoading(true);
+
     try {
       const res = await propertiesApi.searchProperties({
         area: area || undefined,
@@ -101,9 +107,13 @@ export function SearchPageClient({
         limit: 24,
       });
 
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
+
       const list = res.data ?? [];
       setProperties(list);
-  setTotal(res.pagination?.total ?? list.length);
+      setTotal(res.pagination?.total ?? list.length);
 
       // Build image map from joined property images
       const map: Record<string, PropertyImage[]> = {};
@@ -113,10 +123,16 @@ export function SearchPageClient({
       }
       setImageMap(map);
     } catch {
+      if (requestId !== latestRequestIdRef.current) {
+        return;
+      }
+
       setProperties([]);
       setTotal(0);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [
     area,
@@ -134,8 +150,12 @@ export function SearchPageClient({
   ]);
 
   useEffect(() => {
+    if (!hasHydratedInitialFilters) {
+      return;
+    }
+
     fetchProperties();
-  }, [fetchProperties]);
+  }, [fetchProperties, hasHydratedInitialFilters]);
 
   // Sync filters → URL
   useEffect(() => {
@@ -164,7 +184,7 @@ export function SearchPageClient({
       <div className="border-b border-[var(--color-border)] bg-white py-6">
         <Container>
           <div className="mx-auto max-w-2xl">
-            <SearchBar defaultArea={area} />
+            <SearchBar defaultArea={area} defaultLocationSlug={locationSlug} />
           </div>
           <div className="mt-4 flex justify-center sm:justify-start">
             <IntentToggle />

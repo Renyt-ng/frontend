@@ -14,8 +14,8 @@ import { useLocations } from "@/lib/hooks";
 import type { PropertyListingPurpose, PropertyType } from "@/types";
 
 const PURPOSE_OPTIONS: Array<{ value: PropertyListingPurpose; label: string }> = [
-  { value: "sale", label: "Buy" },
   { value: "rent", label: "Rent" },
+  { value: "sale", label: "Buy" },
 ];
 
 const PROPERTY_TYPE_OPTIONS = Object.entries(PROPERTY_TYPE_LABELS).map(
