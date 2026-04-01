@@ -26,6 +26,11 @@ export default function SettingsPage() {
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
 
   const profile = profileQuery.data?.data ?? user;
+  const initialFullName = profile?.full_name ?? "";
+  const initialPhone = profile?.phone ?? "";
+  const hasProfileChanges =
+    fullName !== initialFullName ||
+    phone !== initialPhone;
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -231,7 +236,11 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" isLoading={updateProfile.isPending}>
+              <Button
+                type="submit"
+                isLoading={updateProfile.isPending}
+                disabled={!hasProfileChanges}
+              >
                 <Save className="h-4 w-4" />
                 Save Changes
               </Button>

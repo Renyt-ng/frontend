@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildGoogleAuthCallbackUrl,
+  buildGoogleOAuthQueryParams,
   resolvePostAuthDestination,
   sanitizeRedirectTo,
 } from "@/lib/googleAuth";
@@ -34,5 +35,18 @@ describe("googleAuth", () => {
         resumeAction: "message",
       }),
     ).toBe("/properties/123?resumeAction=message&resumeAuth=1");
+  });
+
+  it("builds session-aware google oauth query params by default", () => {
+    expect(buildGoogleOAuthQueryParams()).toEqual({
+      include_granted_scopes: "true",
+    });
+  });
+
+  it("supports forcing account selection when explicitly requested", () => {
+    expect(buildGoogleOAuthQueryParams({ forceAccountSelection: true })).toEqual({
+      include_granted_scopes: "true",
+      prompt: "select_account",
+    });
   });
 });

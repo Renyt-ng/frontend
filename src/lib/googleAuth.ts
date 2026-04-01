@@ -2,6 +2,10 @@ import type { ResumeAction, AuthMode } from "@/lib/authNavigation";
 
 export type GoogleAuthRole = "tenant" | "agent";
 
+interface GoogleOAuthQueryParamsOptions {
+  forceAccountSelection?: boolean;
+}
+
 function isResumeAction(value: string | null): value is ResumeAction {
   return (
     value === "wishlist" ||
@@ -57,4 +61,13 @@ export function buildGoogleAuthCallbackUrl(input: {
   }
 
   return url.toString();
+}
+
+export function buildGoogleOAuthQueryParams(
+  options: GoogleOAuthQueryParamsOptions = {},
+) {
+  return {
+    include_granted_scopes: "true",
+    ...(options.forceAccountSelection ? { prompt: "select_account" } : {}),
+  };
 }

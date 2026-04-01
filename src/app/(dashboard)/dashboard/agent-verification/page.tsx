@@ -339,29 +339,61 @@ export default function AgentVerificationPage() {
               )}
             </div>
 
-            <div className="grid gap-4">
+            <section className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-deep-slate-blue)]/8 text-[var(--color-deep-slate-blue)]">
+                  <FileBadge2 className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                    Verification Documents
+                  </h2>
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    Upload clear, readable files for each required document before you submit your application.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4">
               {verificationSettingsQuery.data?.data.required_document_types.map((documentType) => {
                 const selectedFile = selectedFiles[documentType];
                 const error = documentErrors[documentType];
 
                 return (
-                  <div key={documentType} className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
-                    <label className="block text-sm font-medium text-[var(--color-text-primary)]">
-                      {getAgentVerificationDocumentLabel(documentType)}
-                    </label>
-                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                      Accepted types: {verificationSettingsQuery.data?.data.allowed_mime_types.join(", ")} · Max {verificationSettingsQuery.data?.data.max_file_size_mb}MB
-                    </p>
-                    <input
-                      type="file"
-                      className="mt-3 block w-full text-sm text-[var(--color-text-secondary)]"
-                      accept={verificationSettingsQuery.data?.data.allowed_mime_types.join(",")}
-                      onChange={(event) =>
-                        handleFileChange(documentType, event.target.files?.[0] ?? null)
-                      }
-                    />
+                  <div
+                    key={documentType}
+                    className="rounded-2xl border border-[var(--color-border)] bg-white p-4 shadow-sm"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="space-y-1">
+                        <label className="block text-sm font-semibold text-[var(--color-text-primary)]">
+                          {getAgentVerificationDocumentLabel(documentType)}
+                        </label>
+                        <p className="text-sm text-[var(--color-text-secondary)]">
+                          Accepted types: {verificationSettingsQuery.data?.data.allowed_mime_types.join(", ")}
+                        </p>
+                        <p className="text-sm text-[var(--color-text-secondary)]">
+                          Maximum file size: {verificationSettingsQuery.data?.data.max_file_size_mb}MB
+                        </p>
+                      </div>
+                      <span className="inline-flex w-fit rounded-full bg-[var(--color-deep-slate-blue)]/8 px-3 py-1 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-deep-slate-blue)]">
+                        Required
+                      </span>
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-border)] bg-gray-50 px-4 py-4">
+                      <input
+                        type="file"
+                        className="block w-full text-sm text-[var(--color-text-secondary)] file:mr-4 file:rounded-xl file:border-0 file:bg-[var(--color-deep-slate-blue)] file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-[#162d4a]"
+                        accept={verificationSettingsQuery.data?.data.allowed_mime_types.join(",")}
+                        onChange={(event) =>
+                          handleFileChange(documentType, event.target.files?.[0] ?? null)
+                        }
+                      />
+                    </div>
+
                     {selectedFile ? (
-                      <p className="mt-2 text-sm text-[var(--color-text-primary)]">
+                      <p className="mt-3 text-sm font-medium text-[var(--color-text-primary)]">
                         Selected: {selectedFile.name}
                       </p>
                     ) : null}
@@ -371,14 +403,11 @@ export default function AgentVerificationPage() {
                   </div>
                 );
               })}
-            </div>
-
-            <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4 text-sm text-[var(--color-text-secondary)]">
-              Admins will review your encrypted verification uploads from the dashboard and can approve or reject the submission immediately.
-            </div>
+              </div>
+            </section>
 
             <div className="flex flex-wrap gap-3">
-              <Button type="submit" isLoading={createAgent.isPending} disabled={blockedByHeadshot}>
+              <Button type="submit" isLoading={createAgent.isPending} variant="secondary" disabled={blockedByHeadshot}>
                 <FileBadge2 className="h-4 w-4" />
                 Submit Verification
               </Button>

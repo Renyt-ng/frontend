@@ -11,7 +11,10 @@ import { Button, Card, CardContent, Input } from "@/components/ui";
 import { setAuthToken } from "@/lib/api";
 import { syncAuthenticatedProfile } from "@/lib/authProfile";
 import { buildAuthHref, resolveAuthNavigation, type ResumeAction } from "@/lib/authNavigation";
-import { buildGoogleAuthCallbackUrl } from "@/lib/googleAuth";
+import {
+  buildGoogleAuthCallbackUrl,
+  buildGoogleOAuthQueryParams,
+} from "@/lib/googleAuth";
 import { useAuthStore } from "@/stores/authStore";
 
 const registerSchema = z
@@ -148,10 +151,7 @@ export function RegisterForm({
             resumeAction: authNavigation.resumeAction,
             role: selectedRole,
           }),
-          queryParams: {
-            access_type: "offline",
-            prompt: "select_account",
-          },
+          queryParams: buildGoogleOAuthQueryParams(),
         },
       });
 

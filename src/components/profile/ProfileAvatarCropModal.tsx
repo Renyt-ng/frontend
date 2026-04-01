@@ -12,6 +12,22 @@ import {
 } from "@/lib/profileAvatar";
 
 const PREVIEW_SIZE = 320;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+
+interface PointerPosition {
+  x: number;
+  y: number;
+}
+
+interface PinchState {
+  initialDistance: number;
+  initialZoom: number;
+  initialOffsetX: number;
+  initialOffsetY: number;
+  initialCenterX: number;
+  initialCenterY: number;
+}
 
 interface ProfileAvatarCropModalProps {
   isOpen: boolean;
@@ -38,6 +54,8 @@ export function ProfileAvatarCropModal({
   const [error, setError] = useState("");
   const imageRef = useRef<HTMLImageElement>(null);
   const dragState = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+  const activePointers = useRef<Map<number, PointerPosition>>(new Map());
+  const pinchState = useRef<PinchState | null>(null);
 
   const previewUrl = useMemo(() => {
     if (!file) {
@@ -76,7 +94,7 @@ export function ProfileAvatarCropModal({
       clampAvatarCropState(
         {
           ...current,
-          zoom: nextZoom,
+          zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom)),
         },
         naturalSize.width,
         naturalSize.height,
@@ -85,20 +103,99 @@ export function ProfileAvatarCropModal({
     );
   }
 
+  function getPinchSnapshot() {
+    const points = Array.from(activePointers.current.values());
+    if (points.length < 2) {
+      return null;
+    }
+
+    const [a, b] = points;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+
+    return {
+      distance: Math.hypot(dx, dy),
+      centerX: (a.x + b.x) / 2,
+      centerY: (a.y + b.y) / 2,
+    };
+  }
+
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (!imageLoaded) {
       return;
     }
 
-    dragState.current = {
-      pointerId: event.pointerId,
+    activePointers.current.set(event.pointerId, {
       x: event.clientX,
       y: event.clientY,
-    };
+    });
+
+    if (activePointers.current.size === 1) {
+      dragState.current = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      };
+      pinchState.current = null;
+    }
+
+    if (activePointers.current.size >= 2) {
+      const pinchSnapshot = getPinchSnapshot();
+      if (pinchSnapshot) {
+        pinchState.current = {
+          initialDistance: Math.max(1, pinchSnapshot.distance),
+          initialZoom: crop.zoom,
+          initialOffsetX: crop.offsetX,
+          initialOffsetY: crop.offsetY,
+          initialCenterX: pinchSnapshot.centerX,
+          initialCenterY: pinchSnapshot.centerY,
+        };
+      }
+      dragState.current = null;
+    }
+
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!activePointers.current.has(event.pointerId)) {
+      return;
+    }
+
+    activePointers.current.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+
+    if (activePointers.current.size >= 2) {
+      const pinchSnapshot = getPinchSnapshot();
+      const pinch = pinchState.current;
+
+      if (!pinchSnapshot || !pinch) {
+        return;
+      }
+
+      const zoomScale = pinchSnapshot.distance / pinch.initialDistance;
+      const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinch.initialZoom * zoomScale));
+      const offsetDeltaX = pinchSnapshot.centerX - pinch.initialCenterX;
+      const offsetDeltaY = pinchSnapshot.centerY - pinch.initialCenterY;
+
+      setCrop((current) =>
+        clampAvatarCropState(
+          {
+            ...current,
+            zoom: nextZoom,
+            offsetX: pinch.initialOffsetX + offsetDeltaX,
+            offsetY: pinch.initialOffsetY + offsetDeltaY,
+          },
+          naturalSize.width,
+          naturalSize.height,
+          PREVIEW_SIZE,
+        ),
+      );
+      return;
+    }
+
     if (!dragState.current || dragState.current.pointerId !== event.pointerId) {
       return;
     }
@@ -127,10 +224,42 @@ export function ProfileAvatarCropModal({
   }
 
   function handlePointerUp(event: React.PointerEvent<HTMLDivElement>) {
-    if (dragState.current?.pointerId === event.pointerId) {
-      dragState.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+
+    activePointers.current.delete(event.pointerId);
+
+    if (activePointers.current.size >= 2) {
+      const pinchSnapshot = getPinchSnapshot();
+      if (pinchSnapshot) {
+        pinchState.current = {
+          initialDistance: Math.max(1, pinchSnapshot.distance),
+          initialZoom: crop.zoom,
+          initialOffsetX: crop.offsetX,
+          initialOffsetY: crop.offsetY,
+          initialCenterX: pinchSnapshot.centerX,
+          initialCenterY: pinchSnapshot.centerY,
+        };
+      }
+      dragState.current = null;
+      return;
+    }
+
+    pinchState.current = null;
+
+    const remainingPointer = activePointers.current.entries().next();
+    if (!remainingPointer.done) {
+      const [pointerId, pointer] = remainingPointer.value;
+      dragState.current = {
+        pointerId,
+        x: pointer.x,
+        y: pointer.y,
+      };
+      return;
+    }
+
+    dragState.current = null;
   }
 
   async function handleConfirm() {
@@ -170,6 +299,7 @@ export function ProfileAvatarCropModal({
     >
       <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
         <p>Center your face inside the square crop. Drag to reposition and use zoom if needed.</p>
+        <p>On mobile, use two fingers to pinch and zoom.</p>
         <p>Use a professional headshot on a plain white background.</p>
       </div>
 
@@ -232,8 +362,8 @@ export function ProfileAvatarCropModal({
             </span>
             <input
               type="range"
-              min="1"
-              max="3"
+              min={MIN_ZOOM}
+              max={MAX_ZOOM}
               step="0.01"
               value={crop.zoom}
               onChange={(event) => handleZoomChange(Number(event.target.value))}

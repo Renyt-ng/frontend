@@ -47,6 +47,9 @@ describe("auth forms", () => {
           provider: "google",
           options: expect.objectContaining({
             redirectTo: expect.stringContaining("/auth/callback?mode=login"),
+            queryParams: {
+              include_granted_scopes: "true",
+            },
           }),
         }),
       );
@@ -65,6 +68,9 @@ describe("auth forms", () => {
           provider: "google",
           options: expect.objectContaining({
             redirectTo: expect.stringContaining("role=agent"),
+            queryParams: {
+              include_granted_scopes: "true",
+            },
           }),
         }),
       );

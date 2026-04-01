@@ -61,6 +61,10 @@ describe("EmailNotificationPreferencesCard", () => {
     expect(screen.queryByText(/agent verification approved/i)).toBeNull();
     expect(screen.queryByText(/^always on$/i)).toBeNull();
     expect(screen.getByText(/listing freshness reminders/i)).toBeInTheDocument();
+    expect(screen.getByText(/optional reminders only\. critical account emails stay on\./i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/mandatory account emails are still delivered/i),
+    ).toBeNull();
     expect(
       screen.getByRole("switch", {
         name: /email preference: listing freshness reminders/i,
