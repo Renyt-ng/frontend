@@ -169,7 +169,168 @@ export default function UsersPage() {
         />
       ) : (
         <Card>
-          <div className="overflow-x-auto">
+          <div className="space-y-4 p-4 lg:hidden">
+            {filtered.map((user) => {
+              const agentRecord = agentsByUserId.get(user.id);
+
+              return (
+                <div
+                  key={user.id}
+                  className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-white p-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <Avatar src={user.avatar_url} fallback={user.full_name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-[var(--color-text-primary)]">
+                        {user.full_name}
+                      </p>
+                      <p className="truncate text-xs text-[var(--color-text-secondary)]">
+                        {user.email ?? "No email"}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        user.role === "admin"
+                          ? "info"
+                          : user.role === "agent"
+                            ? "active"
+                            : "default"
+                      }
+                      size="sm"
+                    >
+                      {user.role}
+                    </Badge>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">
+                        Verification
+                      </p>
+                      <div className="mt-2">
+                        {agentRecord ? (
+                          <StatusBadge status={agentRecord.verification_status} size="sm" />
+                        ) : user.role === "agent" ? (
+                          <Badge variant="default" size="sm">
+                            No application
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-[var(--color-text-secondary)]">
+                            Not applicable
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">
+                        Status
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={user.status === "active" ? "active" : "rejected"}
+                          size="sm"
+                        >
+                          {user.status}
+                        </Badge>
+                        <span className="text-xs text-[var(--color-text-secondary)]">
+                          Joined {new Date(user.created_at).toLocaleDateString("en-NG")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">
+                      Headshot Review
+                    </p>
+                    <div className="mt-2">
+                      {user.role === "agent" ? (
+                        user.avatar_url ? (
+                          <div className="space-y-1">
+                            <StatusBadge status={user.avatar_review_status} size="sm" />
+                            {user.avatar_review_note && (
+                              <p className="text-xs text-[var(--color-text-secondary)]">
+                                {user.avatar_review_note}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="default" size="sm">
+                            Missing photo
+                          </Badge>
+                        )
+                      ) : (
+                        <span className="text-xs text-[var(--color-text-secondary)]">
+                          Not required
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {user.role === "agent" && user.avatar_url && (
+                      <>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="flex-1 min-w-[9rem]"
+                          onClick={() => handleApproveAvatar(user.id)}
+                          disabled={isMutating || user.avatar_review_status === "approved"}
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Approve Photo
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 min-w-[9rem]"
+                          onClick={() => {
+                            setFlagModalUser(user);
+                            setFlagNote(user.avatar_review_note ?? "");
+                          }}
+                          disabled={isMutating}
+                        >
+                          <Flag className="h-4 w-4" />
+                          Flag Photo
+                        </Button>
+                      </>
+                    )}
+
+                    {agentRecord && agentRecord.verification_status !== "approved" && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="flex-1 min-w-[9rem]"
+                        onClick={() => handleVerifyAgent(agentRecord.id)}
+                        disabled={isMutating}
+                      >
+                        <BadgeCheck className="h-4 w-4" />
+                        Verify
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 min-w-[9rem]"
+                      onClick={() => handleToggleSuspension(user)}
+                      disabled={isMutating}
+                    >
+                      {user.status === "active" ? (
+                        <Ban className="h-4 w-4" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      {user.status === "active" ? "Suspend" : "Restore"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[var(--color-border)]">

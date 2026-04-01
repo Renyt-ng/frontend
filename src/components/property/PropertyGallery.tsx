@@ -40,14 +40,18 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
         {images.length > 1 && (
           <>
             <button
+              type="button"
               onClick={prev}
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 shadow-md backdrop-blur-sm transition-opacity group-hover:opacity-100"
+              aria-label="Previous property image"
+              className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-[var(--color-text-primary)] opacity-100 shadow-md backdrop-blur-sm transition-opacity touch-manipulation sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
             <button
+              type="button"
               onClick={next}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 opacity-0 shadow-md backdrop-blur-sm transition-opacity group-hover:opacity-100"
+              aria-label="Next property image"
+              className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 text-[var(--color-text-primary)] opacity-100 shadow-md backdrop-blur-sm transition-opacity touch-manipulation sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -63,13 +67,15 @@ export function PropertyGallery({ images, title }: PropertyGalleryProps) {
 
       {/* Thumbnails */}
       {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pr-1">
           {images.map((img, idx) => (
             <button
               key={img.id}
+              type="button"
               onClick={() => setCurrentIndex(idx)}
+              aria-label={`View property image ${idx + 1}`}
               className={cn(
-                "h-16 w-20 flex-shrink-0 overflow-hidden rounded-lg border-2 transition-colors",
+                "h-14 w-[4.5rem] flex-shrink-0 snap-start overflow-hidden rounded-lg border-2 transition-colors sm:h-16 sm:w-20",
                 idx === currentIndex
                   ? "border-[var(--color-deep-slate-blue)]"
                   : "border-transparent opacity-70 hover:opacity-100",

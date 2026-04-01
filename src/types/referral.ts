@@ -37,6 +37,7 @@ export interface ReferralProfile {
   user_id: string;
   referral_code: string;
   accepted_terms_at: string;
+  accepted_terms_version: string;
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +125,7 @@ export interface ReferralPropertyCommissionPreview {
   program_enabled: boolean;
   preview: ReferralCommissionPreview;
   campaign_name: string | null;
+  terms_version: string;
 }
 
 export interface ReferralProgramAdminConfig {

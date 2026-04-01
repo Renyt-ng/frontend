@@ -14,11 +14,22 @@ import { Card, CardContent, Button, Badge } from "@/components/ui";
 import { EmptyState, StatusBadge } from "@/components/shared";
 import {
   useAdminAgents,
+  useAdminAgentVerificationSettings,
   useAdminProperties,
+  useUpdateAdminAgentVerificationSettings,
   useUpdateAgentStatus,
   useVerifyProperty,
 } from "@/lib/hooks";
+import { getAgentVerificationDocumentLabel } from "@/lib/agentVerification";
 import { formatCurrency, formatPropertyType } from "@/lib/utils";
+import type { AgentVerificationDocumentType } from "@/types";
+
+const agentDocumentTypeOptions: AgentVerificationDocumentType[] = [
+  "government_id",
+  "work_id",
+  "professional_license",
+  "proof_of_address",
+];
 
 type VerificationType = "agents" | "properties";
 
@@ -60,7 +71,9 @@ function TabBar({
 export default function VerificationsPage() {
   const [activeTab, setActiveTab] = useState<VerificationType>("agents");
   const agentsQuery = useAdminAgents();
+  const agentVerificationSettingsQuery = useAdminAgentVerificationSettings();
   const propertiesQuery = useAdminProperties();
+  const updateAgentVerificationSettings = useUpdateAdminAgentVerificationSettings();
   const updateAgentStatus = useUpdateAgentStatus();
   const verifyProperty = useVerifyProperty();
 
@@ -90,6 +103,8 @@ export default function VerificationsPage() {
   const totalRejected = rejectedAgents + rejectedProperties;
 
   const isBusy = updateAgentStatus.isPending || verifyProperty.isPending;
+  const selectedDocumentTypes =
+    agentVerificationSettingsQuery.data?.data.required_document_types ?? [];
 
   async function handleAgentDecision(
     id: string,
@@ -177,15 +192,62 @@ export default function VerificationsPage() {
       )}
 
       {activeTab === "agents" ? (
-        pendingAgents.length === 0 ? (
-          <EmptyState
-            icon={<ShieldCheck size={28} />}
-            title="No Pending Agent Verifications"
-            description="All agent applications have been reviewed. New submissions will appear here."
-          />
-        ) : (
-          <div className="grid gap-4">
-            {pendingAgents.map((agent) => (
+        <div className="grid gap-4">
+          <Card>
+            <CardContent className="space-y-4 p-5">
+              <div>
+                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                  Agent verification requirements
+                </h2>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  Choose which document types agents must upload before review.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {agentDocumentTypeOptions.map((documentType) => {
+                  const checked = selectedDocumentTypes.includes(documentType);
+
+                  return (
+                    <label
+                      key={documentType}
+                      className="flex items-start gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={async (event) => {
+                          const nextDocumentTypes = event.target.checked
+                            ? [...selectedDocumentTypes, documentType]
+                            : selectedDocumentTypes.filter((value) => value !== documentType);
+
+                          if (nextDocumentTypes.length === 0) {
+                            return;
+                          }
+
+                          await updateAgentVerificationSettings.mutateAsync({
+                            required_document_types: nextDocumentTypes,
+                          });
+                        }}
+                      />
+                      <span className="text-[var(--color-text-primary)]">
+                        {getAgentVerificationDocumentLabel(documentType)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {pendingAgents.length === 0 ? (
+            <EmptyState
+              icon={<ShieldCheck size={28} />}
+              title="No Pending Agent Verifications"
+              description="All agent applications have been reviewed. New submissions will appear here."
+            />
+          ) : (
+            pendingAgents.map((agent) => (
               <Card key={agent.id}>
                 <CardContent className="space-y-4 p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -222,11 +284,44 @@ export default function VerificationsPage() {
                       Reject
                     </Button>
                   </div>
+
+                  {(agent.verification_documents ?? []).length > 0 ? (
+                    <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        Uploaded documents
+                      </p>
+                      <div className="mt-3 grid gap-2">
+                        {agent.verification_documents.map((document) => (
+                          <div
+                            key={`${agent.id}-${document.storage_path}`}
+                            className="flex items-center justify-between rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm"
+                          >
+                            <div>
+                              <p className="font-medium text-[var(--color-text-primary)]">
+                                {getAgentVerificationDocumentLabel(document.document_type)}
+                              </p>
+                              <p className="text-[var(--color-text-secondary)]">{document.file_name}</p>
+                            </div>
+                            {document.signed_url ? (
+                              <a
+                                href={document.signed_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[var(--color-deep-slate-blue)] hover:underline"
+                              >
+                                Open
+                              </a>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
-            ))}
-          </div>
-        )
+            ))
+          )}
+        </div>
       ) : (
         pendingProperties.length === 0 ? (
           <EmptyState

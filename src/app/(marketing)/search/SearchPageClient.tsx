@@ -16,6 +16,7 @@ interface SearchPageClientProps {
   initialArea: string;
   initialLocationSlug: string;
   initialFreshOnly: boolean;
+  initialVerifiedOnly: boolean;
   initialListingPurpose: PropertyListingPurpose;
   initialPropertyTypes: PropertyType[];
 }
@@ -24,6 +25,7 @@ export function SearchPageClient({
   initialArea,
   initialLocationSlug,
   initialFreshOnly,
+  initialVerifiedOnly,
   initialListingPurpose,
   initialPropertyTypes,
 }: SearchPageClientProps) {
@@ -38,6 +40,7 @@ export function SearchPageClient({
     minPrice,
     maxPrice,
     freshOnly,
+    verifiedOnly,
     bedrooms,
     sortBy,
     sortOrder,
@@ -47,6 +50,7 @@ export function SearchPageClient({
     setListingPurpose,
     setPropertyTypes,
     setFreshOnly,
+    setVerifiedOnly,
     setSort,
     setPage,
   } = useSearchStore();
@@ -71,6 +75,7 @@ export function SearchPageClient({
       setArea(initialArea);
     }
     setFreshOnly(initialFreshOnly);
+    setVerifiedOnly(initialVerifiedOnly);
     setListingPurpose(initialListingPurpose);
     setPropertyTypes(initialPropertyTypes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,6 +93,7 @@ export function SearchPageClient({
         min_price: minPrice,
         max_price: maxPrice,
         fresh: freshOnly || undefined,
+        verified: verifiedOnly || undefined,
         bedrooms,
         sort_by: sortBy,
         sort_order: sortOrder,
@@ -97,7 +103,7 @@ export function SearchPageClient({
 
       const list = res.data ?? [];
       setProperties(list);
-      setTotal(list.length);
+  setTotal(res.pagination?.total ?? list.length);
 
       // Build image map from joined property images
       const map: Record<string, PropertyImage[]> = {};
@@ -120,6 +126,7 @@ export function SearchPageClient({
     minPrice,
     maxPrice,
     freshOnly,
+    verifiedOnly,
     bedrooms,
     sortBy,
     sortOrder,
@@ -141,6 +148,7 @@ export function SearchPageClient({
     if (maxPrice && maxPrice < Infinity)
       params.set("max_price", String(maxPrice));
     if (freshOnly) params.set("fresh", "true");
+    if (verifiedOnly) params.set("verified", "true");
     if (bedrooms) params.set("bedrooms", String(bedrooms));
     if (sortBy !== "created_at") params.set("sort_by", sortBy);
     if (sortOrder !== "desc") params.set("sort_order", sortOrder);
@@ -148,7 +156,7 @@ export function SearchPageClient({
     const qs = params.toString();
     router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [area, locationSlug, listingPurpose, propertyTypes, minPrice, maxPrice, freshOnly, bedrooms, sortBy, sortOrder]);
+  }, [area, locationSlug, listingPurpose, propertyTypes, minPrice, maxPrice, freshOnly, verifiedOnly, bedrooms, sortBy, sortOrder]);
 
   return (
     <div className="pb-16">
@@ -179,7 +187,7 @@ export function SearchPageClient({
           <Button
             variant="secondary"
             size="sm"
-            className="sm:hidden"
+            className="w-full sm:hidden"
             onClick={() => setShowMobileFilters(!showMobileFilters)}
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -187,8 +195,8 @@ export function SearchPageClient({
           </Button>
 
           {/* Sort + Result count */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[var(--color-text-secondary)]">
+          <div className="flex flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+            <span className="text-sm text-[var(--color-text-secondary)] sm:text-right">
               {isLoading
                 ? "Searching..."
                 : `${total} ${total === 1 ? "property" : "properties"}`}
@@ -204,7 +212,7 @@ export function SearchPageClient({
                 ];
                 setSort(by, order);
               }}
-              className="h-9 min-w-[170px] rounded-lg bg-white py-0 text-sm"
+              className="h-9 w-full min-w-0 rounded-lg bg-white py-0 text-sm sm:min-w-[170px]"
             />
           </div>
         </div>

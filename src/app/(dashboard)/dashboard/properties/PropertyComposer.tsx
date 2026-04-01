@@ -882,7 +882,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-28 sm:pb-24">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <Link
@@ -917,7 +917,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
         </div>
       )}
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
         {stepOrder.map((item, index) => {
           const isActive = item === step;
           const isComplete = index < currentStepIndex;
@@ -927,7 +927,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
               key={item}
               type="button"
               onClick={() => handleStepClick(item)}
-              className={`inline-flex min-w-max items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+              className={`inline-flex min-w-max snap-start items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
                   : isComplete
@@ -1581,9 +1581,9 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-white/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
-          <div className="text-sm text-[var(--color-text-secondary)]">
+          <div className="w-full text-sm text-[var(--color-text-secondary)] sm:w-auto">
             {step === "review"
               ? checklist.ready_to_publish
                 ? "All publish blockers are cleared."

@@ -211,6 +211,7 @@ export interface PropertySearchParams {
   max_price?: number;
   bedrooms?: number;
   bathrooms?: number;
+  verified?: boolean;
   status?: PropertyStatus;
   fresh?: boolean;
   page?: number;

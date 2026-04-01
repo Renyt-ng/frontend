@@ -231,7 +231,7 @@ export function DashboardSectionNav({
       aria-label={ariaLabel}
       className={cn("xl:sticky xl:top-24", className)}
     >
-      <div className="flex gap-2 overflow-x-auto pb-1 xl:flex-col xl:gap-1 xl:overflow-visible">
+      <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 xl:mx-0 xl:flex-col xl:gap-1 xl:overflow-visible xl:px-0">
         {items.map((item) => {
           const isActive = item.id === activeId;
 
@@ -242,7 +242,7 @@ export function DashboardSectionNav({
               onClick={() => setActiveId(item.id)}
               aria-current={isActive ? "true" : undefined}
               className={cn(
-                "flex min-h-11 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium whitespace-nowrap transition-all",
+                "flex min-h-11 snap-start items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium whitespace-nowrap transition-all",
                 isActive
                   ? "border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface)] text-[var(--dashboard-text-primary)] shadow-[var(--shadow-dashboard-sm)]"
                   : "border-transparent bg-[var(--dashboard-surface-alt)] text-[var(--dashboard-text-secondary)] hover:border-[var(--dashboard-border)] hover:text-[var(--dashboard-text-primary)]",
@@ -329,7 +329,7 @@ export function DashboardContextualHelp({
         <span
           role="tooltip"
           className={cn(
-            "absolute top-full z-20 mt-2 w-72 rounded-[18px] border border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface)] p-4 text-left shadow-[var(--shadow-dashboard-md)]",
+            "absolute top-full z-20 mt-2 w-[min(18rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] rounded-[18px] border border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface)] p-4 text-left shadow-[var(--shadow-dashboard-md)]",
             align === "end" ? "right-0" : "left-0",
           )}
         >

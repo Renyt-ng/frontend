@@ -8,12 +8,14 @@ const hooks = vi.hoisted(() => ({
   useAdminEmailHealth: vi.fn(),
   useAdminEmailNotifications: vi.fn(),
   useAdminEmailProviders: vi.fn(),
+  useAdminWorkflowDigestSchedule: vi.fn(),
   useAdminQueueAction: vi.fn(),
   useAdminQueueFailedJobs: vi.fn(),
   useAdminQueueHealth: vi.fn(),
   useSendAdminTestEmail: vi.fn(),
   useUpdateAdminEmailNotification: vi.fn(),
   useUpdateAdminEmailProvider: vi.fn(),
+  useUpdateAdminWorkflowDigestSchedule: vi.fn(),
 }));
 
 vi.mock("@/lib/hooks", () => hooks);
@@ -86,6 +88,24 @@ describe("EmailSettingsPage", () => {
     });
     hooks.useAdminEmailNotifications.mockReturnValue({
       data: { data: [] },
+      isLoading: false,
+      isError: false,
+    });
+    hooks.useAdminWorkflowDigestSchedule.mockReturnValue({
+      data: {
+        data: {
+          id: "digest-1",
+          is_enabled: true,
+          frequency: "daily",
+          hour_utc: 17,
+          minute_utc: 0,
+          last_run_at: null,
+          next_run_at: "2026-03-31T17:00:00.000Z",
+          updated_by: null,
+          created_at: "2026-03-30T00:00:00.000Z",
+          updated_at: "2026-03-30T00:00:00.000Z",
+        },
+      },
       isLoading: false,
       isError: false,
     });
@@ -213,6 +233,10 @@ describe("EmailSettingsPage", () => {
       isPending: false,
     });
     hooks.useUpdateAdminEmailNotification.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    hooks.useUpdateAdminWorkflowDigestSchedule.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });

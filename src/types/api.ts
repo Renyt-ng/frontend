@@ -3,6 +3,11 @@ export interface ApiSuccessResponse<T> {
   success: true;
   data: T;
   message?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 }
 
 /** Standard API error response shape */

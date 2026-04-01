@@ -11,7 +11,21 @@ import type {
 export async function enrollReferralProgram() {
   const res = await apiClient.post<ApiSuccessResponse<ReferralProfile>>(
     "/referrals/enroll",
-    {},
+    {
+      accepted_terms: true,
+      terms_version: "launch-v1",
+    },
+  );
+  return res.data;
+}
+
+export async function enrollReferralProgramWithTerms(data: {
+  accepted_terms: true;
+  terms_version: string;
+}) {
+  const res = await apiClient.post<ApiSuccessResponse<ReferralProfile>>(
+    "/referrals/enroll",
+    data,
   );
   return res.data;
 }

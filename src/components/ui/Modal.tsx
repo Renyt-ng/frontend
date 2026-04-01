@@ -46,11 +46,11 @@ export function Modal({
       onClose={onClose}
       aria-label={ariaLabel || title}
       className={cn(
-        "fixed inset-0 z-50 m-auto max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm",
+        "fixed inset-0 z-50 m-auto max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm sm:max-h-[85vh] sm:w-full",
         dialogClassName,
       )}
     >
-      <div className={cn("p-6", className)}>
+      <div className={cn("p-4 sm:p-6", className)}>
         {title && (
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
@@ -58,7 +58,9 @@ export function Modal({
             </h2>
             {showCloseButton ? (
               <button
+                type="button"
                 onClick={onClose}
+                aria-label="Close dialog"
                 className="rounded-lg p-1.5 text-[var(--color-text-secondary)] transition-colors hover:bg-gray-100"
               >
                 <X className="h-5 w-5" />

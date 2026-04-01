@@ -46,7 +46,13 @@ export {
   useSignLease,
 } from "./useLeases";
 
-export { agentKeys, useMyAgent, useAgent, useCreateAgent } from "./useAgents";
+export {
+  agentKeys,
+  useMyAgent,
+  useAgent,
+  useCreateAgent,
+  useAgentVerificationSettings,
+} from "./useAgents";
 
 export {
   profileKeys,
@@ -63,19 +69,26 @@ export {
   useAdminReferralEvents,
   useAdminListingFreshnessPolicy,
   useAdminReferralProgram,
+  useAdminAgentVerificationSettings,
   useAdminUsers,
   useAdminAgents,
   useAdminProperties,
   useAdminLocations,
   useAdminPropertyTypes,
+  useAdminFeeTypes,
   useCreateAdminLocation,
+  useCreateAdminFeeType,
   useCreateAdminPropertyType,
   useUpdateAdminLocation,
+  useUpdateAdminFeeType,
   useUpdateAdminPropertyType,
   useAdminEmailProviders,
   useUpdateAdminEmailProvider,
   useAdminEmailNotifications,
+  useAdminWorkflowDigestSchedule,
   useUpdateAdminEmailNotification,
+  useUpdateAdminWorkflowDigestSchedule,
+  useUpdateAdminAgentVerificationSettings,
   useAdminEmailHealth,
   useAdminQueueHealth,
   useAdminQueueFailedJobs,

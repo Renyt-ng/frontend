@@ -200,7 +200,7 @@ export default function LocationsPage() {
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Select
               value={filters.kind}
               onChange={(event) =>
@@ -210,7 +210,7 @@ export default function LocationsPage() {
                 }))
               }
               options={filterKindOptions}
-              className="h-11 min-w-[168px]"
+              className="h-11 w-full sm:min-w-[168px]"
             />
             <input
               value={filters.search}
@@ -218,7 +218,7 @@ export default function LocationsPage() {
                 setFilters((current) => ({ ...current, search: event.target.value }))
               }
               placeholder="Search locations or aliases"
-              className="h-11 min-w-[240px] rounded-xl border border-[var(--color-border)] px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+              className="h-11 w-full min-w-0 rounded-xl border border-[var(--color-border)] px-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10 sm:min-w-[240px]"
             />
           </div>
           <p className="text-sm text-[var(--color-text-secondary)]">

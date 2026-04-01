@@ -118,7 +118,9 @@ describe("Dashboard primitives", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More information" }));
 
-    expect(screen.getByRole("tooltip")).toBeTruthy();
+    expect(screen.getByRole("tooltip")).toHaveClass(
+      "max-w-[calc(100vw-2rem)]",
+    );
     expect(screen.getByText("Why this matters")).toBeTruthy();
     expect(
       screen.getByText("This metric updates after each review cycle."),
@@ -140,5 +142,6 @@ describe("Dashboard primitives", () => {
 
     expect(eventsLink).toHaveAttribute("href", "#events");
     expect(eventsLink).toHaveAttribute("aria-current", "true");
+    expect(eventsLink).toHaveClass("snap-start");
   });
 });

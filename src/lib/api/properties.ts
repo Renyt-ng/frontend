@@ -64,7 +64,7 @@ function normalizeProperty<T extends RawProperty>(property: T): T & PropertyWith
   };
 }
 
-function mapSearchParams(params?: PropertySearchParams) {
+export function mapPropertySearchParams(params?: PropertySearchParams) {
   if (!params) {
     return undefined;
   }
@@ -78,7 +78,7 @@ function mapSearchParams(params?: PropertySearchParams) {
     maxPrice: params.max_price,
     bedrooms: params.bedrooms,
     fresh: params.fresh,
-    verified: params.status === undefined ? undefined : undefined,
+    verified: params.verified,
     page: params.page,
     limit: params.limit,
     sort:
@@ -95,7 +95,7 @@ function mapSearchParams(params?: PropertySearchParams) {
 export async function searchProperties(params?: PropertySearchParams) {
   const res = await apiClient.get<ApiSuccessResponse<Property[]>>(
     "/properties",
-    { params: mapSearchParams(params) },
+    { params: mapPropertySearchParams(params) },
   );
   return {
     ...res.data,

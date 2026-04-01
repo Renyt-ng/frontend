@@ -7,8 +7,10 @@ import {
 import { adminApi } from "@/lib/api";
 import type {
   Agent,
+  AgentVerificationSettings,
   AdminReferralEvent,
   ApiSuccessResponse,
+  FeeType,
   Location,
   ListingFreshnessPolicy,
   Property,
@@ -27,6 +29,7 @@ import type {
   EmailNotificationSettings,
   EmailProviderSettings,
   EmailTestSendResult,
+  AdminWorkflowDigestSchedule,
   ManagedQueueName,
   QueueActionResult,
   QueueFailedJobSummary,
@@ -51,6 +54,7 @@ export const adminKeys = {
   referrals: (params?: GetAdminReferralEventsParams) =>
     ["admin", "referrals", params] as const,
   referralProgram: () => ["admin", "referrals", "program"] as const,
+  agentVerificationSettings: () => ["admin", "agent-verification-settings"] as const,
   listingFreshnessPolicy: () => ["admin", "listing-freshness-policy"] as const,
   users: (params?: GetAdminUsersParams) => ["admin", "users", params] as const,
   agents: (params?: GetAdminAgentsParams) => ["admin", "agents", params] as const,
@@ -59,8 +63,10 @@ export const adminKeys = {
   locations: (params?: GetAdminLocationsParams) =>
     ["admin", "locations", params] as const,
   propertyTypes: () => ["admin", "property-types"] as const,
+  feeTypes: () => ["admin", "fee-types"] as const,
   emailProviders: () => ["admin", "email-providers"] as const,
   emailNotifications: () => ["admin", "email-notifications"] as const,
+  workflowDigestSchedule: () => ["admin", "workflow-digest-schedule"] as const,
   emailHealth: () => ["admin", "email-health"] as const,
   queueHealth: () => ["admin", "queue-health"] as const,
   queueFailedJobs: (queueName?: ManagedQueueName, params?: GetAdminQueueFailedJobsParams) =>
@@ -147,6 +153,31 @@ export function useAdminListingFreshnessPolicy(
     queryKey: adminKeys.listingFreshnessPolicy(),
     queryFn: () => adminApi.getListingFreshnessPolicy(),
     ...options,
+  });
+}
+
+export function useAdminAgentVerificationSettings(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AgentVerificationSettings>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.agentVerificationSettings(),
+    queryFn: () => adminApi.getAgentVerificationSettings(),
+    ...options,
+  });
+}
+
+export function useUpdateAdminAgentVerificationSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.updateAgentVerificationSettings,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.agentVerificationSettings() });
+      queryClient.invalidateQueries({ queryKey: ["agents", "verification-settings"] });
+    },
   });
 }
 
@@ -427,6 +458,55 @@ export function useCreateAdminPropertyType() {
   });
 }
 
+export function useAdminFeeTypes(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<FeeType[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.feeTypes(),
+    queryFn: () => adminApi.getFeeTypes(),
+    ...options,
+  });
+}
+
+export function useCreateAdminFeeType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.createFeeType,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.feeTypes() });
+      queryClient.invalidateQueries({ queryKey: ["properties", "fee-types"] });
+    },
+  });
+}
+
+export function useUpdateAdminFeeType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        name?: string;
+        description?: string | null;
+        supports_fixed?: boolean;
+        supports_percentage?: boolean;
+        is_active?: boolean;
+      };
+    }) => adminApi.updateFeeType(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.feeTypes() });
+      queryClient.invalidateQueries({ queryKey: ["properties", "fee-types"] });
+    },
+  });
+}
+
 export function useUpdateAdminPropertyType() {
   const queryClient = useQueryClient();
 
@@ -500,6 +580,30 @@ export function useAdminEmailNotifications(
     queryKey: adminKeys.emailNotifications(),
     queryFn: () => adminApi.getEmailNotifications(),
     ...options,
+  });
+}
+
+export function useAdminWorkflowDigestSchedule(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AdminWorkflowDigestSchedule>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.workflowDigestSchedule(),
+    queryFn: () => adminApi.getAdminWorkflowDigestSchedule(),
+    ...options,
+  });
+}
+
+export function useUpdateAdminWorkflowDigestSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.updateAdminWorkflowDigestSchedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.workflowDigestSchedule() });
+    },
   });
 }
 

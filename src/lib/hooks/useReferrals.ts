@@ -52,7 +52,8 @@ export function useEnrollReferralProgram() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => referralsApi.enrollReferralProgram(),
+    mutationFn: (data: { accepted_terms: true; terms_version: string }) =>
+      referralsApi.enrollReferralProgramWithTerms(data),
     onSuccess: (response: ApiSuccessResponse<ReferralProfile>) => {
       queryClient.setQueryData<ApiSuccessResponse<ReferralDashboard>>(
         referralKeys.dashboard(),

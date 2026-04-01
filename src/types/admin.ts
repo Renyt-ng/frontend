@@ -1,4 +1,4 @@
-import type { PropertyTypeDefinition } from "./property";
+import type { FeeType, PropertyTypeDefinition } from "./property";
 
 export type EmailProvider = "ses" | "brevo" | "mailgun";
 
@@ -23,7 +23,9 @@ export type EmailNotificationCategory =
   | "lease_fully_signed"
   | "user_suspended"
   | "user_restored"
-  | "admin_operational_alert";
+  | "admin_operational_alert"
+  | "admin_workflow_alert"
+  | "admin_workflow_digest";
 
 export type EmailNotificationClassification =
   | "mandatory"
@@ -274,3 +276,19 @@ export interface EmailNotificationSettings {
 }
 
 export type AdminPropertyType = PropertyTypeDefinition;
+export type AdminFeeType = FeeType;
+
+export type AdminWorkflowDigestFrequency = "hourly" | "daily";
+
+export interface AdminWorkflowDigestSchedule {
+  id: string;
+  is_enabled: boolean;
+  frequency: AdminWorkflowDigestFrequency;
+  hour_utc: number;
+  minute_utc: number;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}

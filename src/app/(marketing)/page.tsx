@@ -63,7 +63,7 @@ export default function HomePage() {
           className="object-cover object-center"
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,32,0.48)_0%,rgba(15,23,32,0.62)_28%,rgba(15,23,32,0.72)_100%)]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(180deg,rgba(15,23,32,0)_0%,rgba(15,23,32,0.42)_45%,rgba(249,250,251,1)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-[linear-gradient(180deg,rgba(15,23,32,0)_0%,rgba(8,12,16,0.2)_18%,rgba(8,12,16,0.58)_48%,rgba(8,12,16,0.78)_68%,rgba(244,245,247,0.96)_92%,rgba(255,255,255,1)_100%)] blur-[10px]" />
 
         <Container size="md" className="relative">
           <div className="mx-auto max-w-4xl text-center text-white">
@@ -247,7 +247,7 @@ export default function HomePage() {
       </section>
 
       {/* ─── How It Works ─────────────────────────────────────── */}
-      <section className="py-16 sm:py-24">
+      <section id="how-it-works" className="py-16 sm:py-24 scroll-mt-24">
         <Container size="md">
           <h2 className="text-center text-2xl font-bold text-[var(--color-text-primary)] sm:text-3xl">
             How Renyt Works

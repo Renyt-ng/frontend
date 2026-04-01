@@ -14,6 +14,7 @@ describe("searchStore", () => {
     expect(state.minPrice).toBeUndefined();
     expect(state.maxPrice).toBeUndefined();
     expect(state.freshOnly).toBe(false);
+    expect(state.verifiedOnly).toBe(false);
     expect(state.bedrooms).toBeUndefined();
     expect(state.bathrooms).toBeUndefined();
     expect(state.sortBy).toBe("created_at");
@@ -63,6 +64,12 @@ describe("searchStore", () => {
     expect(useSearchStore.getState().page).toBe(1);
   });
 
+  it("setVerifiedOnly updates the verified filter", () => {
+    useSearchStore.getState().setVerifiedOnly(true);
+    expect(useSearchStore.getState().verifiedOnly).toBe(true);
+    expect(useSearchStore.getState().page).toBe(1);
+  });
+
   it("setBedrooms updates bedroom count", () => {
     useSearchStore.getState().setBedrooms(3);
     expect(useSearchStore.getState().bedrooms).toBe(3);
@@ -87,6 +94,7 @@ describe("searchStore", () => {
     expect(state.propertyTypes).toEqual([]);
     expect(state.minPrice).toBeUndefined();
     expect(state.freshOnly).toBe(false);
+    expect(state.verifiedOnly).toBe(false);
     expect(state.page).toBe(1);
   });
 });

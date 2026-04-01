@@ -14,10 +14,12 @@ export function FilterBar() {
     minPrice,
     maxPrice,
     freshOnly,
+    verifiedOnly,
     bedrooms,
     setPropertyTypes,
     setPriceRange,
     setFreshOnly,
+    setVerifiedOnly,
     setBedrooms,
     resetFilters,
   } = useSearchStore();
@@ -44,13 +46,13 @@ export function FilterBar() {
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <MultiSelect
         options={propertyTypeOptions}
         value={propertyTypes}
         onChange={(nextValue) => setPropertyTypes(nextValue as PropertyType[])}
         emptyLabel="Any"
-        className="h-10 min-w-[150px] rounded-lg text-sm"
+        className="h-10 w-full rounded-lg text-sm sm:w-auto sm:min-w-[150px]"
       />
 
       <Select
@@ -69,7 +71,7 @@ export function FilterBar() {
             setPriceRange(undefined, undefined);
           }
         }}
-        className="h-10 min-w-[140px] rounded-lg text-sm"
+        className="h-10 w-full rounded-lg text-sm sm:w-auto sm:min-w-[140px]"
       />
 
       <Select
@@ -79,13 +81,13 @@ export function FilterBar() {
         onChange={(e) =>
           setBedrooms(e.target.value ? Number(e.target.value) : undefined)
         }
-        className="h-10 min-w-[130px] rounded-lg text-sm"
+        className="h-10 w-full rounded-lg text-sm sm:w-auto sm:min-w-[130px]"
       />
 
       <button
         type="button"
         onClick={() => setFreshOnly(!freshOnly)}
-        className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+        className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors sm:w-auto ${
           freshOnly
             ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
             : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-gray-50"
@@ -94,16 +96,29 @@ export function FilterBar() {
         Fresh listings
       </button>
 
-      {(propertyTypes.length > 0 || minPrice || bedrooms || freshOnly) && (
+      <button
+        type="button"
+        onClick={() => setVerifiedOnly(!verifiedOnly)}
+        className={`w-full rounded-lg border px-3 py-2 text-sm font-medium transition-colors sm:w-auto ${
+          verifiedOnly
+            ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
+            : "border-[var(--color-border)] bg-white text-[var(--color-text-secondary)] hover:bg-gray-50"
+        }`}
+      >
+        Verified only
+      </button>
+
+      {(propertyTypes.length > 0 || minPrice || bedrooms || freshOnly || verifiedOnly) && (
         <button
+          type="button"
           onClick={resetFilters}
-          className="rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-gray-100 transition-colors"
+          className="w-full rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-gray-100 sm:w-auto"
         >
           Clear filters
         </button>
       )}
 
-      <span className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+      <span className="w-full text-center text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)] sm:w-auto sm:text-left">
         {listingPurpose === "sale" ? "Sale pricing" : "Rental pricing"}
       </span>
     </div>

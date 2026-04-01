@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Activity,
   Braces,
+  Clock3,
   CheckCircle2,
   CircleAlert,
   Database,
@@ -29,12 +30,14 @@ import {
   useAdminEmailHealth,
   useAdminEmailNotifications,
   useAdminEmailProviders,
+  useAdminWorkflowDigestSchedule,
   useAdminQueueAction,
   useAdminQueueFailedJobs,
   useAdminQueueHealth,
   useSendAdminTestEmail,
   useUpdateAdminEmailNotification,
   useUpdateAdminEmailProvider,
+  useUpdateAdminWorkflowDigestSchedule,
 } from "@/lib/hooks";
 import {
   formatQueueConditionState,
@@ -56,6 +59,7 @@ import {
 } from "@/lib/jsonEditor";
 import type {
   EmailDeliveryEvent,
+  AdminWorkflowDigestSchedule,
   ManagedQueueName,
   EmailNotificationSettings,
   EmailProviderSettings,
@@ -143,6 +147,10 @@ function LiveRefreshBadge({
       </span>
     </div>
   );
+}
+
+function formatDigestRunLabel(value?: string | null) {
+  return value ? new Date(value).toLocaleString() : "Not scheduled yet";
 }
 
 function ReadinessCheck({
@@ -1217,8 +1225,10 @@ export default function EmailSettingsPage() {
   });
   const providersQuery = useAdminEmailProviders();
   const notificationsQuery = useAdminEmailNotifications();
+  const workflowDigestScheduleQuery = useAdminWorkflowDigestSchedule();
   const updateProvider = useUpdateAdminEmailProvider();
   const updateNotification = useUpdateAdminEmailNotification();
+  const updateWorkflowDigestSchedule = useUpdateAdminWorkflowDigestSchedule();
   const sendTestEmail = useSendAdminTestEmail();
   const queueAction = useAdminQueueAction();
   const [selectedProvider, setSelectedProvider] = useState<EmailProviderSettings | null>(
@@ -1233,11 +1243,19 @@ export default function EmailSettingsPage() {
   const [testSendStatus, setTestSendStatus] = useState<string | null>(null);
   const [selectedQueueName, setSelectedQueueName] = useState<string | null>(null);
   const [queueActionStatus, setQueueActionStatus] = useState<string | null>(null);
+  const [workflowDigestStatus, setWorkflowDigestStatus] = useState<string | null>(null);
+  const [workflowDigestForm, setWorkflowDigestForm] = useState({
+    is_enabled: true,
+    frequency: "daily" as AdminWorkflowDigestSchedule["frequency"],
+    hour_utc: 17,
+    minute_utc: 0,
+  });
 
   const providers = useMemo(
     () => sortProviders(providersQuery.data?.data ?? []),
     [providersQuery.data?.data],
   );
+  const workflowDigestSchedule = workflowDigestScheduleQuery.data?.data;
   const events = emailEventsQuery.data?.data ?? [];
   const notifications = notificationsQuery.data?.data ?? [];
   const health = emailHealthQuery.data?.data ?? [];
@@ -1278,12 +1296,26 @@ export default function EmailSettingsPage() {
   const failedQueueJobs = queueFailedJobsQuery.data?.data ?? [];
   const sectionItems = [
     { id: "email-health", label: "Health", count: health.length },
+    { id: "email-digest", label: "Digest" },
     { id: "email-templates", label: "Templates", count: notifications.length },
     { id: "email-events", label: "Events", count: events.length },
     { id: "email-providers", label: "Providers", count: providers.length },
     { id: "email-test-send", label: "Test send" },
     { id: "email-advanced", label: "Advanced", count: queueAttentionCount },
   ];
+
+  useEffect(() => {
+    if (!workflowDigestSchedule) {
+      return;
+    }
+
+    setWorkflowDigestForm({
+      is_enabled: workflowDigestSchedule.is_enabled,
+      frequency: workflowDigestSchedule.frequency,
+      hour_utc: workflowDigestSchedule.hour_utc,
+      minute_utc: workflowDigestSchedule.minute_utc,
+    });
+  }, [workflowDigestSchedule]);
 
   async function handleProviderSave(
     providerId: string,
@@ -1373,6 +1405,23 @@ export default function EmailSettingsPage() {
       setQueueActionStatus(result.message ?? "Queue action applied.");
     } catch {
       setQueueActionStatus("Queue action failed. Check queue connectivity and try again.");
+    }
+  }
+
+  async function handleWorkflowDigestSave(event: React.FormEvent) {
+    event.preventDefault();
+    setWorkflowDigestStatus(null);
+
+    try {
+      await updateWorkflowDigestSchedule.mutateAsync({
+        is_enabled: workflowDigestForm.is_enabled,
+        frequency: workflowDigestForm.frequency,
+        hour_utc: workflowDigestForm.hour_utc,
+        minute_utc: workflowDigestForm.minute_utc,
+      });
+      setWorkflowDigestStatus("Digest schedule saved.");
+    } catch {
+      setWorkflowDigestStatus("Could not save digest schedule. Try again.");
     }
   }
 
@@ -1476,6 +1525,134 @@ export default function EmailSettingsPage() {
                   <ProviderHealthCard key={report.provider_id} report={report} />
                 ))}
               </div>
+            </DashboardPanel>
+          </section>
+
+          <section id="email-digest" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Workflow digest schedule"
+                description="Control when lower-priority admin workflow activity is bundled into a digest email."
+                helper={
+                  <DashboardContextualHelp
+                    label="More information about the digest schedule"
+                    title="How the digest schedule works"
+                  >
+                    Workflow alerts still go out immediately. This schedule controls the grouped admin digest built from queued workflow events.
+                  </DashboardContextualHelp>
+                }
+              />
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <QueueSummaryCard
+                  icon={Clock3}
+                  label="Next digest"
+                  value={formatDigestRunLabel(workflowDigestSchedule?.next_run_at)}
+                  meta="Next scheduled admin digest run"
+                />
+                <QueueSummaryCard
+                  icon={Clock3}
+                  label="Last digest"
+                  value={formatDigestRunLabel(workflowDigestSchedule?.last_run_at)}
+                  meta="Most recent digest dispatch or empty run"
+                />
+                <QueueSummaryCard
+                  icon={Mail}
+                  label="Digest mode"
+                  value={workflowDigestForm.is_enabled ? "Enabled" : "Paused"}
+                  meta={workflowDigestForm.frequency === "hourly" ? "Runs once every hour" : "Runs once each day"}
+                />
+              </div>
+
+              <form onSubmit={handleWorkflowDigestSave} className="grid gap-4 rounded-[24px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5 lg:grid-cols-4">
+                <label className="space-y-2 text-sm text-[var(--dashboard-text-primary)]">
+                  <span className="font-medium">Status</span>
+                  <Select
+                    value={workflowDigestForm.is_enabled ? "enabled" : "paused"}
+                    onChange={(event) =>
+                      setWorkflowDigestForm((current) => ({
+                        ...current,
+                        is_enabled: event.target.value === "enabled",
+                      }))
+                    }
+                    options={[
+                      { value: "enabled", label: "Enabled" },
+                      { value: "paused", label: "Paused" },
+                    ]}
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm text-[var(--dashboard-text-primary)]">
+                  <span className="font-medium">Cadence</span>
+                  <Select
+                    value={workflowDigestForm.frequency}
+                    onChange={(event) =>
+                      setWorkflowDigestForm((current) => ({
+                        ...current,
+                        frequency: event.target.value as AdminWorkflowDigestSchedule["frequency"],
+                      }))
+                    }
+                    options={[
+                      { value: "daily", label: "Daily" },
+                      { value: "hourly", label: "Hourly" },
+                    ]}
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm text-[var(--dashboard-text-primary)]">
+                  <span className="font-medium">Hour (UTC)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={workflowDigestForm.hour_utc}
+                    onChange={(event) =>
+                      setWorkflowDigestForm((current) => ({
+                        ...current,
+                        hour_utc: Number(event.target.value),
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-[var(--dashboard-border)] bg-white px-4 text-sm focus:border-[var(--dashboard-accent)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--dashboard-accent)]/10"
+                  />
+                </label>
+
+                <label className="space-y-2 text-sm text-[var(--dashboard-text-primary)]">
+                  <span className="font-medium">Minute (UTC)</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    value={workflowDigestForm.minute_utc}
+                    onChange={(event) =>
+                      setWorkflowDigestForm((current) => ({
+                        ...current,
+                        minute_utc: Number(event.target.value),
+                      }))
+                    }
+                    className="h-11 rounded-xl border border-[var(--dashboard-border)] bg-white px-4 text-sm focus:border-[var(--dashboard-accent)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--dashboard-accent)]/10"
+                  />
+                </label>
+
+                <div className="lg:col-span-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                    Use hourly for high-touch operations or daily for a lighter admin inbox.
+                  </p>
+                  <Button
+                    type="submit"
+                    variant="dashboardPrimary"
+                    isLoading={updateWorkflowDigestSchedule.isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                    Save digest schedule
+                  </Button>
+                </div>
+
+                {workflowDigestStatus ? (
+                  <p className="lg:col-span-4 text-sm text-[var(--dashboard-text-secondary)]">
+                    {workflowDigestStatus}
+                  </p>
+                ) : null}
+              </form>
             </DashboardPanel>
           </section>
 

@@ -21,6 +21,7 @@ import {
   Shapes,
   MapPinned,
   Gift,
+  BadgePercent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui";
@@ -95,6 +96,13 @@ const NAV_ITEMS = [
     href: "/dashboard/property-types",
     label: "Property Types",
     icon: Shapes,
+    roles: ["admin"],
+    section: "Operations",
+  },
+  {
+    href: "/dashboard/fee-types",
+    label: "Fee Types",
+    icon: BadgePercent,
     roles: ["admin"],
     section: "Operations",
   },
@@ -181,7 +189,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[var(--dashboard-bg)] text-[var(--dashboard-text-primary)]">
+    <div className="flex h-dvh min-w-0 overflow-hidden bg-[var(--dashboard-bg)] text-[var(--dashboard-text-primary)]">
       {/* ─── Desktop Sidebar ─────────────────────── */}
       <aside className="hidden h-dvh w-64 flex-shrink-0 overflow-hidden border-r border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] lg:block">
         <div className="flex h-full flex-col">
@@ -280,7 +288,7 @@ export default function DashboardLayout({
             className="absolute inset-0 bg-black/18 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-72 border-r border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] shadow-[var(--shadow-dashboard-md)]">
+          <aside className="absolute left-0 top-0 flex h-full w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col border-r border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] shadow-[var(--shadow-dashboard-md)]">
             <div className="flex h-18 items-center justify-between border-b border-[var(--dashboard-border)] px-5">
               <Link href="/" className="flex items-center">
                 <Image
@@ -299,7 +307,7 @@ export default function DashboardLayout({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <nav className="space-y-6 overflow-y-auto p-4" aria-label="Dashboard navigation">
+            <nav className="flex-1 space-y-6 overflow-y-auto p-4" aria-label="Dashboard navigation">
               {navSections.map((section) => (
                 <div key={section} className="space-y-2">
                   <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
@@ -387,17 +395,17 @@ export default function DashboardLayout({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
               {getRoleBadgeLabel(userRole)}
             </p>
-            <span className="text-lg font-semibold text-[var(--dashboard-text-primary)]">
+            <span className="block truncate text-lg font-semibold text-[var(--dashboard-text-primary)]">
               {pageLabel}
             </span>
           </div>
         </header>
 
-        <main className="dashboard-content-scroll flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="dashboard-content-scroll min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

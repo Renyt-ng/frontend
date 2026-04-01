@@ -22,6 +22,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         typeof params.location_slug === "string" ? params.location_slug : ""
       }
       initialFreshOnly={params.fresh === "true"}
+      initialVerifiedOnly={params.verified === "true"}
       initialListingPurpose={
         typeof params.listing_purpose === "string" && params.listing_purpose === "sale"
           ? "sale"

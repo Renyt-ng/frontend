@@ -24,7 +24,14 @@ export type {
   UploadPropertyMediaInput,
 } from "./property";
 export type { AvatarReviewStatus, Profile, UserRole } from "./user";
-export type { Agent, AgentWithProfile, VerificationStatus } from "./agent";
+export type {
+  Agent,
+  AgentVerificationDocument,
+  AgentVerificationDocumentType,
+  AgentVerificationSettings,
+  AgentWithProfile,
+  VerificationStatus,
+} from "./agent";
 export type { Application, ApplicationStatus } from "./application";
 export type { Lease, LeaseSignature, LeaseStatus } from "./lease";
 export type {
@@ -78,6 +85,9 @@ export type {
   EmailDeliveryEvent,
   EmailTestSendResult,
   AdminPropertyType,
+  AdminFeeType,
+  AdminWorkflowDigestFrequency,
+  AdminWorkflowDigestSchedule,
 } from "./admin";
 export type {
   ApiSuccessResponse,

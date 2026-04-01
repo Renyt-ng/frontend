@@ -5,14 +5,32 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { agentsApi } from "@/lib/api";
-import type { Agent, ApiSuccessResponse } from "@/types";
+import type {
+  Agent,
+  AgentVerificationSettings,
+  ApiSuccessResponse,
+} from "@/types";
 
 /** Query key factory for agents */
 export const agentKeys = {
   all: ["agents"] as const,
   me: () => [...agentKeys.all, "me"] as const,
+  verificationSettings: () => [...agentKeys.all, "verification-settings"] as const,
   detail: (id: string) => [...agentKeys.all, id] as const,
 };
+
+export function useAgentVerificationSettings(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AgentVerificationSettings>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: agentKeys.verificationSettings(),
+    queryFn: () => agentsApi.getAgentVerificationSettings(),
+    ...options,
+  });
+}
 
 /** Get the current user's agent profile */
 export function useMyAgent(
@@ -53,6 +71,7 @@ export function useCreateAgent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.all });
       queryClient.invalidateQueries({ queryKey: agentKeys.me() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.verificationSettings() });
     },
   });
 }

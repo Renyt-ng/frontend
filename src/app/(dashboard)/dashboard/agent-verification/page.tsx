@@ -9,13 +9,18 @@ import { z } from "zod/v4";
 import { Building2, FileBadge2, ShieldCheck } from "lucide-react";
 import { Card, CardContent, Button, Input } from "@/components/ui";
 import { EmptyState, StatusBadge } from "@/components/shared";
-import { useCreateAgent, useMyAgent } from "@/lib/hooks";
+import { useAgentVerificationSettings, useCreateAgent, useMyAgent } from "@/lib/hooks";
+import {
+  getAgentVerificationDocumentLabel,
+  validateAgentVerificationFile,
+} from "@/lib/agentVerification";
+import { fileToBase64 } from "@/lib/profileAvatar";
 import { useAuthStore } from "@/stores/authStore";
+import type { AgentVerificationDocumentType } from "@/types";
 
 const agentApplicationSchema = z.object({
   business_name: z.string().min(2, "Business name is required"),
   business_address: z.string().min(5, "Business address is required"),
-  id_document_url: z.url("Enter a valid document URL").optional().or(z.literal("")),
 });
 
 type AgentApplicationValues = z.infer<typeof agentApplicationSchema>;
@@ -26,8 +31,17 @@ export default function AgentVerificationPage() {
     enabled: user?.role === "agent",
     retry: false,
   });
+  const verificationSettingsQuery = useAgentVerificationSettings({
+    enabled: user?.role === "agent",
+  });
   const createAgent = useCreateAgent();
   const [serverError, setServerError] = useState("");
+  const [documentErrors, setDocumentErrors] = useState<
+    Partial<Record<AgentVerificationDocumentType, string>>
+  >({});
+  const [selectedFiles, setSelectedFiles] = useState<
+    Partial<Record<AgentVerificationDocumentType, File | null>>
+  >({});
   const missingHeadshot = !user?.avatar_url;
   const flaggedHeadshot = user?.avatar_review_status === "flagged";
   const blockedByHeadshot = missingHeadshot || flaggedHeadshot;
@@ -41,7 +55,6 @@ export default function AgentVerificationPage() {
     defaultValues: {
       business_name: "",
       business_address: "",
-      id_document_url: "",
     },
   });
 
@@ -53,11 +66,51 @@ export default function AgentVerificationPage() {
   async function onSubmit(values: AgentApplicationValues) {
     setServerError("");
 
+    const settings = verificationSettingsQuery.data?.data;
+    if (!settings) {
+      setServerError("Verification requirements are still loading. Try again in a moment.");
+      return;
+    }
+
+    const nextDocumentErrors: Partial<Record<AgentVerificationDocumentType, string>> = {};
+    for (const documentType of settings.required_document_types) {
+      const file = selectedFiles[documentType] ?? null;
+
+      if (!file) {
+        nextDocumentErrors[documentType] = `Upload your ${getAgentVerificationDocumentLabel(documentType).toLowerCase()}.`;
+        continue;
+      }
+
+      const validationError = validateAgentVerificationFile(file, settings);
+      if (validationError) {
+        nextDocumentErrors[documentType] = validationError;
+      }
+    }
+
+    setDocumentErrors(nextDocumentErrors);
+
+    if (Object.keys(nextDocumentErrors).length > 0) {
+      return;
+    }
+
     try {
+      const verification_documents = await Promise.all(
+        settings.required_document_types.map(async (documentType) => {
+          const file = selectedFiles[documentType]!;
+
+          return {
+            document_type: documentType,
+            file_name: file.name,
+            content_type: file.type,
+            base64_data: await fileToBase64(file),
+          };
+        }),
+      );
+
       await createAgent.mutateAsync({
         business_name: values.business_name,
         business_address: values.business_address,
-        id_document_url: values.id_document_url || "",
+        verification_documents,
       });
       await myAgentQuery.refetch();
     } catch (error) {
@@ -74,6 +127,36 @@ export default function AgentVerificationPage() {
     }
   }
 
+  function handleFileChange(documentType: AgentVerificationDocumentType, file: File | null) {
+    setServerError("");
+
+    if (!file || !verificationSettingsQuery.data?.data) {
+      setSelectedFiles((current) => ({
+        ...current,
+        [documentType]: file,
+      }));
+      setDocumentErrors((current) => ({
+        ...current,
+        [documentType]: "",
+      }));
+      return;
+    }
+
+    const validationError = validateAgentVerificationFile(
+      file,
+      verificationSettingsQuery.data.data,
+    );
+
+    setSelectedFiles((current) => ({
+      ...current,
+      [documentType]: validationError ? null : file,
+    }));
+    setDocumentErrors((current) => ({
+      ...current,
+      [documentType]: validationError ?? "",
+    }));
+  }
+
   if (user?.role !== "agent") {
     return (
       <EmptyState
@@ -85,6 +168,15 @@ export default function AgentVerificationPage() {
   }
 
   if (myAgentQuery.isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-56 animate-pulse rounded-lg bg-gray-200" />
+        <div className="h-80 animate-pulse rounded-3xl bg-gray-100" />
+      </div>
+    );
+  }
+
+  if (verificationSettingsQuery.isLoading) {
     return (
       <div className="space-y-4">
         <div className="h-8 w-56 animate-pulse rounded-lg bg-gray-200" />
@@ -125,6 +217,37 @@ export default function AgentVerificationPage() {
                 : existingAgent.verification_status === "rejected"
                   ? "Your previous application was rejected. Review your submission details and contact an admin before resubmitting."
                   : "Your application is under review."}
+            </div>
+
+            <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                Submitted documents
+              </p>
+              <div className="mt-3 grid gap-2">
+                {(existingAgent.verification_documents ?? []).map((document) => (
+                  <div
+                    key={`${document.document_type}-${document.storage_path}`}
+                    className="flex items-center justify-between rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-medium text-[var(--color-text-primary)]">
+                        {getAgentVerificationDocumentLabel(document.document_type)}
+                      </p>
+                      <p className="text-[var(--color-text-secondary)]">{document.file_name}</p>
+                    </div>
+                    {document.signed_url ? (
+                      <a
+                        href={document.signed_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[var(--color-deep-slate-blue)] hover:underline"
+                      >
+                        View
+                      </a>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -216,16 +339,42 @@ export default function AgentVerificationPage() {
               )}
             </div>
 
-            <Input
-              id="id_document_url"
-              label="ID Document URL"
-              placeholder="https://example.com/id-card.jpg"
-              error={errors.id_document_url?.message}
-              {...register("id_document_url")}
-            />
+            <div className="grid gap-4">
+              {verificationSettingsQuery.data?.data.required_document_types.map((documentType) => {
+                const selectedFile = selectedFiles[documentType];
+                const error = documentErrors[documentType];
+
+                return (
+                  <div key={documentType} className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
+                    <label className="block text-sm font-medium text-[var(--color-text-primary)]">
+                      {getAgentVerificationDocumentLabel(documentType)}
+                    </label>
+                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                      Accepted types: {verificationSettingsQuery.data?.data.allowed_mime_types.join(", ")} · Max {verificationSettingsQuery.data?.data.max_file_size_mb}MB
+                    </p>
+                    <input
+                      type="file"
+                      className="mt-3 block w-full text-sm text-[var(--color-text-secondary)]"
+                      accept={verificationSettingsQuery.data?.data.allowed_mime_types.join(",")}
+                      onChange={(event) =>
+                        handleFileChange(documentType, event.target.files?.[0] ?? null)
+                      }
+                    />
+                    {selectedFile ? (
+                      <p className="mt-2 text-sm text-[var(--color-text-primary)]">
+                        Selected: {selectedFile.name}
+                      </p>
+                    ) : null}
+                    {error ? (
+                      <p className="mt-2 text-sm text-[var(--color-rejected)]">{error}</p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
 
             <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4 text-sm text-[var(--color-text-secondary)]">
-              Admins will review this submission from the dashboard and can approve or reject it immediately.
+              Admins will review your encrypted verification uploads from the dashboard and can approve or reject the submission immediately.
             </div>
 
             <div className="flex flex-wrap gap-3">

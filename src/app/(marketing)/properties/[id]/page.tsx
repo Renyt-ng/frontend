@@ -137,7 +137,7 @@ export default async function PropertyDetailPage({
         </Container>
       </div>
 
-      <Container className="mt-6">
+      <Container className="mt-4 sm:mt-6">
         <div className="grid gap-8 lg:grid-cols-3">
           {/* ─── Left column (2/3) ─────────────────── */}
           <div className="space-y-8 lg:col-span-2">
@@ -179,8 +179,12 @@ export default async function PropertyDetailPage({
                 </p>
               ) : null}
 
-              <div className="mt-4 flex items-center justify-start gap-4 border-t border-[var(--color-border)] pt-4">
+              <div className="mt-4 flex flex-wrap items-center justify-start gap-4 border-t border-[var(--color-border)] pt-4">
                 <PropertyEngagementButtons propertyId={property.id} />
+              </div>
+
+              <div className="lg:hidden">
+                <PropertyActionPanel property={property} />
               </div>
             </div>
 
@@ -217,7 +221,7 @@ export default async function PropertyDetailPage({
             )}
 
             {/* Key Features */}
-            <div>
+            {/* <div>
               <h2 className="mb-3 text-lg font-semibold text-[var(--color-text-primary)]">
                 Key Features
               </h2>
@@ -239,7 +243,7 @@ export default async function PropertyDetailPage({
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
@@ -262,7 +266,9 @@ export default async function PropertyDetailPage({
 
             <PropertyAgentCard property={property} />
 
-            <PropertyActionPanel property={property} />
+            <div className="hidden lg:block">
+              <PropertyActionPanel property={property} />
+            </div>
 
             {/* Safety notice */}
             <div className="rounded-xl border border-[var(--color-emerald)]/20 bg-emerald-50 p-4">

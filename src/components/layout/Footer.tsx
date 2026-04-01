@@ -10,10 +10,8 @@ const BASE_FOOTER_SECTIONS = [
   {
     title: "Renyt",
     links: [
-      { href: "/about", label: "About Us" },
-      { href: "/how-it-works", label: "How it Works" },
+      { href: "/#how-it-works", label: "How it Works" },
       { href: "/agents", label: "For Agents" },
-      { href: "/contact", label: "Contact" },
     ],
   },
   {
@@ -30,7 +28,6 @@ const BASE_FOOTER_SECTIONS = [
   {
     title: "Support",
     links: [
-      { href: "/faq", label: "FAQs" },
       { href: "/terms", label: "Terms of Service" },
       { href: "/privacy", label: "Privacy Policy" },
     ],

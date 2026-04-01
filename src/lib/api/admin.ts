@@ -1,12 +1,14 @@
 import apiClient from "./client";
 import type {
   Agent,
+  AgentVerificationSettings,
   AdminReferralEvent,
   AvatarReviewStatus,
   Location,
   LocationKind,
   ListingFreshnessPolicy,
   Property,
+  FeeType,
   Profile,
   ReferralCampaign,
   ReferralClosureStatus,
@@ -27,6 +29,7 @@ import type {
   EmailHealthReport,
   EmailNotificationSettings,
   EmailProviderSettings,
+  AdminWorkflowDigestSchedule,
   ManagedQueueName,
   QueueActionName,
   QueueActionResult,
@@ -160,6 +163,23 @@ export async function getAgents(params?: GetAdminAgentsParams) {
   const res = await apiClient.get<ApiSuccessResponse<Agent[]>>(
     "/admin/agents",
     { params },
+  );
+  return res.data;
+}
+
+export async function getAgentVerificationSettings() {
+  const res = await apiClient.get<ApiSuccessResponse<AgentVerificationSettings>>(
+    "/admin/agent-verification-settings",
+  );
+  return res.data;
+}
+
+export async function updateAgentVerificationSettings(
+  data: Partial<Pick<AgentVerificationSettings, "required_document_types" | "allowed_mime_types" | "max_file_size_mb">>,
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<AgentVerificationSettings>>(
+    "/admin/agent-verification-settings",
+    data,
   );
   return res.data;
 }
@@ -314,6 +334,13 @@ export async function getPropertyTypes() {
   return res.data;
 }
 
+export async function getFeeTypes() {
+  const res = await apiClient.get<ApiSuccessResponse<FeeType[]>>(
+    "/admin/fee-types",
+  );
+  return res.data;
+}
+
 export async function getLocations(params?: GetAdminLocationsParams) {
   const res = await apiClient.get<ApiSuccessResponse<Location[]>>(
     "/admin/locations",
@@ -391,6 +418,38 @@ export async function updatePropertyType(
   return res.data;
 }
 
+export async function createFeeType(data: {
+  slug: string;
+  name: string;
+  description?: string | null;
+  supports_fixed?: boolean;
+  supports_percentage?: boolean;
+  is_active?: boolean;
+}) {
+  const res = await apiClient.post<ApiSuccessResponse<FeeType>>(
+    "/admin/fee-types",
+    data,
+  );
+  return res.data;
+}
+
+export async function updateFeeType(
+  id: string,
+  data: {
+    name?: string;
+    description?: string | null;
+    supports_fixed?: boolean;
+    supports_percentage?: boolean;
+    is_active?: boolean;
+  },
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<FeeType>>(
+    `/admin/fee-types/${id}`,
+    data,
+  );
+  return res.data;
+}
+
 export async function getEmailProviders() {
   const res = await apiClient.get<ApiSuccessResponse<EmailProviderSettings[]>>(
     "/admin/email/providers",
@@ -422,6 +481,28 @@ export async function getEmailNotifications() {
   const res = await apiClient.get<
     ApiSuccessResponse<EmailNotificationSettings[]>
   >("/admin/email/notifications");
+  return res.data;
+}
+
+export async function getAdminWorkflowDigestSchedule() {
+  const res = await apiClient.get<ApiSuccessResponse<AdminWorkflowDigestSchedule>>(
+    "/admin/email/workflow-digest-schedule",
+  );
+  return res.data;
+}
+
+export async function updateAdminWorkflowDigestSchedule(
+  data: {
+    is_enabled?: boolean;
+    frequency?: AdminWorkflowDigestSchedule["frequency"];
+    hour_utc?: number;
+    minute_utc?: number;
+  },
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<AdminWorkflowDigestSchedule>>(
+    "/admin/email/workflow-digest-schedule",
+    data,
+  );
   return res.data;
 }
 

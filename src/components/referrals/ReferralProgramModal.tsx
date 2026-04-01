@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Copy, Gift, Share2, ShieldCheck, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent, Modal } from "@/components/ui";
 import {
@@ -47,6 +48,7 @@ export function ReferralProgramModal({
   const createShareLink = useCreateReferralShareLink();
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const profile = dashboardQuery.data?.data.profile ?? null;
   const preview =
@@ -65,14 +67,23 @@ export function ReferralProgramModal({
     if (!isOpen) {
       setFeedback(null);
       setError(null);
+      setAcceptedTerms(false);
     }
   }, [isOpen]);
 
   async function handleEnroll() {
     setError(null);
 
+    if (!acceptedTerms) {
+      setError("Accept the referral terms before joining the program.");
+      return;
+    }
+
     try {
-      await enrollReferralProgram.mutateAsync();
+      await enrollReferralProgram.mutateAsync({
+        accepted_terms: true,
+        terms_version: previewState?.terms_version ?? "launch-v1",
+      });
       setFeedback("Your referral code is ready. Share this property to start tracking earnings.");
     } catch (enrollmentError) {
       setError(
@@ -226,15 +237,27 @@ export function ReferralProgramModal({
             </div>
           ) : null}
 
+          <label className="flex items-start gap-3 rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-deep-slate-blue)]"
+              checked={acceptedTerms}
+              onChange={(event) => setAcceptedTerms(event.target.checked)}
+            />
+            <span>
+              I agree to the <Link href="/referral-terms" target="_blank" className="text-[var(--color-deep-slate-blue)] hover:underline">Refer &amp; Earn Terms</Link> for this launch program version.
+            </span>
+          </label>
+
           <div className="flex gap-3">
             <Button
               className="flex-1"
               onClick={handleEnroll}
               isLoading={enrollReferralProgram.isPending}
-              disabled={previewState ? !previewState.program_enabled : false}
+              disabled={previewState ? !previewState.program_enabled || !acceptedTerms : !acceptedTerms}
             >
               <Wallet className="h-4 w-4" />
-              Agree and continue
+              Join referral program
             </Button>
             <Button variant="secondary" className="flex-1" onClick={onClose}>
               Cancel
