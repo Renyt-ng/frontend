@@ -38,4 +38,14 @@ describe("PropertyViewTracker", () => {
       expect(mutateAsync).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("retries when a stale pending marker already exists", async () => {
+    window.sessionStorage.setItem("renyt:property-viewed:property-1", "pending:stale");
+
+    render(<PropertyViewTracker propertyId="property-1" />);
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
+  });
 });

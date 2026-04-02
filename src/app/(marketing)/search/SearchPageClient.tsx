@@ -224,7 +224,7 @@ export function SearchPageClient({
 
       <Container className="mt-6">
         {/* Toolbar */}
-        <div className="relative z-40 mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative z-10 mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Desktop filters */}
           <div className="hidden sm:block">
             <FilterBar />

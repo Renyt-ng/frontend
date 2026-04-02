@@ -37,13 +37,13 @@ export function PropertyViewTracker({ propertyId }: PropertyViewTrackerProps) {
     }
 
     const trackedKey = getTrackedViewKey(propertyId);
-    if (window.sessionStorage.getItem(trackedKey)) {
+    if (window.sessionStorage.getItem(trackedKey) === "tracked") {
       return;
     }
 
     const sessionId = getOrCreateSessionId();
-    window.sessionStorage.setItem(trackedKey, "pending");
-    let active = true;
+    const attemptToken = `pending:${Date.now()}`;
+    window.sessionStorage.setItem(trackedKey, attemptToken);
 
     void trackPropertyView
       .mutateAsync({
@@ -51,19 +51,15 @@ export function PropertyViewTracker({ propertyId }: PropertyViewTrackerProps) {
         data: { session_id: sessionId },
       })
       .then(() => {
-        if (active) {
+        if (window.sessionStorage.getItem(trackedKey) === attemptToken) {
           window.sessionStorage.setItem(trackedKey, "tracked");
         }
       })
       .catch(() => {
-        if (active) {
+        if (window.sessionStorage.getItem(trackedKey) === attemptToken) {
           window.sessionStorage.removeItem(trackedKey);
         }
       });
-
-    return () => {
-      active = false;
-    };
   }, [propertyId, trackPropertyView]);
 
   return null;
