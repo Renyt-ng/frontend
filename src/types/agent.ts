@@ -34,9 +34,24 @@ export interface Agent {
   id_document_url: string | null;
   verification_documents: AgentVerificationDocument[];
   phone_verified: boolean;
+  primary_phone: string | null;
+  primary_phone_verified_at: string | null;
+  whatsapp_phone: string | null;
+  whatsapp_same_as_primary_phone: boolean;
   approved_by: string | null;
   approved_at: string | null;
   created_at: string;
+}
+
+export interface PhoneVerificationStatus {
+  phone: string | null;
+  verified: boolean;
+  code_sent: boolean;
+  resend_available_at: string | null;
+  expires_at: string | null;
+  locked_until: string | null;
+  verified_at: string | null;
+  development_code?: string;
 }
 
 /** Agent with joined profile for display */

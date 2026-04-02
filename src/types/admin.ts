@@ -114,6 +114,67 @@ export interface EmailHealthReport {
   last_healthcheck_at: string | null;
 }
 
+export type SmsProvider = "bulksmsnigeria";
+
+export type SmsProviderStatus =
+  | "not_configured"
+  | "configured"
+  | "sandbox"
+  | "degraded";
+
+export type SmsDeliveryEventStatus = "queued" | "sent" | "delivered" | "failed";
+
+export interface SmsBalanceSnapshot {
+  balance: number | null;
+  currency: string;
+  fetched_at: string;
+  error: string | null;
+}
+
+export interface SmsOverview {
+  provider: SmsProvider;
+  status: SmsProviderStatus;
+  sender_id: string | null;
+  base_url: string;
+  callback_url: string | null;
+  sandbox_mode: boolean;
+  balance: SmsBalanceSnapshot;
+  recent_summary: {
+    total: number;
+    sent: number;
+    failed: number;
+    verification: number;
+    tests: number;
+    last_sent_at: string | null;
+  };
+}
+
+export interface SmsDeliveryEvent {
+  id: string;
+  provider: SmsProvider;
+  event_status: SmsDeliveryEventStatus;
+  event_type: string;
+  recipient_phone: string | null;
+  provider_message_id: string | null;
+  provider_event_id: string | null;
+  source: "system" | "webhook";
+  cost: number | null;
+  balance_after: number | null;
+  currency: string | null;
+  payload: Record<string, unknown>;
+  headers: Record<string, unknown>;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface SmsTestSendResult {
+  provider: SmsProvider;
+  provider_message_id: string | null;
+  cost: number | null;
+  balance: number | null;
+  recipient_phone: string;
+}
+
 export type QueueHealthStatus = "healthy" | "degraded" | "down";
 
 export type QueueConditionState = "met" | "unmet" | "unverified";

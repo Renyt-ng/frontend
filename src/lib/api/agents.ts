@@ -3,6 +3,7 @@ import type {
   Agent,
   AgentVerificationDocumentType,
   AgentVerificationSettings,
+  PhoneVerificationStatus,
   ApiSuccessResponse,
 } from "@/types";
 
@@ -10,6 +11,8 @@ export async function createAgent(
   data: {
     business_name: string;
     business_address: string;
+    whatsapp_same_as_primary_phone: boolean;
+    whatsapp_phone?: string | null;
     verification_documents: Array<{
       document_type: AgentVerificationDocumentType;
       file_name: string;
@@ -25,6 +28,29 @@ export async function createAgent(
 export async function getAgentVerificationSettings() {
   const res = await apiClient.get<ApiSuccessResponse<AgentVerificationSettings>>(
     "/agents/verification-settings",
+  );
+  return res.data;
+}
+
+export async function getPhoneVerificationStatus() {
+  const res = await apiClient.get<ApiSuccessResponse<PhoneVerificationStatus>>(
+    "/agents/phone-verification",
+  );
+  return res.data;
+}
+
+export async function requestPhoneVerification(data: { phone: string }) {
+  const res = await apiClient.post<ApiSuccessResponse<PhoneVerificationStatus>>(
+    "/agents/phone-verification/request",
+    data,
+  );
+  return res.data;
+}
+
+export async function verifyPhoneVerification(data: { code: string }) {
+  const res = await apiClient.post<ApiSuccessResponse<PhoneVerificationStatus>>(
+    "/agents/phone-verification/verify",
+    data,
   );
   return res.data;
 }

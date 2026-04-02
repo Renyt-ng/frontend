@@ -71,6 +71,7 @@ const property: PropertyWithImages = {
     business_name: "Prime Homes",
     full_name: "Ayo Agent",
     phone: "+234 803 000 0000",
+    whatsapp_phone: "+234 805 111 2222",
     avatar_url: null,
   },
 };
@@ -144,10 +145,12 @@ describe("PropertyActionPanel", () => {
     render(<PropertyActionPanel property={property} />);
 
     const link = screen.getByRole("link", { name: /message agent/i });
+    const callLink = screen.getByRole("link", { name: /call agent/i });
     const href = new URL(link.getAttribute("href") ?? "", "https://renyt.ng");
     const message = href.searchParams.get("text");
 
-    expect(`${href.origin}${href.pathname}`).toBe("https://wa.me/2348030000000");
+    expect(`${href.origin}${href.pathname}`).toBe("https://wa.me/2348051112222");
+    expect(callLink.getAttribute("href")).toBe("tel:+234 803 000 0000");
     expect(decodeURIComponent(message ?? "")).toContain(
       "https://renyt.ng/properties/property-1",
     );
@@ -187,7 +190,7 @@ describe("PropertyActionPanel", () => {
       },
     });
     expect(openSpy).toHaveBeenCalledWith(
-      expect.stringContaining("https://wa.me/2348030000000"),
+      expect.stringContaining("https://wa.me/2348051112222"),
       "_blank",
       "noopener,noreferrer",
     );

@@ -6,6 +6,9 @@ import type {
   EmailProviderStatus,
   QueueConditionState,
   QueueHealthStatus,
+  SmsDeliveryEventStatus,
+  SmsProvider,
+  SmsProviderStatus,
 } from "@/types/admin";
 
 export function formatEmailProvider(provider: EmailProvider) {
@@ -157,4 +160,43 @@ export function formatQueueName(name: string) {
     .split("-")
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
+}
+
+export function formatSmsProvider(provider: SmsProvider) {
+  switch (provider) {
+    case "bulksmsnigeria":
+      return "BulkSMSNigeria";
+  }
+}
+
+export function formatSmsProviderStatus(status: SmsProviderStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getSmsProviderBadgeVariant(status: SmsProviderStatus) {
+  switch (status) {
+    case "configured":
+    case "sandbox":
+      return "active" as const;
+    case "degraded":
+      return "pending" as const;
+    case "not_configured":
+      return "default" as const;
+  }
+}
+
+export function formatSmsEventStatus(status: SmsDeliveryEventStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getSmsEventBadgeVariant(status: SmsDeliveryEventStatus) {
+  switch (status) {
+    case "sent":
+    case "delivered":
+      return "active" as const;
+    case "queued":
+      return "info" as const;
+    case "failed":
+      return "pending" as const;
+  }
 }

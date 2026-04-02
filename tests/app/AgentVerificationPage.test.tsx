@@ -8,6 +8,9 @@ const hooks = vi.hoisted(() => ({
   useAgentVerificationSettings: vi.fn(),
   useCreateAgent: vi.fn(),
   useMyAgent: vi.fn(),
+  usePhoneVerificationStatus: vi.fn(),
+  useRequestPhoneVerification: vi.fn(),
+  useVerifyPhoneVerification: vi.fn(),
 }));
 
 vi.mock("@/lib/hooks", () => hooks);
@@ -56,21 +59,152 @@ describe("AgentVerificationPage", () => {
       },
       isLoading: false,
     });
+    hooks.usePhoneVerificationStatus.mockReturnValue({
+      data: {
+        data: {
+          phone: "+234 800 000 0000",
+          verified: false,
+          code_sent: false,
+          resend_available_at: null,
+          expires_at: null,
+          locked_until: null,
+          verified_at: null,
+        },
+      },
+      isLoading: false,
+    });
     hooks.useCreateAgent.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    hooks.useRequestPhoneVerification.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    hooks.useVerifyPhoneVerification.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });
   });
 
-  it("renders the redesigned verification document section without the redundant admin note", () => {
+  it("renders the phone and WhatsApp sections before document upload", () => {
     render(<AgentVerificationPage />);
 
-    expect(screen.getByRole("heading", { name: /verification documents/i })).toBeInTheDocument();
-    expect(screen.getByText(/upload clear, readable files for each required document/i)).toBeInTheDocument();
-    expect(screen.getByText(/maximum file size: 8mb/i)).toBeInTheDocument();
-    expect(screen.getByText(/^required$/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /phone verification/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /whatsapp contact/i })).toBeInTheDocument();
     expect(
-      screen.queryByText(/admins will review your encrypted verification uploads/i),
-    ).toBeNull();
+      screen.getByText(/verify your primary phone to unlock whatsapp contact settings/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /verification documents/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit verification/i })).toBeDisabled();
+  });
+
+  it("renders the submitted summary with phone and WhatsApp details", () => {
+    hooks.useMyAgent.mockReturnValue({
+      data: {
+        data: {
+          id: "agent-1",
+          user_id: "user-1",
+          verification_status: "pending",
+          business_name: "Prime Homes",
+          business_address: "12 Admiralty Way, Lekki",
+          id_document_url: null,
+          verification_documents: [],
+          phone_verified: true,
+          primary_phone: "+234 800 000 0000",
+          primary_phone_verified_at: "2026-04-01T00:00:00.000Z",
+          whatsapp_phone: "+234 801 111 1111",
+          whatsapp_same_as_primary_phone: false,
+          approved_by: null,
+          approved_at: null,
+          created_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<AgentVerificationPage />);
+
+    expect(screen.getByText(/verified primary phone/i)).toBeInTheDocument();
+    expect(screen.getByText("+234 800 000 0000")).toBeInTheDocument();
+    expect(screen.getByText("+234 801 111 1111")).toBeInTheDocument();
+    expect(
+      screen.getByText(/whatsapp contact uses \+234 801 111 1111/i),
+    ).toBeInTheDocument();
+  });
+
+  it("reopens the form for a rejected verification so the agent can try again", () => {
+    hooks.useMyAgent.mockReturnValue({
+      data: {
+        data: {
+          id: "agent-1",
+          user_id: "user-1",
+          verification_status: "rejected",
+          business_name: "Prime Homes",
+          business_address: "12 Admiralty Way, Lekki",
+          id_document_url: null,
+          verification_documents: [],
+          phone_verified: true,
+          primary_phone: "+234 800 000 0000",
+          primary_phone_verified_at: "2026-04-01T00:00:00.000Z",
+          whatsapp_phone: "+234 800 000 0000",
+          whatsapp_same_as_primary_phone: true,
+          approved_by: null,
+          approved_at: null,
+          created_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+    hooks.usePhoneVerificationStatus.mockReturnValue({
+      data: {
+        data: {
+          phone: "+234 800 000 0000",
+          verified: true,
+          code_sent: false,
+          resend_available_at: null,
+          expires_at: null,
+          locked_until: null,
+          verified_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<AgentVerificationPage />);
+
+    expect(screen.getByRole("heading", { name: /resubmit agent verification/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(/your previous verification request was rejected\. you can make another attempt from this page\./i),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Prime Homes")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("12 Admiralty Way, Lekki")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit verification/i })).toBeDisabled();
+  });
+
+  it("disables send code when the current phone is already verified and unchanged", () => {
+    hooks.usePhoneVerificationStatus.mockReturnValue({
+      data: {
+        data: {
+          phone: "+234 800 000 0000",
+          verified: true,
+          code_sent: false,
+          resend_available_at: null,
+          expires_at: null,
+          locked_until: null,
+          verified_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<AgentVerificationPage />);
+
+    expect(screen.getByRole("button", { name: /send code/i })).toBeDisabled();
+    expect(screen.getByText(/phone verified\./i)).toBeInTheDocument();
   });
 });

@@ -11,6 +11,10 @@ describe("contact utils", () => {
     expect(normalizePhoneForWhatsApp("+234 803 000 0000")).toBe("2348030000000");
   });
 
+  it("normalizes local Nigerian numbers for WhatsApp links", () => {
+    expect(normalizePhoneForWhatsApp("0803 000 0000")).toBe("2348030000000");
+  });
+
   it("builds a WhatsApp href with encoded text", () => {
     expect(buildWhatsAppHref("+234 803 000 0000", "Hi there")).toBe(
       "https://wa.me/2348030000000?text=Hi%20there",

@@ -25,6 +25,8 @@ interface RawAgentProfile {
 
 interface RawAgentNode {
   business_name: string | null;
+  whatsapp_phone?: string | null;
+  whatsapp_same_as_primary_phone?: boolean | null;
   profiles?: RawAgentProfile | RawAgentProfile[] | null;
 }
 
@@ -50,6 +52,10 @@ function normalizeAgentContact(
     business_name: agent.business_name ?? null,
     full_name: profile?.full_name ?? null,
     phone: profile?.phone ?? null,
+    whatsapp_phone:
+      agent.whatsapp_same_as_primary_phone === false
+        ? agent.whatsapp_phone ?? null
+        : profile?.phone ?? agent.whatsapp_phone ?? null,
     avatar_url: profile?.avatar_url ?? null,
   };
 }

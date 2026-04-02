@@ -190,6 +190,7 @@ export interface PropertyAgentContact {
   business_name: string | null;
   full_name: string | null;
   phone: string | null;
+  whatsapp_phone: string | null;
   avatar_url?: string | null;
 }
 

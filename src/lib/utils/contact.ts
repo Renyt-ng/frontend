@@ -1,6 +1,6 @@
-export function normalizePhoneForWhatsApp(phone: string) {
-  return phone.replace(/[^\d]/g, "");
-}
+import { normalizePhoneForWhatsApp } from "./phone";
+
+export { normalizePhoneForWhatsApp };
 
 export function buildWhatsAppHref(phone: string, text?: string) {
   const normalizedPhone = normalizePhoneForWhatsApp(phone);

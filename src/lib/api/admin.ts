@@ -36,6 +36,9 @@ import type {
   QueueFailedJobSummary,
   EmailTestSendResult,
   QueueHealthReport,
+  SmsDeliveryEvent,
+  SmsOverview,
+  SmsTestSendResult,
 } from "@/types/admin";
 
 export interface AdminUser extends Profile {
@@ -81,6 +84,12 @@ export interface GetAdminLocationsParams {
 
 export interface GetAdminEmailEventsParams {
   provider?: string;
+  event_status?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface GetAdminSmsEventsParams {
   event_status?: string;
   search?: string;
   limit?: number;
@@ -513,6 +522,13 @@ export async function getEmailHealth() {
   return res.data;
 }
 
+export async function getSmsOverview() {
+  const res = await apiClient.get<ApiSuccessResponse<SmsOverview>>(
+    "/admin/sms/overview",
+  );
+  return res.data;
+}
+
 export async function getQueueHealth() {
   const res = await apiClient.get<ApiSuccessResponse<QueueHealthReport>>(
     "/admin/queues/health",
@@ -554,6 +570,14 @@ export async function getEmailEvents(params?: GetAdminEmailEventsParams) {
   return res.data;
 }
 
+export async function getSmsEvents(params?: GetAdminSmsEventsParams) {
+  const res = await apiClient.get<ApiSuccessResponse<SmsDeliveryEvent[]>>(
+    "/admin/sms/events",
+    { params },
+  );
+  return res.data;
+}
+
 export async function sendEmailTest(data: {
   recipient_email: string;
   subject?: string | null;
@@ -563,6 +587,17 @@ export async function sendEmailTest(data: {
 }) {
   const res = await apiClient.post<ApiSuccessResponse<EmailTestSendResult>>(
     "/admin/email/test-send",
+    data,
+  );
+  return res.data;
+}
+
+export async function sendSmsTest(data: {
+  recipient_phone: string;
+  message?: string | null;
+}) {
+  const res = await apiClient.post<ApiSuccessResponse<SmsTestSendResult>>(
+    "/admin/sms/test-send",
     data,
   );
   return res.data;

@@ -52,6 +52,9 @@ export {
   useAgent,
   useCreateAgent,
   useAgentVerificationSettings,
+  usePhoneVerificationStatus,
+  useRequestPhoneVerification,
+  useVerifyPhoneVerification,
 } from "./useAgents";
 
 export {
@@ -90,11 +93,14 @@ export {
   useUpdateAdminWorkflowDigestSchedule,
   useUpdateAdminAgentVerificationSettings,
   useAdminEmailHealth,
+  useAdminSmsOverview,
   useAdminQueueHealth,
   useAdminQueueFailedJobs,
   useAdminQueueAction,
   useAdminEmailEvents,
+  useAdminSmsEvents,
   useSendAdminTestEmail,
+  useSendAdminTestSms,
   useSuspendUser,
   useRestoreUser,
   useUpdateReferralProgramSettings,

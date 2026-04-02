@@ -34,6 +34,9 @@ import type {
   QueueActionResult,
   QueueFailedJobSummary,
   QueueHealthReport,
+  SmsDeliveryEvent,
+  SmsOverview,
+  SmsTestSendResult,
 } from "@/types/admin";
 import type {
   AdminUser,
@@ -41,6 +44,7 @@ import type {
   GetAdminUsersParams,
   GetAdminAgentsParams,
   GetAdminEmailEventsParams,
+  GetAdminSmsEventsParams,
   GetAdminQueueFailedJobsParams,
   GetAdminLocationsParams,
   GetAdminPropertiesParams,
@@ -68,11 +72,14 @@ export const adminKeys = {
   emailNotifications: () => ["admin", "email-notifications"] as const,
   workflowDigestSchedule: () => ["admin", "workflow-digest-schedule"] as const,
   emailHealth: () => ["admin", "email-health"] as const,
+  smsOverview: () => ["admin", "sms-overview"] as const,
   queueHealth: () => ["admin", "queue-health"] as const,
   queueFailedJobs: (queueName?: ManagedQueueName, params?: GetAdminQueueFailedJobsParams) =>
     ["admin", "queue-failed-jobs", queueName, params] as const,
   emailEvents: (params?: GetAdminEmailEventsParams) =>
     ["admin", "email-events", params] as const,
+  smsEvents: (params?: GetAdminSmsEventsParams) =>
+    ["admin", "sms-events", params] as const,
 };
 
 export function useAdminOverview(
@@ -620,6 +627,19 @@ export function useAdminEmailHealth(
   });
 }
 
+export function useAdminSmsOverview(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<SmsOverview>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.smsOverview(),
+    queryFn: () => adminApi.getSmsOverview(),
+    ...options,
+  });
+}
+
 export function useAdminQueueHealth(
   options?: Omit<
     UseQueryOptions<ApiSuccessResponse<QueueHealthReport>>,
@@ -669,6 +689,20 @@ export function useAdminEmailEvents(
   });
 }
 
+export function useAdminSmsEvents(
+  params?: GetAdminSmsEventsParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<SmsDeliveryEvent[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.smsEvents(params),
+    queryFn: () => adminApi.getSmsEvents(params),
+    ...options,
+  });
+}
+
 export function useSendAdminTestEmail() {
   const queryClient = useQueryClient();
 
@@ -678,6 +712,19 @@ export function useSendAdminTestEmail() {
       queryClient.invalidateQueries({ queryKey: ["admin", "email-health"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "email-providers"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "email-events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+export function useSendAdminTestSms() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.sendSmsTest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "sms-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "sms-events"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
     },
   });

@@ -36,6 +36,11 @@ export {
   normalizePhoneForWhatsApp,
 } from "./contact";
 export {
+  formatNigerianPhone,
+  isValidNigerianPhone,
+  normalizeNigerianPhone,
+} from "./phone";
+export {
   getPropertyFreshnessBadgeVariant,
   getPropertyFreshnessLabel,
   getPropertyFreshnessMeta,

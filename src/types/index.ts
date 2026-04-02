@@ -30,6 +30,7 @@ export type {
   AgentVerificationDocumentType,
   AgentVerificationSettings,
   AgentWithProfile,
+  PhoneVerificationStatus,
   VerificationStatus,
 } from "./agent";
 export type { Application, ApplicationStatus } from "./application";
@@ -81,6 +82,13 @@ export type {
   EmailProviderSettings,
   EmailNotificationSettings,
   EmailHealthReport,
+  SmsProvider,
+  SmsProviderStatus,
+  SmsBalanceSnapshot,
+  SmsOverview,
+  SmsDeliveryEventStatus,
+  SmsDeliveryEvent,
+  SmsTestSendResult,
   EmailDeliveryEventStatus,
   EmailDeliveryEvent,
   EmailTestSendResult,

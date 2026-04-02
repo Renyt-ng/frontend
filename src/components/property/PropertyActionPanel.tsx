@@ -45,6 +45,7 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
   const trackMessageIntent = useTrackPropertyMessageIntent();
 
   const agentPhone = property.agent_contact?.phone?.trim() ?? "";
+  const agentWhatsAppPhone = property.agent_contact?.whatsapp_phone?.trim() ?? agentPhone;
   const propertyPath = pathname || `/properties/${property.id}`;
   const currentUrl = useMemo(
     () => buildCurrentUrl(propertyPath, searchParams),
@@ -55,19 +56,19 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
     [propertyPath],
   );
   const whatsappHref = useMemo(() => {
-    if (!agentPhone) {
+    if (!agentWhatsAppPhone) {
       return "";
     }
 
     return buildWhatsAppHref(
-      agentPhone,
+      agentWhatsAppPhone,
       buildPropertyWhatsAppMessage({
         title: property.title,
         area: property.area,
         propertyUrl: propertyShareUrl,
       }),
     );
-  }, [agentPhone, property.area, property.title, propertyShareUrl]);
+  }, [agentWhatsAppPhone, property.area, property.title, propertyShareUrl]);
   const phoneHref = agentPhone ? `tel:${agentPhone}` : "";
 
   useEffect(() => {
