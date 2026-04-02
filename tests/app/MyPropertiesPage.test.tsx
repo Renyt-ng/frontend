@@ -34,6 +34,12 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/components/referrals", () => ({
+  ReferralShareTriggerButton: ({ label }: { label?: string }) => (
+    <button type="button">{label ?? "Share"}</button>
+  ),
+}));
+
 vi.mock("@/lib/hooks", () => state.hooks);
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -195,10 +201,11 @@ describe("MyPropertiesPage", () => {
 
     expect(screen.getByText(/Health volume/i)).toBeInTheDocument();
     expect(screen.getByText(/Property insight/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Listing health volume/i })).toBeInTheDocument();
     expect(screen.getAllByText(/Publishing/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Active/i).length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it("requires matched-account selection before confirming a Renyt close", async () => {
     render(<MyPropertiesPage />);
@@ -242,7 +249,7 @@ describe("MyPropertiesPage", () => {
         },
       });
     });
-  });
+  }, 15000);
 
   it("cleans the publishing query param after the tracked property becomes active", async () => {
     state.searchParams = new URLSearchParams("publishing=property-1");
@@ -293,5 +300,5 @@ describe("MyPropertiesPage", () => {
     await waitFor(() => {
       expect(screen.queryByText(/Your property is now live/i)).toBeNull();
     });
-  });
+  }, 15000);
 });

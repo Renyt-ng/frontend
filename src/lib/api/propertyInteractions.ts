@@ -3,8 +3,10 @@ import type {
   ApiSuccessResponse,
   PropertyEngagementSummary,
   CreatePropertyMessageIntentInput,
+  CreatePropertyViewInput,
   PropertyEngagementStatus,
   PropertyMessageIntentResult,
+  PropertyViewResult,
 } from "@/types";
 
 export async function getMyEngagementSummary() {
@@ -48,5 +50,16 @@ export async function createMessageIntent(
   const res = await apiClient.post<
     ApiSuccessResponse<PropertyMessageIntentResult>
   >(`/properties/${propertyId}/message-intents`, data);
+  return res.data;
+}
+
+export async function createView(
+  propertyId: string,
+  data: CreatePropertyViewInput,
+) {
+  const res = await apiClient.post<ApiSuccessResponse<PropertyViewResult>>(
+    `/properties/${propertyId}/views`,
+    data,
+  );
   return res.data;
 }

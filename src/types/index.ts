@@ -39,7 +39,9 @@ export type {
   PropertyEngagementStatus,
   PropertyEngagementSummary,
   CreatePropertyMessageIntentInput,
+  CreatePropertyViewInput,
   PropertyMessageIntentResult,
+  PropertyViewResult,
 } from "./propertyInteraction";
 export type {
   ReferralCommissionType,

@@ -7,6 +7,7 @@ import { BedDouble, Bath, MapPin, ShieldCheck, Camera, Heart } from "lucide-reac
 import { Card } from "@/components/ui";
 import { Badge } from "@/components/ui";
 import { Avatar } from "@/components/ui";
+import { ReferralShareTriggerButton } from "@/components/referrals";
 import {
   cn,
   formatListingPurpose,
@@ -290,31 +291,42 @@ export function PropertyCard({
             </p>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar
-                src={property.agent_contact?.avatar_url ?? null}
-                fallback={agentName}
-                alt={agentName}
-                size="sm"
-              />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                  {agentName}
-                </p>
-                <p className="truncate text-xs text-[var(--color-text-secondary)]">
-                  {property.agent_contact?.business_name?.trim() || "Listed by agent"}
-                </p>
-              </div>
-            </div>
+        </Link>
 
+        <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-4 pb-4 pt-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar
+              src={property.agent_contact?.avatar_url ?? null}
+              fallback={agentName}
+              alt={agentName}
+              size="sm"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                {agentName}
+              </p>
+              <p className="truncate text-xs text-[var(--color-text-secondary)]">
+                {property.agent_contact?.business_name?.trim() || "Listed by agent"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <ReferralShareTriggerButton
+              property={property}
+              variant="ghost"
+              size="sm"
+              className="px-2 text-xs"
+              label="Share"
+              ariaLabel={`Share ${property.title}`}
+            />
             {property.is_verified && (
               <Badge variant="verified" size="sm">
                 Verified
               </Badge>
             )}
           </div>
-        </Link>
+        </div>
       </Card>
   );
 }

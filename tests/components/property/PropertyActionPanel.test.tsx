@@ -12,6 +12,9 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/components/referrals", () => ({
   ReferralProgramModal: () => null,
+  ReferralShareTriggerButton: ({ label }: { label?: string }) => (
+    <button type="button">{label ?? "Share"}</button>
+  ),
 }));
 
 const trackMessageIntent = vi.fn(async () => undefined);
@@ -195,5 +198,11 @@ describe("PropertyActionPanel", () => {
       "noopener,noreferrer",
     );
     expect(popupFocus).toHaveBeenCalled();
+  });
+
+  it("renders the share action on the property detail panel", () => {
+    render(<PropertyActionPanel property={property} />);
+
+    expect(screen.getByRole("button", { name: /share and earn/i })).toBeInTheDocument();
   });
 });

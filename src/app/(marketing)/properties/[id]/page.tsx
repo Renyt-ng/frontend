@@ -16,6 +16,7 @@ import {
   PropertySpecs,
   PricingBreakdown,
   PropertyEngagementButtons,
+  PropertyViewTracker,
 } from "@/components/property";
 import { PropertyActionPanel } from "@/components/property/PropertyActionPanel";
 import { Badge } from "@/components/ui";
@@ -114,6 +115,8 @@ export default async function PropertyDetailPage({
 
   return (
     <div className="pb-16">
+      <PropertyViewTracker propertyId={property.id} />
+
       {/* Breadcrumb bar */}
       <div className="border-b border-[var(--color-border)] bg-white py-3">
         <Container>

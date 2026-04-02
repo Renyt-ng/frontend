@@ -119,6 +119,7 @@ export {
   usePropertyEngagementStatus,
   useTogglePropertyEngagement,
   useTrackPropertyMessageIntent,
+  useTrackPropertyView,
 } from "./usePropertyInteractions";
 
 export {

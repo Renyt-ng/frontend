@@ -19,6 +19,7 @@ import {
 import { Badge, Button, Card, CardContent, Modal } from "@/components/ui";
 import { PropertyCardSkeleton } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
+import { ReferralShareTriggerButton } from "@/components/referrals";
 import {
   DashboardContextualHelp,
   MiniBarChart,
@@ -814,6 +815,14 @@ export default function MyPropertiesPage() {
                             </div>
                             <div className="flex flex-col gap-2 lg:w-[420px] lg:items-end">
                               <div className="flex flex-wrap gap-2 lg:justify-end">
+                                {p.status === "active" ? (
+                                  <ReferralShareTriggerButton
+                                    property={p}
+                                    variant="secondary"
+                                    size="sm"
+                                    label="Share"
+                                  />
+                                ) : null}
                                 {p.status !== "draft" && p.status !== "publishing" && p.status !== "archived" && !getPropertyFinalOutcomeLabel(p.status) ? (
                                   <Button
                                     size="sm"

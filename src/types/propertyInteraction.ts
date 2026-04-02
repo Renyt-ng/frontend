@@ -16,6 +16,14 @@ export interface CreatePropertyMessageIntentInput {
   source_channel?: "whatsapp" | "phone";
 }
 
+export interface CreatePropertyViewInput {
+  session_id?: string | null;
+}
+
 export interface PropertyMessageIntentResult {
   referral_event: ReferralEvent | null;
+}
+
+export interface PropertyViewResult {
+  tracked: boolean;
 }

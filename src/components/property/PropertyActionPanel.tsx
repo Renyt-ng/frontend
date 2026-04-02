@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Gift, MessageCircle, Phone } from "lucide-react";
+import { MessageCircle, Phone } from "lucide-react";
 import { buttonVariants, Button, Card, CardContent } from "@/components/ui";
-import { ReferralProgramModal } from "@/components/referrals";
+import { ReferralShareTriggerButton } from "@/components/referrals";
 import { buildCurrentUrl } from "@/lib/authNavigation";
 import { getReferralAttribution, persistReferralAttribution } from "@/lib/referrals/attribution";
 import { useTrackPropertyMessageIntent } from "@/lib/hooks";
@@ -40,7 +40,6 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
   const openOverlay = useAuthOverlayStore((state) => state.openOverlay);
-  const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const trackMessageIntent = useTrackPropertyMessageIntent();
 
@@ -146,25 +145,9 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
     });
   }
 
-  function handleOpenReferralModal() {
-    if (!isAuthenticated) {
-      openOverlay({
-        mode: "login",
-        redirectTo: currentUrl,
-        onAuthenticated: async () => {
-          setShowReferralModal(true);
-        },
-      });
-      return;
-    }
-
-    setShowReferralModal(true);
-  }
-
   return (
-    <>
-      <Card>
-        <CardContent className="space-y-4 p-5">
+    <Card>
+      <CardContent className="space-y-4 p-5">
           {whatsappHref ? (
             isAuthenticated ? (
               <a
@@ -274,17 +257,14 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
             )}
           </div>
 
-          <Button variant="secondary" size="sm" className="w-full" onClick={handleOpenReferralModal}>
-            <Gift className="h-4 w-4" />
-            Share and Earn
-          </Button>
-        </CardContent>
-      </Card>
-      <ReferralProgramModal
-        isOpen={showReferralModal}
-        onClose={() => setShowReferralModal(false)}
-        property={property}
-      />
-    </>
+        <ReferralShareTriggerButton
+          property={property}
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          label="Share and Earn"
+        />
+      </CardContent>
+    </Card>
   );
 }

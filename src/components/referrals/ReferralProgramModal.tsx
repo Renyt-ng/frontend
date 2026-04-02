@@ -12,15 +12,23 @@ import {
 } from "@/lib/hooks";
 import { formatCurrency, formatPropertyType } from "@/lib/utils";
 import type {
-  PropertyWithImages,
   ReferralCommissionPreview,
   ReferralShareChannel,
 } from "@/types";
 
+export interface ReferralShareProperty {
+  id: string;
+  agent_id: string;
+  title: string;
+  area: string;
+  property_type: string;
+  is_verified: boolean;
+}
+
 interface ReferralProgramModalProps {
   isOpen: boolean;
   onClose: () => void;
-  property: PropertyWithImages;
+  property: ReferralShareProperty;
 }
 
 function commissionSummary(preview: ReferralCommissionPreview) {

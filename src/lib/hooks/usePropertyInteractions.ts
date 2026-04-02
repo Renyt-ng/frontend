@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { propertyInteractionsApi } from "@/lib/api";
-import type { CreatePropertyMessageIntentInput } from "@/types";
+import type { CreatePropertyMessageIntentInput, CreatePropertyViewInput } from "@/types";
 
 export const propertyInteractionKeys = {
   all: ["property-interactions"] as const,
@@ -64,5 +64,17 @@ export function useTrackPropertyMessageIntent() {
       propertyId: string;
       data: CreatePropertyMessageIntentInput;
     }) => propertyInteractionsApi.createMessageIntent(propertyId, data),
+  });
+}
+
+export function useTrackPropertyView() {
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      data,
+    }: {
+      propertyId: string;
+      data: CreatePropertyViewInput;
+    }) => propertyInteractionsApi.createView(propertyId, data),
   });
 }
