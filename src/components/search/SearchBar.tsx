@@ -1,11 +1,16 @@
 "use client";
 
-import { useDeferredValue, useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocations } from "@/lib/hooks";
 import type { Location } from "@/types";
+
+interface SearchSelection {
+  area: string;
+  locationSlug?: string;
+}
 
 interface SearchBarProps {
   /** Initial area value */
@@ -14,6 +19,8 @@ interface SearchBarProps {
   /** Compact mode for navbar or inline usage */
   compact?: boolean;
   className?: string;
+  navigateOnSearch?: boolean;
+  onSearch?: (selection: SearchSelection) => void;
 }
 
 export function SearchBar({
@@ -21,28 +28,58 @@ export function SearchBar({
   defaultLocationSlug = "",
   compact = false,
   className,
+  navigateOnSearch = true,
+  onSearch,
 }: SearchBarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [area, setArea] = useState(defaultArea);
   const [locationSlug, setLocationSlug] = useState(defaultLocationSlug);
+  const [debouncedArea, setDebouncedArea] = useState(defaultArea.trim());
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const deferredArea = useDeferredValue(area.trim());
+  const trimmedArea = area.trim();
+  const shouldQuerySuggestions = trimmedArea.length >= 2;
 
   useEffect(() => {
     setArea(defaultArea);
+    setDebouncedArea(defaultArea.trim());
   }, [defaultArea]);
 
   useEffect(() => {
     setLocationSlug(defaultLocationSlug);
   }, [defaultLocationSlug]);
 
+  useEffect(() => {
+    const nextValue = trimmedArea;
+
+    if (nextValue.length < 2) {
+      setDebouncedArea("");
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedArea(nextValue);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [trimmedArea]);
+
   const locationsQuery = useLocations({
-    q: deferredArea || undefined,
+    q: debouncedArea || undefined,
     kind: "all",
-    limit: deferredArea ? 8 : 0,
+    limit: debouncedArea ? 8 : 0,
+  }, {
+    enabled: debouncedArea.length >= 2,
   });
   const filtered = locationsQuery.data?.data ?? [];
+
+  function commitSearch(nextArea: string, nextLocationSlug?: string) {
+    onSearch?.({ area: nextArea.trim(), locationSlug: nextLocationSlug });
+
+    if (navigateOnSearch) {
+      router.push(buildSearchUrl(nextArea, nextLocationSlug));
+    }
+  }
 
   function buildSearchUrl(nextArea: string, nextLocationSlug?: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -67,16 +104,26 @@ export function SearchBar({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    router.push(buildSearchUrl(area, locationSlug || undefined));
     setShowSuggestions(false);
+    commitSearch(area, locationSlug || undefined);
   }
 
   function selectArea(location: Location) {
     setArea(location.name);
     setLocationSlug(location.slug);
     setShowSuggestions(false);
-    router.push(buildSearchUrl(location.name, location.slug));
+    commitSearch(location.name, location.slug);
   }
+
+  const shouldShowDropdown = showSuggestions && trimmedArea.length > 0;
+  const shouldShowSuggestions = shouldShowDropdown && shouldQuerySuggestions && filtered.length > 0;
+  const shouldShowLoading = shouldShowDropdown && shouldQuerySuggestions && locationsQuery.isLoading;
+  const shouldShowEmpty =
+    shouldShowDropdown &&
+    shouldQuerySuggestions &&
+    !locationsQuery.isLoading &&
+    filtered.length === 0;
+  const shouldShowMinCharacters = shouldShowDropdown && !shouldQuerySuggestions;
 
   return (
     <form onSubmit={handleSubmit} className={cn("relative w-full", className)}>
@@ -104,7 +151,7 @@ export function SearchBar({
             setLocationSlug("");
             setShowSuggestions(e.target.value.trim().length > 0);
           }}
-          onFocus={() => setShowSuggestions(area.trim().length > 0)}
+          onFocus={() => setShowSuggestions(trimmedArea.length > 0)}
           onBlur={() => {
             // Delay so click on suggestion works
             setTimeout(() => setShowSuggestions(false), 200);
@@ -127,15 +174,27 @@ export function SearchBar({
       </div>
 
       {/* Suggestions dropdown */}
-      {showSuggestions && area.trim().length > 0 && filtered.length > 0 && (
+      {(shouldShowSuggestions || shouldShowLoading || shouldShowEmpty || shouldShowMinCharacters) && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[var(--color-border)] bg-white py-1 shadow-lg">
-          {filtered.map((location) => (
+          {shouldShowMinCharacters && (
+            <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              Type at least 2 characters to see location suggestions.
+            </div>
+          )}
+
+          {shouldShowLoading && (
+            <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              Searching locations...
+            </div>
+          )}
+
+          {shouldShowSuggestions && filtered.map((location) => (
             <button
               key={location.slug}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => selectArea(location)}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-[var(--color-text-primary)] hover:bg-gray-50 transition-colors"
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm text-[var(--color-text-primary)] transition-colors hover:bg-gray-50"
             >
               <MapPin className="h-3.5 w-3.5 text-[var(--color-text-secondary)]" />
               <span>{location.display_name}</span>
@@ -144,6 +203,12 @@ export function SearchBar({
               </span>
             </button>
           ))}
+
+          {shouldShowEmpty && (
+            <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              No matching locations found.
+            </div>
+          )}
         </div>
       )}
     </form>

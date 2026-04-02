@@ -13,9 +13,13 @@ function mapLocationSearchParams(params?: LocationSearchParams) {
   };
 }
 
-export async function getLocations(params?: LocationSearchParams) {
+export async function getLocations(
+  params?: LocationSearchParams,
+  signal?: AbortSignal,
+) {
   const res = await apiClient.get<ApiSuccessResponse<Location[]>>("/locations", {
     params: mapLocationSearchParams(params),
+    signal,
   });
 
   return res.data;

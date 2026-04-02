@@ -43,6 +43,10 @@ describe("Navbar", () => {
   it("shows the logged-in account summary and menu actions", () => {
     render(<Navbar />);
 
+    expect(screen.getByRole("link", { name: /how it works/i })).toHaveAttribute(
+      "href",
+      "/#how-it-works",
+    );
     expect(screen.getByText("James User")).toBeInTheDocument();
     expect(screen.getByText("james@example.com")).toBeInTheDocument();
 

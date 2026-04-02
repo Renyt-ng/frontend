@@ -24,7 +24,7 @@ export default function AuthLayout({
       <div className="w-full max-w-md">{children}</div>
 
       <p className="mt-8 text-center text-xs text-[var(--color-text-secondary)]">
-        &copy; {new Date().getFullYear()} Renyt.ng &mdash; Rent with Confidence
+        &copy; {new Date().getFullYear()} Renyt.ng &mdash; Rent Smarter, Own Smarter.
       </p>
     </div>
   );

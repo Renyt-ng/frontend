@@ -46,7 +46,7 @@ export function useProperties(
 ) {
   return useQuery({
     queryKey: propertyKeys.list(params ?? {}),
-    queryFn: () => propertiesApi.searchProperties(params),
+    queryFn: ({ signal }) => propertiesApi.searchProperties(params, signal),
     ...options,
   });
 }

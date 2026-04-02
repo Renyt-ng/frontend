@@ -17,7 +17,7 @@ export function useLocations(
 ) {
   return useQuery({
     queryKey: locationKeys.list(params ?? {}),
-    queryFn: () => locationsApi.getLocations(params),
+    queryFn: ({ signal }) => locationsApi.getLocations(params, signal),
     staleTime: 1000 * 60 * 30,
     ...options,
   });

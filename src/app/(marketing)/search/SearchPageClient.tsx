@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { SlidersHorizontal } from "lucide-react";
 import { Container } from "@/components/layout";
-import { SearchBar, FilterBar, AreaTags, IntentToggle } from "@/components/search";
+import { SearchBar, FilterBar, IntentToggle } from "@/components/search";
 import { PropertyGrid } from "@/components/property";
 import { Button, Select } from "@/components/ui";
 import { appendPropertyTypeParams } from "@/lib/utils";
@@ -30,7 +30,6 @@ export function SearchPageClient({
   initialPropertyTypes,
 }: SearchPageClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   const {
     area,
@@ -62,6 +61,7 @@ export function SearchPageClient({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [hasHydratedInitialFilters, setHasHydratedInitialFilters] = useState(false);
   const latestRequestIdRef = useRef(0);
+  const activeRequestControllerRef = useRef<AbortController | null>(null);
   const sortOptions = [
     { value: "created_at:desc", label: "Newest First" },
     { value: "created_at:asc", label: "Oldest First" },
@@ -88,6 +88,9 @@ export function SearchPageClient({
   const fetchProperties = useCallback(async () => {
     const requestId = latestRequestIdRef.current + 1;
     latestRequestIdRef.current = requestId;
+    activeRequestControllerRef.current?.abort();
+    const controller = new AbortController();
+    activeRequestControllerRef.current = controller;
     setIsLoading(true);
 
     try {
@@ -105,9 +108,9 @@ export function SearchPageClient({
         sort_order: sortOrder,
         page,
         limit: 24,
-      });
+      }, controller.signal);
 
-      if (requestId !== latestRequestIdRef.current) {
+      if (requestId !== latestRequestIdRef.current || controller.signal.aborted) {
         return;
       }
 
@@ -123,14 +126,18 @@ export function SearchPageClient({
       }
       setImageMap(map);
     } catch {
-      if (requestId !== latestRequestIdRef.current) {
+      if (requestId !== latestRequestIdRef.current || controller.signal.aborted) {
         return;
       }
 
       setProperties([]);
       setTotal(0);
     } finally {
-      if (requestId === latestRequestIdRef.current) {
+      if (
+        requestId === latestRequestIdRef.current &&
+        activeRequestControllerRef.current === controller
+      ) {
+        activeRequestControllerRef.current = null;
         setIsLoading(false);
       }
     }
@@ -156,6 +163,24 @@ export function SearchPageClient({
 
     fetchProperties();
   }, [fetchProperties, hasHydratedInitialFilters]);
+
+  useEffect(() => {
+    return () => {
+      activeRequestControllerRef.current?.abort();
+    };
+  }, []);
+
+  const handleLocationSearch = useCallback(
+    ({ area: nextArea, locationSlug: nextLocationSlug }: { area: string; locationSlug?: string }) => {
+      if (nextLocationSlug) {
+        setLocation(nextArea, nextLocationSlug);
+        return;
+      }
+
+      setArea(nextArea);
+    },
+    [setArea, setLocation],
+  );
 
   // Sync filters → URL
   useEffect(() => {
@@ -184,7 +209,12 @@ export function SearchPageClient({
       <div className="border-b border-[var(--color-border)] bg-white py-6">
         <Container>
           <div className="mx-auto max-w-2xl">
-            <SearchBar defaultArea={area} defaultLocationSlug={locationSlug} />
+            <SearchBar
+              defaultArea={area}
+              defaultLocationSlug={locationSlug}
+              navigateOnSearch={false}
+              onSearch={handleLocationSearch}
+            />
           </div>
           <div className="mt-4 flex justify-center sm:justify-start">
             <IntentToggle />
@@ -193,9 +223,6 @@ export function SearchPageClient({
       </div>
 
       <Container className="mt-6">
-        {/* Area Tags */}
-        <AreaTags currentArea={area} className="mb-6" />
-
         {/* Toolbar */}
         <div className="relative z-40 mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Desktop filters */}

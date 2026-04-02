@@ -26,7 +26,7 @@ import { useAuthOverlayStore } from "@/stores/authOverlayStore";
 
 const NAV_LINKS = [
   { href: "/search", label: "Find a Home", icon: Search },
-  { href: "/how-it-works", label: "How it Works", icon: Home },
+  { href: "/#how-it-works", label: "How it Works", icon: Home },
   { href: "/agents", label: "For Agents", icon: Building2 },
 ];
 

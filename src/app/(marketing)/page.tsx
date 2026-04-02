@@ -8,6 +8,7 @@ import {
   Search,
   TrendingUp,
   Sparkles,
+  CircleStar,
 } from "lucide-react";
 import { Container } from "@/components/layout";
 import { HeroSearchPanel, PopularAreasGrid } from "@/components/search";
@@ -68,7 +69,7 @@ export default function HomePage() {
         <Container size="md" className="relative">
           <div className="mx-auto max-w-4xl text-center text-white">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 backdrop-blur-md">
-              <Search className="h-4 w-4" />
+              <CircleStar className="h-4 w-4" />
               Trust-first property discovery for Lagos
             </div>
 

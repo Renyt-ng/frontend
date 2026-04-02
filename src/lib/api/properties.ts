@@ -98,10 +98,13 @@ export function mapPropertySearchParams(params?: PropertySearchParams) {
   };
 }
 
-export async function searchProperties(params?: PropertySearchParams) {
+export async function searchProperties(
+  params?: PropertySearchParams,
+  signal?: AbortSignal,
+) {
   const res = await apiClient.get<ApiSuccessResponse<Property[]>>(
     "/properties",
-    { params: mapPropertySearchParams(params) },
+    { params: mapPropertySearchParams(params), signal },
   );
   return {
     ...res.data,

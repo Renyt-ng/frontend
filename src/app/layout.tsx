@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Renyt — Rent with Confidence",
+    default: "Renyt — Housing, Powered by Technology",
     template: "%s | Renyt",
   },
   description:
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_NG",
     siteName: "Renyt",
-    title: "Renyt — Rent with Confidence",
+    title: "Renyt — Housing, Powered by Technology",
     description:
       "Lagos' trust-first rental marketplace. Verified agents, transparent pricing, and secure digital leases.",
     images: [{ url: "/logo-primary.png" }],

@@ -36,9 +36,14 @@ vi.mock("@/components/layout", () => ({
 }));
 
 vi.mock("@/components/search", () => ({
-  SearchBar: () => <div data-testid="search-bar" />,
+  SearchBar: ({ onSearch }: { onSearch?: (selection: { area: string; locationSlug?: string }) => void }) => (
+    <button
+      type="button"
+      data-testid="search-bar"
+      onClick={() => onSearch?.({ area: "Yaba", locationSlug: "yaba" })}
+    />
+  ),
   FilterBar: () => <div data-testid="filter-bar" />,
-  AreaTags: () => <div data-testid="area-tags" />,
   IntentToggle: () => <div data-testid="intent-toggle" />,
 }));
 
@@ -89,6 +94,8 @@ describe("SearchPageClient", () => {
 
     await waitFor(() => expect(searchProperties).toHaveBeenCalledTimes(1));
 
+    expect(screen.queryByTestId("area-tags")).not.toBeInTheDocument();
+
     expect(searchProperties).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -97,6 +104,7 @@ describe("SearchPageClient", () => {
         listing_purpose: "sale",
         verified: true,
       }),
+      expect.any(AbortSignal),
     );
   });
 
@@ -154,5 +162,45 @@ describe("SearchPageClient", () => {
     });
 
     expect(screen.getByTestId("property-grid").textContent).toBe("Yaba Listing");
+  });
+
+  it("refreshes properties immediately when the search bar selects a location", async () => {
+    searchProperties
+      .mockResolvedValueOnce({
+        data: [{ id: "property-1", title: "Lekki Listing" }],
+        pagination: { page: 1, limit: 24, total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: "property-2", title: "Yaba Listing" }],
+        pagination: { page: 1, limit: 24, total: 1 },
+      });
+
+    render(
+      <SearchPageClient
+        initialArea="Lekki"
+        initialLocationSlug="lekki-phase-1"
+        initialFreshOnly={false}
+        initialVerifiedOnly={false}
+        initialListingPurpose="sale"
+        initialPropertyTypes={[]}
+      />,
+    );
+
+    await waitFor(() => expect(searchProperties).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      screen.getByTestId("search-bar").click();
+    });
+
+    await waitFor(() => expect(searchProperties).toHaveBeenCalledTimes(2));
+
+    expect(searchProperties).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        area: "Yaba",
+        location_slug: "yaba",
+      }),
+      expect.any(AbortSignal),
+    );
   });
 });
