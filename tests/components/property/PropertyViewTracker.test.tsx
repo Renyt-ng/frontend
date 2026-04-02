@@ -4,6 +4,18 @@ import { PropertyViewTracker } from "@/components/property";
 
 const mutateAsync = vi.fn();
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
 vi.mock("@/lib/hooks", () => ({
   useTrackPropertyView: () => ({
     mutateAsync,
@@ -46,6 +58,29 @@ describe("PropertyViewTracker", () => {
 
     await waitFor(() => {
       expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("does not create duplicate writes while a fresh pending attempt exists", async () => {
+    const deferred = createDeferred<{ data: { tracked: boolean } }>();
+    mutateAsync.mockReturnValueOnce(deferred.promise);
+
+    const view = render(<PropertyViewTracker propertyId="property-1" />);
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(<PropertyViewTracker propertyId="property-1" />);
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+    });
+
+    deferred.resolve({ data: { tracked: true } });
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem("renyt:property-viewed:property-1")).toBe("tracked");
     });
   });
 });

@@ -4,9 +4,23 @@ import { useEffect } from "react";
 import { useTrackPropertyView } from "@/lib/hooks";
 
 const PROPERTY_VIEW_SESSION_STORAGE_KEY = "renyt:property-view-session-id";
+const PROPERTY_VIEW_PENDING_TTL_MS = 30_000;
 
 function getTrackedViewKey(propertyId: string) {
   return `renyt:property-viewed:${propertyId}`;
+}
+
+function hasFreshPendingViewAttempt(value: string | null) {
+  if (!value?.startsWith("pending:")) {
+    return false;
+  }
+
+  const startedAt = Number(value.slice("pending:".length));
+  if (!Number.isFinite(startedAt)) {
+    return false;
+  }
+
+  return Date.now() - startedAt < PROPERTY_VIEW_PENDING_TTL_MS;
 }
 
 function getOrCreateSessionId() {
@@ -37,7 +51,8 @@ export function PropertyViewTracker({ propertyId }: PropertyViewTrackerProps) {
     }
 
     const trackedKey = getTrackedViewKey(propertyId);
-    if (window.sessionStorage.getItem(trackedKey) === "tracked") {
+    const currentStatus = window.sessionStorage.getItem(trackedKey);
+    if (currentStatus === "tracked" || hasFreshPendingViewAttempt(currentStatus)) {
       return;
     }
 
