@@ -12,6 +12,36 @@ export async function getProfile() {
   return res.data;
 }
 
+export interface SignupEmailVerificationStatus {
+  email: string;
+  verified: boolean;
+  code_sent: boolean;
+  resend_available_at: string | null;
+  expires_at: string | null;
+  locked_until: string | null;
+  verified_at: string | null;
+  development_code?: string;
+}
+
+export async function requestSignupEmailVerification(data: { email: string }) {
+  const res = await apiClient.post<ApiSuccessResponse<SignupEmailVerificationStatus>>(
+    "/auth/signup/email-verification/request",
+    data,
+  );
+  return res.data;
+}
+
+export async function verifySignupEmailVerification(data: {
+  email: string;
+  code: string;
+}) {
+  const res = await apiClient.post<ApiSuccessResponse<SignupEmailVerificationStatus>>(
+    "/auth/signup/email-verification/verify",
+    data,
+  );
+  return res.data;
+}
+
 export async function updateProfile(
   data: Partial<Pick<Profile, "full_name" | "phone" | "avatar_url">>,
 ) {

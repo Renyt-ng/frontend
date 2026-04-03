@@ -33,9 +33,18 @@ import {
   getPropertyFreshnessMeta,
 } from "@/lib/utils";
 import type { PropertyWithImages } from "@/types";
+import { WalkthroughVideoPlayer } from "@/components/property/WalkthroughVideoPlayer";
 
 interface PropertyPageProps {
   params: Promise<{ id: string }>;
+}
+
+function resolveSharePreviewImageUrl(imageUrl: string) {
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl;
+  }
+
+  return buildAbsoluteSiteUrl(imageUrl);
 }
 
 export async function generateMetadata({
@@ -51,6 +60,7 @@ export async function generateMetadata({
       property.images?.find((image) => image.is_cover)?.image_url ??
       property.images?.[0]?.image_url ??
       "/logo-primary.png";
+    const previewImageUrl = resolveSharePreviewImageUrl(previewImage);
     const price = formatPropertyPriceLabel({
       listingPurpose: property.listing_purpose,
       rentAmount: property.rent_amount,
@@ -72,7 +82,7 @@ export async function generateMetadata({
         description,
         images: [
           {
-            url: previewImage,
+            url: previewImageUrl,
             alt: property.title,
           },
         ],
@@ -81,7 +91,7 @@ export async function generateMetadata({
         card: "summary_large_image",
         title,
         description,
-        images: [previewImage],
+        images: [previewImageUrl],
       },
     };
   } catch {
@@ -213,12 +223,11 @@ export default async function PropertyDetailPage({
                   Walkthrough Video
                 </h2>
                 <div className="overflow-hidden rounded-3xl border border-[var(--color-border)] bg-black">
-                  <video controls preload="metadata" className="w-full">
-                    <source
-                      src={property.property_videos[0].video_url}
-                      type={property.property_videos[0].mime_type ?? "video/mp4"}
-                    />
-                  </video>
+                  <WalkthroughVideoPlayer
+                    src={property.property_videos[0].video_url}
+                    type={property.property_videos[0].mime_type ?? "video/mp4"}
+                    title={property.title}
+                  />
                 </div>
               </div>
             )}

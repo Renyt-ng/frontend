@@ -58,4 +58,47 @@ describe("property detail metadata", () => {
       "https://cdn.renyt.ng/property-1-cover.jpg",
     ]);
   }, 15000);
+
+  it("converts relative cover images into absolute share preview urls", async () => {
+    getProperty.mockResolvedValue({
+      data: {
+        id: "property-2",
+        title: "3 Bedroom Duplex",
+        area: "Lekki",
+        property_type: "duplex",
+        listing_purpose: "rent",
+        bedrooms: 3,
+        bathrooms: 3,
+        rent_amount: 8500000,
+        asking_price: null,
+        images: [
+          {
+            id: "image-2",
+            property_id: "property-2",
+            image_url: "/uploads/property-2-cover.jpg",
+            display_order: 0,
+            is_cover: true,
+            created_at: "2026-03-28T00:00:00.000Z",
+          },
+        ],
+      },
+    });
+
+    const { generateMetadata } = await import(
+      "@/app/(marketing)/properties/[id]/page"
+    );
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ id: "property-2" }),
+    });
+
+    expect(metadata.openGraph?.images).toEqual([
+      {
+        url: "https://renyt.ng/uploads/property-2-cover.jpg",
+        alt: "3 Bedroom Duplex",
+      },
+    ]);
+    expect(metadata.twitter?.images).toEqual([
+      "https://renyt.ng/uploads/property-2-cover.jpg",
+    ]);
+  }, 15000);
 });
