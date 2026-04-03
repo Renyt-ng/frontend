@@ -16,7 +16,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { Badge, Button, Card, CardContent, Modal } from "@/components/ui";
+import { Badge, Button, Card, CardContent, Modal, type ButtonProps } from "@/components/ui";
 import { PropertyCardSkeleton } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
 import { ReferralShareTriggerButton } from "@/components/referrals";
@@ -75,6 +75,54 @@ function formatResolutionSummary(summary?: Property["referral_resolution_summary
   }
 
   return segments.join(". ");
+}
+
+function getLifecycleActionStyles(action: "confirm" | "unavailable" | "archived") {
+  switch (action) {
+    case "confirm":
+      return {
+        label: "Confirm live",
+        icon: RefreshCw,
+        variant: "success" as ButtonProps["variant"],
+        className:
+          "justify-start border border-emerald-700 shadow-sm shadow-emerald-100/80",
+      };
+    case "unavailable":
+      return {
+        label: "Unavailable",
+        icon: Ban,
+        variant: "secondary" as ButtonProps["variant"],
+        className:
+          "justify-start border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100",
+      };
+    case "archived":
+      return {
+        label: "Archive",
+        icon: Archive,
+        variant: "secondary" as ButtonProps["variant"],
+        className:
+          "justify-start border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:bg-slate-100",
+      };
+  }
+}
+
+function getOutcomeActionStyles(status: Extract<Property["status"], "rented_renyt" | "rented_off_platform" | "sold_renyt" | "sold_off_platform">) {
+  if (status === "rented_renyt" || status === "sold_renyt") {
+    return {
+      label: "Via Renyt",
+      icon: Check,
+      variant: "dashboardPrimary" as ButtonProps["variant"],
+      className: "justify-start shadow-sm shadow-[rgba(30,58,95,0.12)]",
+    };
+  }
+
+  return {
+    label: "Off-platform",
+    icon: X,
+    variant: "secondary" as ButtonProps["variant"],
+    className:
+      "justify-start border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50",
+  };
 }
 
 export default function MyPropertiesPage() {
@@ -814,60 +862,103 @@ export default function MyPropertiesPage() {
                               ) : null}
                             </div>
                             <div className="flex flex-col gap-2 lg:w-[420px] lg:items-end">
-                              <div className="flex flex-wrap gap-2 lg:justify-end">
-                                {p.status === "active" ? (
-                                  <ReferralShareTriggerButton
-                                    property={p}
-                                    variant="secondary"
-                                    size="sm"
-                                    label="Share"
-                                  />
-                                ) : null}
-                                {p.status !== "draft" && p.status !== "publishing" && p.status !== "archived" && !getPropertyFinalOutcomeLabel(p.status) ? (
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleConfirmAvailability(p.id)}
-                                    isLoading={activeAction === `confirm:${p.id}`}
-                                  >
-                                    <RefreshCw className="h-4 w-4" />
-                                    Confirm available
-                                  </Button>
-                                ) : null}
-                                {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handleStatusUpdate(p.id, "unavailable")}
-                                    isLoading={activeAction === `unavailable:${p.id}`}
-                                  >
-                                    <Ban className="h-4 w-4" />
-                                    Mark unavailable
-                                  </Button>
-                                ) : null}
-                                {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (
-                                  <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => handleStatusUpdate(p.id, "archived")}
-                                    isLoading={activeAction === `archived:${p.id}`}
-                                  >
-                                    <Archive className="h-4 w-4" />
-                                    Archive
-                                  </Button>
-                                ) : null}
-                                {p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status)
-                                  ? getOutcomeActions(p.listing_purpose).map((action) => (
-                                      <Button
-                                        key={action.status}
+                              <div className="w-full rounded-[24px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] p-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                                <div className="space-y-2">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
+                                    Listing Health
+                                  </p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {p.status === "active" ? (
+                                      <ReferralShareTriggerButton
+                                        property={p}
                                         variant="secondary"
                                         size="sm"
-                                        onClick={() => handleStatusUpdate(p.id, action.status)}
-                                        isLoading={activeAction === `${action.status}:${p.id}`}
-                                      >
-                                        {action.label}
-                                      </Button>
-                                    ))
-                                  : null}
+                                        label="Share"
+                                        className="justify-start border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                      />
+                                    ) : null}
+                                    {p.status !== "draft" && p.status !== "publishing" && p.status !== "archived" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
+                                      const action = getLifecycleActionStyles("confirm");
+                                      const Icon = action.icon;
+
+                                      return (
+                                        <Button
+                                          size="sm"
+                                          variant={action.variant}
+                                          className={action.className}
+                                          onClick={() => handleConfirmAvailability(p.id)}
+                                          isLoading={activeAction === `confirm:${p.id}`}
+                                        >
+                                          <Icon className="h-4 w-4" />
+                                          {action.label}
+                                        </Button>
+                                      );
+                                    })() : null}
+                                    {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
+                                      const action = getLifecycleActionStyles("unavailable");
+                                      const Icon = action.icon;
+
+                                      return (
+                                        <Button
+                                          variant={action.variant}
+                                          size="sm"
+                                          className={action.className}
+                                          onClick={() => handleStatusUpdate(p.id, "unavailable")}
+                                          isLoading={activeAction === `unavailable:${p.id}`}
+                                        >
+                                          <Icon className="h-4 w-4" />
+                                          {action.label}
+                                        </Button>
+                                      );
+                                    })() : null}
+                                    {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
+                                      const action = getLifecycleActionStyles("archived");
+                                      const Icon = action.icon;
+
+                                      return (
+                                        <Button
+                                          variant={action.variant}
+                                          size="sm"
+                                          className={action.className}
+                                          onClick={() => handleStatusUpdate(p.id, "archived")}
+                                          isLoading={activeAction === `archived:${p.id}`}
+                                        >
+                                          <Icon className="h-4 w-4" />
+                                          {action.label}
+                                        </Button>
+                                      );
+                                    })() : null}
+                                  </div>
+                                </div>
+
+                                {p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (
+                                  <div className="mt-3 space-y-2 border-t border-[var(--dashboard-border)] pt-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
+                                      Close As
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {getOutcomeActions(p.listing_purpose).map((action) => {
+                                        const presentation = getOutcomeActionStyles(action.status);
+                                        const Icon = presentation.icon;
+
+                                        return (
+                                          <Button
+                                            key={action.status}
+                                            aria-label={action.label}
+                                            variant={presentation.variant}
+                                            size="sm"
+                                            className={presentation.className}
+                                            onClick={() => handleStatusUpdate(p.id, action.status)}
+                                            isLoading={activeAction === `${action.status}:${p.id}`}
+                                          >
+                                            <Icon className="h-4 w-4" />
+                                            {presentation.label}
+                                          </Button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : null}
                               </div>
                               <div className="flex items-center gap-2 lg:justify-end">
                                 <Link href={p.status === "active" ? `/properties/${p.id}` : `/dashboard/properties/${p.id}/edit`}>
@@ -899,87 +990,94 @@ export default function MyPropertiesPage() {
         onClose={() => setPendingOutcome(null)}
         title={pendingOutcome?.status === "sold_renyt" ? "Mark sold via Renyt" : "Mark rented via Renyt"}
         ariaLabel="Confirm Renyt close outcome"
+        dialogClassName="overflow-hidden"
+        className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col sm:max-h-[85vh]"
       >
-        <div className="space-y-4">
+        <div className="flex min-h-0 flex-1 flex-col">
           <p className="text-sm text-[var(--color-text-secondary)]">
             Select the matched buyer or renter from people who previously contacted this property. The winning referral candidate will move to under review and losing open earnings will become ineligible.
           </p>
 
           {pendingOutcomeProperty ? (
-            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            <div className="mt-4 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
               <p className="font-medium text-[var(--color-text-primary)]">{pendingOutcomeProperty.title}</p>
               <p className="mt-1">{pendingOutcomeProperty.area}</p>
             </div>
           ) : null}
 
-          {pendingOutcomeCandidatesQuery.isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-16 animate-pulse rounded-2xl bg-gray-100" />
-              ))}
-            </div>
-          ) : (pendingOutcomeCandidatesQuery.data?.data ?? []).length === 0 ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-              No eligible contacted users found for this property.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {(pendingOutcomeCandidatesQuery.data?.data ?? []).map((candidate) => (
-                <label
-                  key={candidate.user_id}
-                  className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3"
-                >
-                  <input
-                    type="radio"
-                    name="matched-user"
-                    value={candidate.user_id}
-                    checked={matchedUserId === candidate.user_id}
-                    onChange={(event) => setMatchedUserId(event.target.value)}
-                    className="mt-1"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-[var(--color-text-primary)]">{candidate.full_name}</p>
-                      {candidate.has_open_referral_candidate ? (
-                        <Badge variant="dashboardSuccess">Referral candidate</Badge>
-                      ) : (
-                        <Badge variant="dashboardWarning">No open referral</Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                      {candidate.email ?? "No email"} · {candidate.phone ?? "No phone"}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                      Last contact {new Date(candidate.latest_contact_at).toLocaleDateString()} · {candidate.source_channels.join(", ")}
-                    </p>
-                    {candidate.referrer_name ? (
-                      <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-                        Referrer: {candidate.referrer_name} · {candidate.referrer_email ?? "No email"} · {candidate.referrer_phone ?? "No phone"}
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-1">
+            {pendingOutcomeCandidatesQuery.isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-2xl bg-gray-100" />
+                ))}
+              </div>
+            ) : (pendingOutcomeCandidatesQuery.data?.data ?? []).length === 0 ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+                No eligible contacted users found for this property.
+              </div>
+            ) : (
+              <div className="space-y-3 pb-1">
+                {(pendingOutcomeCandidatesQuery.data?.data ?? []).map((candidate) => (
+                  <label
+                    key={candidate.user_id}
+                    className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3"
+                  >
+                    <input
+                      type="radio"
+                      name="matched-user"
+                      value={candidate.user_id}
+                      checked={matchedUserId === candidate.user_id}
+                      onChange={(event) => setMatchedUserId(event.target.value)}
+                      className="mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-[var(--color-text-primary)]">{candidate.full_name}</p>
+                        {candidate.has_open_referral_candidate ? (
+                          <Badge variant="dashboardSuccess">Referral candidate</Badge>
+                        ) : (
+                          <Badge variant="dashboardWarning">No open referral</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                        {candidate.email ?? "No email"} · {candidate.phone ?? "No phone"}
                       </p>
-                    ) : null}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-            Confirmed and paid earnings remain unchanged. This action only updates open referral items on the property.
+                      <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                        Last contact {new Date(candidate.latest_contact_at).toLocaleDateString()} · {candidate.source_channels.join(", ")}
+                      </p>
+                      {candidate.referrer_name ? (
+                        <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                          Referrer: {candidate.referrer_name} · {candidate.referrer_email ?? "No email"} · {candidate.referrer_phone ?? "No phone"}
+                        </p>
+                      ) : null}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setPendingOutcome(null)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmMatchedOutcome}
-              isLoading={Boolean(
-                pendingOutcome && activeAction === `${pendingOutcome.status}:${pendingOutcome.propertyId}`,
-              )}
-              disabled={!matchedUserId}
-            >
-              Confirm outcome
-            </Button>
+          <div className="mt-4 border-t border-[var(--color-border)] bg-white pt-4">
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              Confirmed and paid earnings remain unchanged. This action only updates open referral items on the property.
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-3">
+              <Button variant="secondary" className="flex-1 sm:flex-none" onClick={() => setPendingOutcome(null)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 sm:flex-none"
+                onClick={handleConfirmMatchedOutcome}
+                isLoading={Boolean(
+                  pendingOutcome && activeAction === `${pendingOutcome.status}:${pendingOutcome.propertyId}`,
+                )}
+                disabled={!matchedUserId}
+              >
+                Confirm outcome
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>
