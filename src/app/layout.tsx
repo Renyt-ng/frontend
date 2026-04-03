@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s | Renyt",
   },
   description:
-    "Lagos' trust-first rental marketplace. Verified agents, transparent pricing, and secure digital leases.",
+    "Lagos' trust-first property marketplace. Verified agents, Verified listings and transparent pricing.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://renyt.ng"),
   icons: {
     icon: "/favicon.png",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     siteName: "Renyt",
     title: "Renyt — Housing, Powered by Technology",
     description:
-      "Lagos' trust-first rental marketplace. Verified agents, transparent pricing, and secure digital leases.",
+      "Lagos' trust-first property marketplace. Verified agents, Verified listings and transparent pricing.",
     images: [{ url: "/logo-primary.png" }],
   },
   twitter: {
