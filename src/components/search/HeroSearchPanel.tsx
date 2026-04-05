@@ -7,20 +7,15 @@ import { Button, MultiSelect, Select } from "@/components/ui";
 import {
   appendPropertyTypeParams,
   PRICE_RANGES,
-  PROPERTY_TYPE_LABELS,
   cn,
 } from "@/lib/utils";
-import { useLocations } from "@/lib/hooks";
+import { useLocations, usePropertyTypes } from "@/lib/hooks";
 import type { PropertyListingPurpose, PropertyType } from "@/types";
 
 const PURPOSE_OPTIONS: Array<{ value: PropertyListingPurpose; label: string }> = [
   { value: "rent", label: "Rent" },
   { value: "sale", label: "Buy" },
 ];
-
-const PROPERTY_TYPE_OPTIONS = Object.entries(PROPERTY_TYPE_LABELS).map(
-  ([value, label]) => ({ value, label }),
-);
 
 const BEDROOM_OPTIONS = [
   { value: "1", label: "1 Bedroom" },
@@ -36,6 +31,7 @@ const PRICE_OPTIONS = PRICE_RANGES.map((range, index) => ({
 
 export function HeroSearchPanel() {
   const router = useRouter();
+  const propertyTypesQuery = usePropertyTypes();
   const [listingPurpose, setListingPurpose] = useState<PropertyListingPurpose>("sale");
   const [area, setArea] = useState("");
   const [locationSlug, setLocationSlug] = useState("");
@@ -49,6 +45,10 @@ export function HeroSearchPanel() {
     kind: "all",
     limit: deferredArea ? 8 : 0,
   });
+  const propertyTypeOptions = (propertyTypesQuery.data?.data ?? []).map((type) => ({
+    value: type.slug,
+    label: type.label,
+  }));
   const filteredAreas = locationsQuery.data?.data ?? [];
 
   function pushSearch() {
@@ -177,7 +177,7 @@ export function HeroSearchPanel() {
           <div className="relative">
             <Building2 className="pointer-events-none absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-[var(--color-text-secondary)]" />
             <MultiSelect
-              options={PROPERTY_TYPE_OPTIONS}
+              options={propertyTypeOptions}
               value={propertyTypes}
               onChange={(nextValue) => setPropertyTypes(nextValue as PropertyType[])}
               emptyLabel="Property Type"
