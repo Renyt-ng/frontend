@@ -11,7 +11,7 @@ import {
   type ButtonHTMLAttributes,
   type KeyboardEvent,
 } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, CheckSquare2, ChevronDown, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type MultiSelectBaseProps = Omit<
@@ -268,9 +268,7 @@ const MultiSelect = forwardRef<HTMLButtonElement, MultiSelectProps>(
                     onClick={() => onChange?.([])}
                   >
                     <span>{emptyLabel}</span>
-                    {selectedOptions.length === 0 && (
-                      <Check className="h-4 w-4 text-[var(--color-deep-slate-blue)]" />
-                    )}
+                    <CheckSquare2 className="h-4 w-4 text-[var(--color-deep-slate-blue)]" />
                   </button>
                 </li>
                 {options.map((option, index) => {
@@ -293,8 +291,10 @@ const MultiSelect = forwardRef<HTMLButtonElement, MultiSelectProps>(
                         onClick={() => toggleValue(option.value)}
                       >
                         <span>{option.label}</span>
-                        {isSelected && (
-                          <Check className="h-4 w-4 text-[var(--color-deep-slate-blue)]" />
+                        {isSelected ? (
+                          <CheckSquare2 className="h-4 w-4 text-[var(--color-deep-slate-blue)]" />
+                        ) : (
+                          <Square className="h-4 w-4 text-[var(--color-text-secondary)]" />
                         )}
                       </button>
                     </li>
