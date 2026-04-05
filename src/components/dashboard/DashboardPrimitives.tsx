@@ -66,15 +66,15 @@ export function DashboardSectionHeading({
 }: DashboardSectionHeadingProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <div className="flex items-start gap-2">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <h2 className="text-lg font-semibold tracking-tight text-[var(--dashboard-text-primary)]">
             {title}
           </h2>
-          {helper ? <div className="pt-0.5">{helper}</div> : null}
+          {helper ? <div className="flex-shrink-0 self-center">{helper}</div> : null}
         </div>
         {description ? (
-          <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+          <p className="mt-1 break-words text-sm text-[var(--dashboard-text-secondary)]">
             {description}
           </p>
         ) : null}
@@ -102,7 +102,7 @@ export function MetricCard({
   emphasis = "default",
 }: MetricCardProps) {
   const cardClassName = cn(
-    "group block rounded-[20px] border bg-[var(--dashboard-surface)] p-5 transition-all duration-200",
+    "group block min-w-0 rounded-[20px] border bg-[var(--dashboard-surface)] p-5 transition-all duration-200",
     emphasis === "highlight"
       ? "border-[var(--dashboard-border-strong)] shadow-[var(--shadow-dashboard-md)]"
       : emphasis === "warning"
@@ -116,15 +116,15 @@ export function MetricCard({
   const content = (
     <>
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-[var(--dashboard-text-secondary)]">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-sm font-medium text-[var(--dashboard-text-secondary)]">
             {label}
           </p>
-          <p className="mt-3 text-[clamp(1.875rem,2.2vw,2.25rem)] font-semibold tracking-tight text-[var(--dashboard-text-primary)]">
+          <p className="mt-3 break-words text-[clamp(1.875rem,2.2vw,2.25rem)] font-semibold leading-tight tracking-tight text-[var(--dashboard-text-primary)]">
             {value}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-shrink-0 items-center gap-2">
           <Icon
             className={cn(
               "h-5 w-5",
@@ -143,7 +143,7 @@ export function MetricCard({
         </div>
       </div>
       {meta ? (
-        <p className="mt-4 text-xs font-medium text-[var(--dashboard-text-tertiary)]">
+        <p className="mt-4 break-words text-xs font-medium text-[var(--dashboard-text-tertiary)]">
           {meta}
         </p>
       ) : null}
@@ -310,7 +310,7 @@ export function DashboardContextualHelp({
   return (
     <span
       ref={containerRef}
-      className="relative inline-flex"
+      className="relative inline-flex flex-shrink-0 align-middle"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
@@ -369,7 +369,7 @@ export function MiniBarChart({
 
   return (
     <div role="img" aria-label={ariaLabel} className="space-y-4">
-      <div className="flex min-h-48 items-end gap-3">
+      <div className="flex min-h-48 items-end gap-2 sm:gap-3">
         {values.map((value, index) => {
           const rawHeight = isLoading
             ? 22 + index * 5
@@ -378,16 +378,19 @@ export function MiniBarChart({
               : 18;
 
           return (
-            <div key={`${labels[index]}-${index}`} className="flex flex-1 flex-col items-center gap-3">
+            <div
+              key={`${labels[index]}-${index}`}
+              className="flex min-w-0 flex-1 basis-0 flex-col items-center gap-2 sm:gap-3"
+            >
               <span className="min-h-6 text-sm font-semibold text-[var(--dashboard-text-primary)]">
                 {isLoading ? "..." : value}
               </span>
-              <div className="flex h-32 w-full items-end justify-center rounded-[18px] bg-[var(--dashboard-surface-alt)] px-2 py-2">
+              <div className="flex h-32 w-full min-w-0 items-end justify-center rounded-[18px] bg-[var(--dashboard-surface-alt)] px-1.5 py-2 sm:px-2">
                 <div
                   data-bar-state={value > 0 ? "value" : "empty"}
                   data-highlighted={index === highlightIndex ? "true" : "false"}
                   className={cn(
-                    "w-full rounded-[12px] transition-all",
+                    "h-full w-full rounded-[12px] transition-all",
                     isLoading
                       ? "animate-pulse bg-[var(--dashboard-border-strong)]"
                       : value > 0
@@ -397,7 +400,7 @@ export function MiniBarChart({
                   style={{ height: `${rawHeight}%` }}
                 />
               </div>
-              <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--dashboard-text-tertiary)]">
+              <span className="block w-full truncate text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-tertiary)] sm:text-[11px] sm:tracking-[0.14em]">
                 {labels[index]}
               </span>
             </div>
@@ -447,7 +450,7 @@ export function StatusPanel({
   return (
     <DashboardPanel tone={tone} className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
+        <div className="flex min-w-0 items-start gap-3">
           <Icon
             className={cn(
               "mt-0.5 h-5 w-5",
@@ -460,14 +463,14 @@ export function StatusPanel({
                     : "text-[var(--dashboard-text-secondary)]",
             )}
           />
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm font-semibold text-[var(--dashboard-text-primary)]">
                 {title}
               </h3>
               {badgeLabel ? <Badge variant={badgeVariant}>{badgeLabel}</Badge> : null}
             </div>
-            <p className="mt-1 text-sm leading-6 text-[var(--dashboard-text-secondary)]">
+            <p className="mt-1 break-words text-sm leading-6 text-[var(--dashboard-text-secondary)]">
               {description}
             </p>
           </div>

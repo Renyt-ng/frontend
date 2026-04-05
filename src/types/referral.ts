@@ -67,6 +67,11 @@ export interface ReferralEvent {
   commission_value: number;
   commission_basis_label: string | null;
   commission_basis_amount: number | null;
+  listing_authority_mode_snapshot?: "owner_agent" | "authorized_listing_agent" | null;
+  commission_basis_snapshot_type?: string | null;
+  commission_basis_snapshot_amount?: number | null;
+  commission_share_percent_snapshot?: number | null;
+  eligible_basis_snapshot_amount?: number | null;
   estimated_amount: number;
   status: ReferralEventStatus;
   rejection_reason: string | null;
@@ -126,6 +131,10 @@ export interface ReferralPropertyCommissionPreview {
   preview: ReferralCommissionPreview;
   campaign_name: string | null;
   terms_version: string;
+  listing_authority_mode: "owner_agent" | "authorized_listing_agent" | null;
+  declared_commission_share_percent: number | null;
+  public_commission_basis_amount: number | null;
+  eligible_referral_basis_amount: number | null;
 }
 
 export interface ReferralProgramAdminConfig {
@@ -266,6 +275,12 @@ export interface AdminReferralEvent {
   commission_value: number;
   commission_basis_label: string | null;
   commission_basis_amount: number | null;
+  listing_authority_mode: "owner_agent" | "authorized_listing_agent" | null;
+  commission_basis_snapshot_type: string | null;
+  commission_basis_snapshot_amount: number | null;
+  commission_share_percent_snapshot: number | null;
+  eligible_basis_snapshot_amount: number | null;
+  referral_hold_reason: string | null;
   campaign_name: string | null;
   close_status: ReferralClosureStatus | null;
   close_source: ReferralClosureSource | null;

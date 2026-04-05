@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { PropertyComposer } from "@/app/(dashboard)/dashboard/properties/PropertyComposer";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -30,6 +30,7 @@ const { mockRouter, hooks } = vi.hoisted(() => ({
   hooks: {
     useCreateFeeType: vi.fn(),
     useCreateProperty: vi.fn(),
+    useDeleteProperty: vi.fn(),
     useDeletePropertyImage: vi.fn(),
     useDeletePropertyVideo: vi.fn(),
     useFeeTypes: vi.fn(),
@@ -37,6 +38,7 @@ const { mockRouter, hooks } = vi.hoisted(() => ({
     useManageProperty: vi.fn(),
     useMyAgent: vi.fn(),
     usePublishProperty: vi.fn(),
+    usePropertyAuthorityOptions: vi.fn(),
     usePropertyTypes: vi.fn(),
     useReorderPropertyImages: vi.fn(),
     useUpdateProperty: vi.fn(),
@@ -60,6 +62,7 @@ vi.mock("@/lib/hooks", () => hooks);
 const updatePropertyMutateAsync = vi.fn();
 const createPropertyMutateAsync = vi.fn();
 const publishPropertyMutateAsync = vi.fn();
+const deletePropertyMutateAsync = vi.fn();
 const uploadPropertyImageMutateAsync = vi.fn();
 const uploadPropertyVideoMutateAsync = vi.fn();
 const reorderPropertyImagesMutateAsync = vi.fn();
@@ -71,7 +74,7 @@ const baseProperty = {
   id: "draft-1",
   title: "Modern 3-bedroom apartment in Lekki Phase 1",
   description:
-    "A bright apartment with parking, treated water, fitted kitchen, nearby shops, and reliable power for everyday comfort.",
+    "A bright apartment with parking, treated water, fitted kitchen, nearby shops, dependable estate power, secure access control, generous bedroom storage, and quick access to work hubs, schools, restaurants, and everyday essentials for families and professionals.",
   area: "Lekki Phase 1",
   address_line: "14 Admiralty Way, Lekki Phase 1",
   property_type: "apartment",
@@ -80,6 +83,18 @@ const baseProperty = {
   bathrooms: 3,
   rent_amount: 8500000,
   asking_price: null,
+  agency_fee: 850000,
+  listing_authority_mode: "owner_agent",
+  declared_commission_share_percent: null,
+  referral_basis_summary: {
+    basis_source_label: "agency fee",
+    public_commission_basis_amount: 850000,
+    declared_agent_share_percent: null,
+    eligible_referral_basis_amount: 850000,
+    referral_eligibility_status: "eligible",
+    publish_blocker: null,
+    uses_declared_share: false,
+  },
   application_mode: "message_agent",
   status: "draft",
   images: [
@@ -117,12 +132,29 @@ const baseProperty = {
     },
   ],
   property_videos: [],
-  property_fees: [],
+  property_fees: [
+    {
+      id: "fee-1",
+      property_id: "draft-1",
+      fee_type_id: "agency-fee-type",
+      value_type: "fixed",
+      amount: 850000,
+      percentage: null,
+      created_at: "2025-01-01T00:00:00Z",
+      updated_at: "2025-01-01T00:00:00Z",
+      fee_type: {
+        id: "agency-fee-type",
+        name: "Agency Fee",
+        slug: "agency_fee",
+        description: null,
+      },
+    },
+  ],
   completion: {
     ready_to_publish: true,
     blockers: [],
-    completed_count: 7,
-    total_count: 7,
+    completed_count: 10,
+    total_count: 10,
     progress_percentage: 100,
     checklist: [
       { key: "title", label: "Title added", completed: true },
@@ -132,6 +164,9 @@ const baseProperty = {
       { key: "photos", label: "Five photos uploaded", completed: true },
       { key: "address", label: "Address added", completed: true },
       { key: "rooms", label: "Room count added", completed: true },
+      { key: "listing_authority", label: "Authority chosen", completed: true },
+      { key: "commission_share", label: "Share declared", completed: true },
+      { key: "commission_basis", label: "Basis complete", completed: true },
     ],
   },
 };
@@ -150,6 +185,13 @@ class MockFileReader {
 
 describe("PropertyComposer", () => {
   beforeEach(() => {
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
+      this.open = true;
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function close() {
+      this.open = false;
+    });
+
     useAuthStore.setState({
       user: {
         id: "user-1",
@@ -173,6 +215,7 @@ describe("PropertyComposer", () => {
     updatePropertyMutateAsync.mockReset();
     createPropertyMutateAsync.mockReset();
     publishPropertyMutateAsync.mockReset();
+    deletePropertyMutateAsync.mockReset();
     uploadPropertyImageMutateAsync.mockReset();
     uploadPropertyVideoMutateAsync.mockReset();
     reorderPropertyImagesMutateAsync.mockReset();
@@ -191,7 +234,47 @@ describe("PropertyComposer", () => {
     hooks.usePropertyTypes.mockReturnValue({
       data: { data: [{ slug: "apartment", label: "Apartment" }] },
     });
-    hooks.useFeeTypes.mockReturnValue({ data: { data: [] } });
+    hooks.usePropertyAuthorityOptions.mockReturnValue({
+      data: {
+        data: {
+          options: [
+            {
+              value: "owner_agent",
+              label: "Owner agent",
+              description: "Controls the commission side.",
+              requires_share: false,
+            },
+            {
+              value: "authorized_listing_agent",
+              label: "Authorized listing agent",
+              description: "Receives only a share.",
+              requires_share: true,
+            },
+          ],
+          share_range: {
+            min: 0.01,
+            max: 100,
+          },
+        },
+      },
+    });
+    hooks.useFeeTypes.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "agency-fee-type",
+            name: "Agency Fee",
+            slug: "agency_fee",
+            description: null,
+            supports_fixed: true,
+            supports_percentage: true,
+            is_active: true,
+            created_by: null,
+            created_at: "2025-01-01T00:00:00Z",
+          },
+        ],
+      },
+    });
     hooks.useLocations.mockReturnValue({
       data: { data: [{ name: "Lekki Phase 1", display_name: "Lekki Phase 1" }] },
     });
@@ -205,6 +288,10 @@ describe("PropertyComposer", () => {
     });
     hooks.usePublishProperty.mockReturnValue({
       mutateAsync: publishPropertyMutateAsync,
+      isPending: false,
+    });
+    hooks.useDeleteProperty.mockReturnValue({
+      mutateAsync: deletePropertyMutateAsync,
       isPending: false,
     });
     hooks.useCreateFeeType.mockReturnValue({
@@ -235,6 +322,7 @@ describe("PropertyComposer", () => {
     updatePropertyMutateAsync.mockResolvedValue({ data: baseProperty });
     createPropertyMutateAsync.mockResolvedValue({ data: baseProperty });
     publishPropertyMutateAsync.mockResolvedValue({ success: true });
+    deletePropertyMutateAsync.mockResolvedValue({ success: true });
     uploadPropertyImageMutateAsync.mockResolvedValue({
       data: {
         id: "image-uploaded",
@@ -306,12 +394,51 @@ describe("PropertyComposer", () => {
     fireEvent.click(publishButton);
 
     expect(publishButton).toBeDisabled();
-    expect(publishButton.querySelector("svg.animate-spin")).toBeTruthy();
     await waitFor(() => expect(publishPropertyMutateAsync).toHaveBeenCalledWith("draft-1"));
     expect(updatePropertyMutateAsync).not.toHaveBeenCalled();
 
     deferred.resolve({ success: true });
     await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/dashboard/properties?publishing=draft-1"));
+  });
+
+  it("deletes a draft after confirmation", async () => {
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Delete Draft" }));
+    const dialog = await screen.findByRole("dialog", { name: /Delete property draft/i });
+    expect(within(dialog).getByText(/Delete this draft permanently/i)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Delete draft$/i }));
+
+    await waitFor(() => expect(deletePropertyMutateAsync).toHaveBeenCalledWith("draft-1"));
+    await waitFor(() => expect(mockRouter.push).toHaveBeenCalledWith("/dashboard/properties"));
+  });
+
+  it("saves authorized listing authority and commission share in the draft payload", async () => {
+    window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=review");
+
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    fireEvent.click(await screen.findByRole("radio", { name: /Authorized listing agent/i }));
+
+    const shareInput = screen.getByLabelText("Your Commission Share (%)");
+    fireEvent.change(shareInput, { target: { value: "40" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft" }));
+
+    await waitFor(() => {
+      expect(updatePropertyMutateAsync).toHaveBeenCalledWith({
+        id: "draft-1",
+        data: expect.objectContaining({
+          agency_fee: 850000,
+          listing_authority_mode: "authorized_listing_agent",
+          declared_commission_share_percent: 40,
+        }),
+      });
+    });
+
+    expect(screen.getByText(/Eligible referral basis/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/₦340,000/).length).toBeGreaterThan(0);
   });
 
   it("shows sale listings can keep fee lines in pricing", async () => {

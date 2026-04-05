@@ -53,6 +53,12 @@ export function isUnauthorizedAuthError(error: unknown) {
   return status === 401 || status === 403;
 }
 
+export function hasSupabaseAuthCookies(
+  cookies: Array<{ name: string }> | null | undefined,
+) {
+  return (cookies ?? []).some((cookie) => cookie.name.startsWith("sb-"));
+}
+
 export function isTransientAuthError(error: unknown) {
   const status = getErrorStatus(error);
 

@@ -24,11 +24,12 @@ import {
   Upload,
   Video,
 } from "lucide-react";
-import { Button, Card, CardContent, Input, NumericInput, Select } from "@/components/ui";
+import { Button, Card, CardContent, Input, Modal, NumericInput, Select } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
 import {
   useCreateFeeType,
   useCreateProperty,
+  useDeleteProperty,
   useDeletePropertyImage,
   useDeletePropertyVideo,
   useFeeTypes,
@@ -36,6 +37,7 @@ import {
   useManageProperty,
   useMyAgent,
   usePublishProperty,
+  usePropertyAuthorityOptions,
   usePropertyTypes,
   useReorderPropertyImages,
   useUpdateProperty,
@@ -43,7 +45,11 @@ import {
   useUploadPropertyVideo,
 } from "@/lib/hooks";
 import {
+  AUTHORIZED_LISTING_SHARE_MAX,
+  AUTHORIZED_LISTING_SHARE_MIN,
   buildDraftChecklist,
+  deriveDraftAgencyFeeAmount,
+  buildDraftReferralBasisSummary,
   buildDraftPricingSummary,
   formatListingPurpose,
   formatPropertyPriceLabel,
@@ -53,10 +59,13 @@ import {
 import { useAuthStore } from "@/stores/authStore";
 import type {
   CreatePropertyInput,
+  ListingAuthorityMode,
   FeeType,
+  PropertyAuthorityOption,
   PropertyFeeInput,
   PropertyImage,
   PropertyListingPurpose,
+  PropertyReferralBasisSummary,
   PropertyStatus,
   PropertyType,
   PropertyVideo,
@@ -80,6 +89,8 @@ interface ComposerValues {
   bathrooms: number | null;
   rent_amount: number | null;
   asking_price: number | null;
+  listing_authority_mode: ListingAuthorityMode | null;
+  declared_commission_share_percent: number | null;
   application_mode: "instant_apply" | "message_agent";
   fees: PropertyFeeInput[];
 }
@@ -91,9 +102,21 @@ const listingPurposeOptions = [
   { value: "sale", label: "For Sale" },
 ];
 
-const applicationModeOptions = [
-  { value: "instant_apply", label: "Instant Apply + Message Agent" },
-  { value: "message_agent", label: "Message Agent" },
+const fallbackAuthorityOptions: PropertyAuthorityOption[] = [
+  {
+    value: "owner_agent",
+    label: "Owner agent",
+    description:
+      "Choose this if you control the deal access and the commission side of the listing.",
+    requires_share: false,
+  },
+  {
+    value: "authorized_listing_agent",
+    label: "Authorized listing agent",
+    description:
+      "Choose this if you are marketing the listing with permission but receive only a share of the commission.",
+    requires_share: true,
+  },
 ];
 
 const defaultValues: ComposerValues = {
@@ -107,6 +130,8 @@ const defaultValues: ComposerValues = {
   bathrooms: 1,
   rent_amount: null,
   asking_price: null,
+  listing_authority_mode: null,
+  declared_commission_share_percent: null,
   application_mode: "message_agent",
   fees: [],
 };
@@ -198,9 +223,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   });
   const propertyTypesQuery = usePropertyTypes();
   const feeTypesQuery = useFeeTypes();
+  const authorityOptionsQuery = usePropertyAuthorityOptions();
   const locationsQuery = useLocations({ kind: "all", limit: 40 });
   const createProperty = useCreateProperty();
   const updateProperty = useUpdateProperty();
+  const deleteProperty = useDeleteProperty();
   const publishProperty = usePublishProperty();
   const createFeeType = useCreateFeeType();
   const uploadImage = useUploadPropertyImage();
@@ -232,6 +259,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   const [reorderingImages, setReorderingImages] = useState(false);
   const [removingImageIds, setRemovingImageIds] = useState<string[]>([]);
   const [removingVideoId, setRemovingVideoId] = useState<string | null>(null);
+  const [showDeleteDraftModal, setShowDeleteDraftModal] = useState(false);
 
   const hydratedProperty = managePropertyQuery.data?.data;
   const lastSavedSnapshot = useRef<string>(serializeValues(defaultValues));
@@ -264,7 +292,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       bathrooms: hydratedProperty.bathrooms,
       rent_amount: hydratedProperty.rent_amount,
       asking_price: hydratedProperty.asking_price,
-      application_mode: hydratedProperty.application_mode,
+      listing_authority_mode: hydratedProperty.listing_authority_mode ?? null,
+      declared_commission_share_percent:
+        hydratedProperty.declared_commission_share_percent ?? null,
+      application_mode: "message_agent",
       fees: (hydratedProperty.property_fees ?? []).map((fee) => ({
         fee_type_id: fee.fee_type_id,
         label: fee.label,
@@ -305,7 +336,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
         setSaveState("saving");
         await updateProperty.mutateAsync({
           id: draftId,
-          data: buildPayload(values),
+          data: buildPayload(values, feeTypesQuery.data?.data ?? []),
         });
         lastSavedSnapshot.current = serializeValues(values);
         setSaveState("saved");
@@ -333,10 +364,6 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     agentProfile.verification_status !== "approved";
 
   const checklist = useMemo(() => {
-    if (hydratedProperty?.completion) {
-      return hydratedProperty.completion;
-    }
-
     return buildDraftChecklist({
       title: values.title,
       description: values.description,
@@ -348,9 +375,58 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       bathrooms: values.bathrooms ?? -1,
       rent_amount: values.rent_amount ?? 0,
       asking_price: values.asking_price ?? 0,
+      fees: values.fees,
+      feeTypes: feeTypesQuery.data?.data ?? [],
+      fallback_agency_fee: hydratedProperty?.agency_fee ?? null,
+      listing_authority_mode: values.listing_authority_mode,
+      declared_commission_share_percent: values.declared_commission_share_percent,
       imageCount: imageItems.length,
     });
-  }, [hydratedProperty?.completion, imageItems.length, values]);
+  }, [feeTypesQuery.data?.data, hydratedProperty?.agency_fee, imageItems.length, values]);
+
+  const derivedAgencyFeeAmount = useMemo(
+    () =>
+      deriveDraftAgencyFeeAmount({
+        listingPurpose: values.listing_purpose,
+        rentAmount: values.rent_amount ?? 0,
+        askingPrice: values.asking_price ?? 0,
+        fees: values.fees,
+        feeTypes: feeTypesQuery.data?.data ?? [],
+        fallbackAgencyFee: hydratedProperty?.agency_fee ?? null,
+      }),
+    [
+      feeTypesQuery.data?.data,
+      hydratedProperty?.agency_fee,
+      values.asking_price,
+      values.fees,
+      values.listing_purpose,
+      values.rent_amount,
+    ],
+  );
+
+  const referralBasisSummary = useMemo<PropertyReferralBasisSummary>(
+    () =>
+      buildDraftReferralBasisSummary({
+        listing_purpose: values.listing_purpose,
+        rent_amount: values.rent_amount ?? 0,
+        asking_price: values.asking_price ?? 0,
+        fees: values.fees,
+        feeTypes: feeTypesQuery.data?.data ?? [],
+        fallback_agency_fee: hydratedProperty?.agency_fee ?? null,
+        listing_authority_mode: values.listing_authority_mode,
+        declared_commission_share_percent: values.declared_commission_share_percent,
+      }),
+    [
+      feeTypesQuery.data?.data,
+      hydratedProperty?.agency_fee,
+      values.asking_price,
+      values.declared_commission_share_percent,
+      values.fees,
+      values.listing_authority_mode,
+      values.listing_purpose,
+      values.rent_amount,
+    ],
+  );
 
   const pricingSummary = useMemo(
     () =>
@@ -373,6 +449,11 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     value: propertyType.slug,
     label: propertyType.label,
   }));
+  const authorityOptions = authorityOptionsQuery.data?.data?.options ?? fallbackAuthorityOptions;
+  const authorityShareRange = authorityOptionsQuery.data?.data?.share_range ?? {
+    min: AUTHORIZED_LISTING_SHARE_MIN,
+    max: AUTHORIZED_LISTING_SHARE_MAX,
+  };
   const areaOptions = useMemo(() => {
     const options = (locationsQuery.data?.data ?? []).map((location) => ({
       value: location.name,
@@ -390,6 +471,17 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
   function updateField<K extends keyof ComposerValues>(key: K, value: ComposerValues[K]) {
     setValues((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateAuthorityMode(nextMode: ListingAuthorityMode) {
+    setValues((current) => ({
+      ...current,
+      listing_authority_mode: nextMode,
+      declared_commission_share_percent:
+        nextMode === "authorized_listing_agent"
+          ? current.declared_commission_share_percent
+          : null,
+    }));
   }
 
   function updateStep(nextStep: ComposerStep) {
@@ -485,7 +577,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       autosaveTimeoutRef.current = null;
     }
 
-    const payload = buildPayload(values);
+    const payload = buildPayload(values, feeTypesQuery.data?.data ?? []);
     setServerError("");
 
     if (!draftId) {
@@ -822,6 +914,29 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
     }
   }
 
+  async function handleDeleteDraft() {
+    if (!draftId) {
+      return;
+    }
+
+    if (autosaveTimeoutRef.current) {
+      window.clearTimeout(autosaveTimeoutRef.current);
+      autosaveTimeoutRef.current = null;
+    }
+
+    setServerError("");
+
+    try {
+      await deleteProperty.mutateAsync(draftId);
+      setShowDeleteDraftModal(false);
+      startTransition(() => {
+        router.push("/dashboard/properties");
+      });
+    } catch (error) {
+      setServerError(getApiErrorMessage(error, "Could not delete draft"));
+    }
+  }
+
   function handleStepClick(nextStep: ComposerStep) {
     const nextIndex = stepOrder.indexOf(nextStep);
     if (nextIndex <= currentStepIndex) {
@@ -911,6 +1026,20 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
         </div>
       </div>
 
+      {draftId && draftStatus === "draft" ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            className="text-[var(--color-rejected)] hover:bg-red-50 hover:text-[var(--color-rejected)]"
+            onClick={() => setShowDeleteDraftModal(true)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Draft
+          </Button>
+        </div>
+      ) : null}
+
       {(serverError || publishError) && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
           {publishError || serverError}
@@ -997,10 +1126,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                       setValues((current) => ({
                         ...current,
                         listing_purpose: event.target.value as PropertyListingPurpose,
-                        application_mode:
-                          event.target.value === "sale"
-                            ? "message_agent"
-                            : current.application_mode,
+                        application_mode: "message_agent",
                         asking_price:
                           event.target.value === "sale"
                             ? current.asking_price
@@ -1030,20 +1156,6 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                     error={fieldErrors.area}
                   />
                 </div>
-
-                {values.listing_purpose === "rent" ? (
-                  <Select
-                    id="application_mode"
-                    label="Application Flow"
-                    options={applicationModeOptions}
-                    value={values.application_mode}
-                    onChange={(event) => updateField("application_mode", event.target.value as ComposerValues["application_mode"])}
-                  />
-                ) : (
-                  <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                    Sale listings use Message Agent only. Buyers submit contact intent instead of applications.
-                  </div>
-                )}
 
                 <Input
                   id="address_line"
@@ -1472,28 +1584,138 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
               <CardContent className="space-y-6 p-6 sm:p-8">
                 <SectionIntro
                   title="Review And Publish"
-                  description="Check the listing summary, confirm the fee breakdown, and publish when every blocker is cleared."
+                  description="Confirm the essentials and publish."
                 />
 
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <SummaryCard title="Listing Summary">
+                  <SummaryCard title="Summary">
                     <SummaryRow label="Title" value={values.title || "—"} />
                     <SummaryRow label="Purpose" value={formatListingPurpose(values.listing_purpose)} />
                     <SummaryRow label="Area" value={values.area || "—"} />
                     <SummaryRow label="Address" value={values.address_line || "—"} />
-                      <SummaryRow label="Property Type" value={formatPropertyType(values.property_type)} />
+                    <SummaryRow label="Type" value={formatPropertyType(values.property_type)} />
                     <SummaryRow label="Beds / Baths" value={`${values.bedrooms ?? "-"} / ${values.bathrooms ?? "-"}`} />
                   </SummaryCard>
 
-                  <SummaryCard title="Media & Trust">
+                  <SummaryCard title="Media">
                     <SummaryRow label="Photos" value={`${imageItems.length} uploaded`} />
                     <SummaryRow label="Video" value={videoItems[0] ? "Added" : "Optional"} />
-                    <SummaryRow label="Verification" value="Published listings can go live before property verification." />
+                    <SummaryRow label="Status" value="Draft" />
                   </SummaryCard>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] p-4 text-sm leading-6 text-[var(--color-text-secondary)]">
-                  Your listing can go live before property verification. Verified listings earn stronger trust signals in search.
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                  <div className="rounded-3xl border border-[var(--color-border)] bg-white p-5">
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                        Listing authority
+                      </h3>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2" role="radiogroup" aria-label="Listing authority">
+                      {authorityOptions.map((option) => {
+                        const isSelected = values.listing_authority_mode === option.value;
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            role="radio"
+                            aria-checked={isSelected}
+                            onClick={() => updateAuthorityMode(option.value)}
+                            className={`rounded-2xl border p-4 text-left transition-colors ${
+                              isSelected
+                                ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-background)]"
+                                : "border-[var(--color-border)] bg-white"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-medium text-[var(--color-text-primary)]">{option.label}</p>
+                                <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                                  {option.description}
+                                </p>
+                              </div>
+                              <span
+                                className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full border text-xs ${
+                                  isSelected
+                                    ? "border-[var(--color-deep-slate-blue)] bg-[var(--color-deep-slate-blue)] text-white"
+                                    : "border-[var(--color-border)] text-transparent"
+                                }`}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {values.listing_authority_mode === "authorized_listing_agent" ? (
+                      <div className="mt-4 space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] p-4">
+                        <NumericInput
+                          id="declared_commission_share_percent"
+                          label="Your Commission Share (%)"
+                          value={values.declared_commission_share_percent}
+                          onValueChange={(value) =>
+                            updateField("declared_commission_share_percent", value)
+                          }
+                          format="decimal"
+                        />
+                        {values.declared_commission_share_percent !== null &&
+                        (values.declared_commission_share_percent < authorityShareRange.min ||
+                          values.declared_commission_share_percent > authorityShareRange.max) ? (
+                          <p className="text-sm text-[var(--color-rejected)]">
+                            Enter a percentage between {authorityShareRange.min} and {authorityShareRange.max}.
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5">
+                    <div>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">
+                        Referral basis
+                      </h3>
+                    </div>
+
+                    {referralBasisSummary.public_commission_basis_amount !== null ? (
+                      <SummaryRow
+                        label={referralBasisSummary.basis_source_label ?? "Public basis"}
+                        value={formatCurrency(referralBasisSummary.public_commission_basis_amount)}
+                      />
+                    ) : null}
+
+                    {referralBasisSummary.uses_declared_share ? (
+                      <SummaryRow
+                        label="Declared share"
+                        value={
+                          values.declared_commission_share_percent !== null
+                            ? `${values.declared_commission_share_percent}%`
+                            : "—"
+                        }
+                      />
+                    ) : null}
+
+                    <div className="border-t border-[var(--color-border)] pt-4">
+                      <SummaryRow
+                        label="Eligible referral basis"
+                        value={
+                          referralBasisSummary.eligible_referral_basis_amount !== null
+                            ? formatCurrency(referralBasisSummary.eligible_referral_basis_amount)
+                            : "Unavailable"
+                        }
+                        strong
+                      />
+                    </div>
+
+                    {referralBasisSummary.publish_blocker ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        {referralBasisSummary.publish_blocker}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
 
                 {!checklist.ready_to_publish && (
@@ -1560,6 +1782,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                     }
                   />
                   <SummaryRow label="Fees total" value={formatCurrency(pricingSummary.fees_total)} />
+                  <SummaryRow
+                    label="Agency fee"
+                    value={derivedAgencyFeeAmount ? formatCurrency(derivedAgencyFeeAmount) : "—"}
+                  />
 
                   <div className="border-t border-[var(--color-border)] pt-4">
                     <SummaryRow label="Total buyer cost" value={formatCurrency(pricingSummary.total_move_in_cost)} strong />
@@ -1570,6 +1796,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                   <SummaryRow label="Annual rent" value={formatCurrency(pricingSummary.annual_rent)} />
                   <SummaryRow label="Monthly equivalent" value={formatCurrency(pricingSummary.monthly_equivalent)} />
                   <SummaryRow label="Fees total" value={formatCurrency(pricingSummary.fees_total)} />
+                  <SummaryRow
+                    label="Agency fee"
+                    value={derivedAgencyFeeAmount ? formatCurrency(derivedAgencyFeeAmount) : "—"}
+                  />
 
                   <div className="border-t border-[var(--color-border)] pt-4">
                     <SummaryRow label="Total move-in cost" value={formatCurrency(pricingSummary.total_move_in_cost)} strong />
@@ -1578,6 +1808,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
               )}
             </CardContent>
           </Card>
+
         </div>
       </div>
 
@@ -1631,11 +1862,39 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showDeleteDraftModal}
+        onClose={() => setShowDeleteDraftModal(false)}
+        title="Delete draft"
+        ariaLabel="Delete property draft"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Delete this draft permanently. Photos, video, and pricing data saved on this draft will be removed.
+          </p>
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            This action is only available for drafts and cannot be undone.
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setShowDeleteDraftModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteDraft}
+              isLoading={deleteProperty.isPending}
+              className="bg-[var(--color-rejected)] text-white hover:bg-[var(--color-rejected)]/90"
+            >
+              Delete draft
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function buildPayload(values: ComposerValues): CreatePropertyInput {
+function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreatePropertyInput {
   return {
     title: values.title,
     description: values.description,
@@ -1649,9 +1908,19 @@ function buildPayload(values: ComposerValues): CreatePropertyInput {
     asking_price: values.listing_purpose === "sale" ? values.asking_price ?? 0 : null,
     service_charge: null,
     caution_deposit: null,
-    agency_fee: null,
-    application_mode:
-      values.listing_purpose === "sale" ? "message_agent" : values.application_mode,
+    agency_fee: deriveDraftAgencyFeeAmount({
+      listingPurpose: values.listing_purpose,
+      rentAmount: values.rent_amount ?? 0,
+      askingPrice: values.asking_price ?? 0,
+      fees: values.fees,
+      feeTypes,
+    }),
+    listing_authority_mode: values.listing_authority_mode,
+    declared_commission_share_percent:
+      values.listing_authority_mode === "authorized_listing_agent"
+        ? values.declared_commission_share_percent
+        : null,
+    application_mode: "message_agent",
     fees: values.fees.map((fee, index) => ({
       ...fee,
       display_order: index,

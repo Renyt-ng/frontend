@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildFallbackProfile,
+  hasSupabaseAuthCookies,
   isTransientAuthError,
   isUnauthorizedAuthError,
 } from "@/lib/authSession";
@@ -25,6 +26,12 @@ describe("authSession", () => {
     expect(isUnauthorizedAuthError({ response: { status: 401 } })).toBe(true);
     expect(isUnauthorizedAuthError({ response: { status: 403 } })).toBe(true);
     expect(isUnauthorizedAuthError({ response: { status: 500 } })).toBe(false);
+  });
+
+  it("detects whether Supabase auth cookies exist", () => {
+    expect(hasSupabaseAuthCookies([{ name: "sb-project-auth-token.0" }])).toBe(true);
+    expect(hasSupabaseAuthCookies([{ name: "theme" }])).toBe(false);
+    expect(hasSupabaseAuthCookies(undefined)).toBe(false);
   });
 
   it("builds a fallback profile from auth metadata", () => {

@@ -37,13 +37,13 @@ export function PropertySpecs({ property }: PropertySpecsProps) {
         return (
           <div
             key={spec.label}
-            className="flex flex-col items-center rounded-xl border border-[var(--color-border)] bg-white p-4 text-center"
+            className="flex min-w-0 flex-col items-center rounded-xl border border-[var(--color-border)] bg-white p-4 text-center"
           >
             <Icon className="mb-2 h-5 w-5 text-[var(--color-deep-slate-blue)]" />
-            <p className="text-lg font-semibold text-[var(--color-text-primary)]">
+            <p className="break-words text-lg font-semibold text-[var(--color-text-primary)]">
               {spec.value}
             </p>
-            <p className="text-xs text-[var(--color-text-secondary)]">
+            <p className="break-words text-xs text-[var(--color-text-secondary)]">
               {spec.label}
             </p>
           </div>

@@ -37,35 +37,35 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
       </h3>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-[var(--color-text-secondary)]">
+        <div className="flex items-start justify-between gap-4">
+          <span className="min-w-0 text-sm text-[var(--color-text-secondary)]">
             {isSaleListing ? "Asking Price" : "Annual Rent"}
           </span>
-          <span className="text-base font-semibold text-[var(--color-text-primary)]">
+          <span className="text-right text-base font-semibold text-[var(--color-text-primary)]">
             {formatCurrency(baseAmount)}
           </span>
         </div>
         {!isSaleListing ? (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--color-text-secondary)]">
+          <div className="flex items-start justify-between gap-4">
+            <span className="min-w-0 text-sm text-[var(--color-text-secondary)]">
               Monthly Equivalent
             </span>
-            <span className="text-sm text-[var(--color-text-primary)]">
+            <span className="text-right text-sm text-[var(--color-text-primary)]">
               {formatCurrency(monthly)}
             </span>
           </div>
         ) : null}
         {feeItems.map((item) => (
-          <div key={item.label} className="flex items-center justify-between">
-            <div>
-              <span className="text-sm text-[var(--color-text-secondary)]">
+          <div key={item.label} className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <span className="break-words text-sm text-[var(--color-text-secondary)]">
                 {item.label}
               </span>
               {item.meta && (
-                <p className="text-xs text-[var(--color-text-secondary)]">{item.meta}</p>
+                <p className="break-words text-xs text-[var(--color-text-secondary)]">{item.meta}</p>
               )}
             </div>
-            <span className="text-sm text-[var(--color-text-primary)]">
+            <span className="text-right text-sm text-[var(--color-text-primary)]">
               {item.amount != null ? formatCurrency(item.amount) : "—"}
             </span>
           </div>
@@ -73,11 +73,11 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
       </div>
 
       <div className="mt-4 border-t border-[var(--color-border)] pt-4">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+        <div className="flex items-start justify-between gap-4">
+          <span className="min-w-0 text-sm font-medium text-[var(--color-text-primary)]">
             {isSaleListing ? "Total Buyer Cost" : "Total Move-in Cost"}
           </span>
-          <span className="text-xl font-bold text-[var(--color-deep-slate-blue)]">
+          <span className="text-right text-xl font-bold text-[var(--color-deep-slate-blue)]">
             {formatCurrency(total)}
           </span>
         </div>

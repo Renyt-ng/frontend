@@ -4,6 +4,7 @@ import type {
   CreatePropertyInput,
   FeeType,
   Property,
+  PropertyAuthorityOptionsResponse,
   ReferralOutcomeCandidate,
   PropertyTypeDefinition,
   PropertyWithImages,
@@ -155,6 +156,13 @@ export async function updateProperty(id: string, data: UpdatePropertyInput) {
   };
 }
 
+export async function deleteProperty(id: string) {
+  const res = await apiClient.delete<ApiSuccessResponse<{ id: string }>>(
+    `/properties/${id}`,
+  );
+  return res.data;
+}
+
 export async function getMyProperties() {
   const res =
     await apiClient.get<ApiSuccessResponse<Property[]>>("/properties/mine");
@@ -190,6 +198,13 @@ export async function getFeeTypes() {
 export async function getPropertyTypes() {
   const res = await apiClient.get<ApiSuccessResponse<PropertyTypeDefinition[]>>(
     "/properties/types",
+  );
+  return res.data;
+}
+
+export async function getPropertyAuthorityOptions() {
+  const res = await apiClient.get<ApiSuccessResponse<PropertyAuthorityOptionsResponse>>(
+    "/properties/authority-options",
   );
   return res.data;
 }

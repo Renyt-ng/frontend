@@ -129,8 +129,8 @@ export default async function PropertyDetailPage({
 
       {/* Breadcrumb bar */}
       <div className="border-b border-[var(--color-border)] bg-white py-3">
-        <Container>
-          <div className="flex items-center gap-2 text-sm">
+        <Container size="md">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
             <Link
               href="/search"
               className="flex items-center gap-1 text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
@@ -139,26 +139,26 @@ export default async function PropertyDetailPage({
               Back to Search
             </Link>
             <span className="text-[var(--color-border)]">/</span>
-            <span className="text-[var(--color-text-secondary)]">
+            <span className="max-w-full break-words text-[var(--color-text-secondary)]">
               {property.area}
             </span>
             <span className="text-[var(--color-border)]">/</span>
-            <span className="line-clamp-1 text-[var(--color-text-primary)]">
+            <span className="min-w-0 flex-1 break-words text-[var(--color-text-primary)]">
               {property.title}
             </span>
           </div>
         </Container>
       </div>
 
-      <Container className="mt-4 sm:mt-6">
-        <div className="grid gap-8 lg:grid-cols-3">
+      <Container size="md" className="mt-4 sm:mt-6">
+        <div className="mx-auto grid w-full gap-8 lg:max-w-none lg:grid-cols-3">
           {/* ─── Left column (2/3) ─────────────────── */}
-          <div className="space-y-8 lg:col-span-2">
+          <div className="mx-auto w-full max-w-3xl space-y-8 lg:col-span-2 lg:max-w-none">
             {/* Gallery */}
             <PropertyGallery images={images} title={property.title} />
 
             {/* Title & Meta */}
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-start gap-3">
                 <h1 className="text-2xl font-bold text-[var(--color-text-primary)] sm:text-3xl">
                   {property.title}
@@ -166,8 +166,8 @@ export default async function PropertyDetailPage({
                 {property.is_verified && <VerifiedBadge />}
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-[var(--color-text-secondary)]">
-                <span className="flex items-center gap-1">
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--color-text-secondary)] sm:gap-4">
+                <span className="flex min-w-0 items-center gap-1 break-words">
                   <MapPin className="h-4 w-4" />
                   {property.address_line ?? property.area}
                 </span>
@@ -259,7 +259,7 @@ export default async function PropertyDetailPage({
           </div>
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
-          <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          <div className="mx-auto w-full max-w-3xl space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-w-none">
             {property.listing_purpose === "rent" ? (
               <PricingBreakdown property={property} />
             ) : (

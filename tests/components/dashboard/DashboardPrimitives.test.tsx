@@ -30,7 +30,7 @@ describe("Dashboard primitives", () => {
   });
 
   it("renders section heading helper content", () => {
-    render(
+    const { container } = render(
       <DashboardSectionHeading
         title="Operations"
         helper={<span>Helper</span>}
@@ -38,6 +38,7 @@ describe("Dashboard primitives", () => {
     );
 
     expect(screen.getByText("Helper")).toBeTruthy();
+    expect(container.querySelector(".items-center")).toBeTruthy();
   });
 
   it("renders metric card as a link when href is provided", { timeout: 10000 }, () => {
@@ -91,6 +92,8 @@ describe("Dashboard primitives", () => {
     const valuedBars = container.querySelectorAll('[data-bar-state="value"]');
     expect(valuedBars.length).toBe(4);
     expect(valuedBars[1]).toHaveClass("bg-[var(--dashboard-accent)]");
+    expect(container.querySelector(".basis-0")).toBeTruthy();
+    expect(container.querySelector(".truncate")).toBeTruthy();
   });
 
   it("renders status panel with badge and action", () => {

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
-import { isTransientAuthError } from "@/lib/authSession";
+import { hasSupabaseAuthCookies, isTransientAuthError } from "@/lib/authSession";
 
 /**
  * Refreshes the Supabase auth session on every request via middleware.
@@ -8,6 +8,14 @@ import { isTransientAuthError } from "@/lib/authSession";
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  if (!hasSupabaseAuthCookies(request.cookies.getAll())) {
+    return {
+      response: supabaseResponse,
+      user: null,
+      authError: null as "transient" | "fatal" | null,
+    };
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

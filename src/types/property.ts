@@ -28,7 +28,28 @@ export type PropertyStatus =
 export type PropertyApplicationMode = "instant_apply" | "message_agent";
 export type PropertyListingPurpose = "rent" | "sale";
 export type ListingFreshnessState = "fresh" | "confirmation_due" | "unavailable";
+export type ListingAuthorityMode = "owner_agent" | "authorized_listing_agent";
+export type PropertyReferralEligibilityStatus =
+  | "eligible"
+  | "blocked_missing_authority"
+  | "blocked_missing_share"
+  | "blocked_missing_basis";
 export type FeeValueType = "fixed" | "percentage";
+
+export interface PropertyAuthorityOption {
+  value: ListingAuthorityMode;
+  label: string;
+  description: string;
+  requires_share: boolean;
+}
+
+export interface PropertyAuthorityOptionsResponse {
+  options: PropertyAuthorityOption[];
+  share_range: {
+    min: number;
+    max: number;
+  };
+}
 
 export interface ListingFreshnessPolicy {
   id: string;
@@ -98,6 +119,16 @@ export interface PropertyCompletion {
   checklist: PropertyChecklistItem[];
 }
 
+export interface PropertyReferralBasisSummary {
+  basis_source_label: string | null;
+  public_commission_basis_amount: number | null;
+  declared_agent_share_percent: number | null;
+  eligible_referral_basis_amount: number | null;
+  referral_eligibility_status: PropertyReferralEligibilityStatus;
+  publish_blocker: string | null;
+  uses_declared_share: boolean;
+}
+
 export interface Property {
   id: string;
   agent_id: string;
@@ -114,6 +145,13 @@ export interface Property {
   service_charge: number | null;
   caution_deposit: number | null;
   agency_fee: number | null;
+  listing_authority_mode?: ListingAuthorityMode | null;
+  declared_commission_share_percent?: number | null;
+  public_commission_basis_amount_snapshot?: number | null;
+  eligible_referral_basis_amount?: number | null;
+  authority_declared_at?: string | null;
+  authority_declared_by?: string | null;
+  basis_snapshot_version?: string | null;
   application_mode: PropertyApplicationMode;
   is_verified: boolean;
   verification_status: PropertyVerificationStatus;
@@ -129,6 +167,7 @@ export interface Property {
   property_videos?: PropertyVideo[];
   pricing_summary?: PropertyPricingSummary;
   completion?: PropertyCompletion;
+  referral_basis_summary?: PropertyReferralBasisSummary;
   referral_resolution_summary?: PropertyReferralResolutionSummary | null;
 }
 
@@ -160,6 +199,8 @@ export interface CreatePropertyInput {
   service_charge: number | null;
   caution_deposit: number | null;
   agency_fee: number | null;
+  listing_authority_mode?: ListingAuthorityMode | null;
+  declared_commission_share_percent?: number | null;
   application_mode: PropertyApplicationMode;
   fees?: PropertyFeeInput[];
 }

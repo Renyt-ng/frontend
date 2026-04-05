@@ -9,6 +9,7 @@ import type {
   AgentPropertyInsight,
   FeeType,
   Property,
+  PropertyAuthorityOptionsResponse,
   PropertyTypeDefinition,
   PropertyWithImages,
   PropertySearchParams,
@@ -34,6 +35,7 @@ export const propertyKeys = {
   outcomeCandidates: (id: string) => [...propertyKeys.all, "outcome-candidates", id] as const,
   feeTypes: () => [...propertyKeys.all, "fee-types"] as const,
   propertyTypes: () => [...propertyKeys.all, "property-types"] as const,
+  authorityOptions: () => [...propertyKeys.all, "authority-options"] as const,
 };
 
 /** Search/list properties with filters */
@@ -158,6 +160,22 @@ export function useUpdateProperty() {
   });
 }
 
+export function useDeleteProperty() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: propertiesApi.deleteProperty,
+    onSuccess: (_data, propertyId) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.insights() });
+      queryClient.removeQueries({ queryKey: propertyKeys.detail(propertyId) });
+      queryClient.removeQueries({ queryKey: propertyKeys.manage(propertyId) });
+      queryClient.removeQueries({ queryKey: propertyKeys.outcomeCandidates(propertyId) });
+    },
+  });
+}
+
 export function useFeeTypes(
   options?: Omit<
     UseQueryOptions<ApiSuccessResponse<FeeType[]>>,
@@ -180,6 +198,19 @@ export function usePropertyTypes(
   return useQuery({
     queryKey: propertyKeys.propertyTypes(),
     queryFn: () => propertiesApi.getPropertyTypes(),
+    ...options,
+  });
+}
+
+export function usePropertyAuthorityOptions(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<PropertyAuthorityOptionsResponse>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: propertyKeys.authorityOptions(),
+    queryFn: () => propertiesApi.getPropertyAuthorityOptions(),
     ...options,
   });
 }

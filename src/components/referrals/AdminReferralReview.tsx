@@ -152,6 +152,26 @@ function statusLabel(status: ReferralEventStatus) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function listingAuthorityLabel(value: AdminReferralEvent["listing_authority_mode"]) {
+  if (value === "owner_agent") {
+    return "Owner agent";
+  }
+
+  if (value === "authorized_listing_agent") {
+    return "Authorized listing agent";
+  }
+
+  return "Not recorded";
+}
+
+function referralHoldReasonLabel(value: string | null) {
+  if (value === "authority_review_required") {
+    return "Authority review required before payout can proceed.";
+  }
+
+  return value;
+}
+
 function commissionSummary(preview: ReferralCommissionPreview) {
   if (preview.commission_type === "percentage") {
     return `${preview.commission_value}% of ${preview.commission_basis_label ?? "eligible amount"}`;
@@ -323,14 +343,14 @@ function CompactConfigCard({
     <Card>
       <CardContent className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-lg font-semibold text-[var(--color-text-primary)]">{title}</p>
-            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{description}</p>
+            <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">{description}</p>
           </div>
           {badge ? <div>{badge}</div> : null}
         </div>
 
-        <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+        <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)] break-words">
           {summary}
         </div>
 
@@ -831,33 +851,33 @@ export function AdminReferralReview() {
 
           <div className="order-1 grid gap-4 md:grid-cols-3 xl:order-2">
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <Clock3 className="h-5 w-5 text-[var(--dashboard-accent)]" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)]">Freshness control</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">
                     Keep listing reminder timing distinct from commission policy.
                   </p>
                 </div>
               </div>
             </div>
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <Settings2 className="h-5 w-5 text-[var(--dashboard-accent)]" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)]">Commission defaults</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">
                     Use ₦ and % fields so the payout rule is obvious at a glance.
                   </p>
                 </div>
               </div>
             </div>
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-[var(--dashboard-accent)]" />
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)]">Review actions</p>
-                  <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                  <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">
                     Outcome, notes, and payout actions stay in one adjudication panel.
                   </p>
                 </div>
@@ -985,9 +1005,9 @@ export function AdminReferralReview() {
                     <Card key={campaign.id}>
                       <CardContent className="space-y-4 p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
+                          <div className="min-w-0">
                             <p className="text-lg font-semibold text-[var(--color-text-primary)]">{campaign.name}</p>
-                            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                            <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">
                               {ruleSummary(campaign)}
                             </p>
                           </div>
@@ -1000,9 +1020,9 @@ export function AdminReferralReview() {
                         </div>
 
                         <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
-                          <p>Scope: {formatCampaignScopeSummary(campaign)}</p>
-                          <p>Window: {formatCampaignWindowSummary(campaign)}</p>
-                          {campaign.description ? <p>{campaign.description}</p> : null}
+                          <p className="break-words">Scope: {formatCampaignScopeSummary(campaign)}</p>
+                          <p className="break-words">Window: {formatCampaignWindowSummary(campaign)}</p>
+                          {campaign.description ? <p className="break-words">{campaign.description}</p> : null}
                         </div>
 
                         <div className="flex justify-end">
@@ -1529,8 +1549,13 @@ export function AdminReferralReview() {
                                   Campaign: {event.campaign_name}
                                 </p>
                               ) : null}
+                              {event.referral_hold_reason ? (
+                                <p className="mt-2 text-xs font-medium text-[var(--color-pending)]">
+                                  Hold: {referralHoldReasonLabel(event.referral_hold_reason)}
+                                </p>
+                              ) : null}
                             </div>
-                            <div className="text-right">
+                            <div className="w-full text-left sm:w-auto sm:text-right">
                               <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                                 {formatCurrency(event.amount)}
                               </p>
@@ -1548,11 +1573,11 @@ export function AdminReferralReview() {
                     <Card>
                       <CardContent className="space-y-5 p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">
+                          <div className="min-w-0">
+                            <h2 className="break-words text-xl font-semibold text-[var(--color-text-primary)]">
                               {selectedEvent.property_title}
                             </h2>
-                            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                            <p className="mt-1 break-words text-sm text-[var(--color-text-secondary)]">
                               {selectedEvent.property_area} · {selectedEvent.property_status}
                             </p>
                           </div>
@@ -1571,13 +1596,13 @@ export function AdminReferralReview() {
                             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
                               Referrer
                             </p>
-                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                            <p className="mt-1 break-words text-sm font-medium text-[var(--color-text-primary)]">
                               {selectedEvent.referrer_name}
                             </p>
-                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                            <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
                               Code: {selectedEvent.referral_code}
                             </p>
-                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                            <p className="mt-1 break-all text-xs text-[var(--color-text-secondary)]">
                               {selectedEvent.referrer_email ?? "No email"} · {selectedEvent.referrer_phone ?? "No phone"}
                             </p>
                           </div>
@@ -1624,6 +1649,34 @@ export function AdminReferralReview() {
                           </div>
                           <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
                             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Listing authority
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {listingAuthorityLabel(selectedEvent.listing_authority_mode)}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              {selectedEvent.commission_share_percent_snapshot !== null
+                                ? `Declared share ${selectedEvent.commission_share_percent_snapshot}%`
+                                : "No declared share required for this authority mode."}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
+                              Basis snapshot
+                            </p>
+                            <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
+                              {selectedEvent.eligible_basis_snapshot_amount !== null
+                                ? formatCurrency(selectedEvent.eligible_basis_snapshot_amount)
+                                : "Not captured"}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+                              Public basis {selectedEvent.commission_basis_snapshot_amount !== null
+                                ? formatCurrency(selectedEvent.commission_basis_snapshot_amount)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl bg-[var(--color-bg)] px-4 py-3">
+                            <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
                               Timeline
                             </p>
                             <p className="mt-1 text-sm font-medium text-[var(--color-text-primary)]">
@@ -1664,6 +1717,12 @@ export function AdminReferralReview() {
                         {selectedEvent.is_winning_referral ? (
                           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
                             This referral is currently the winning matched-account candidate.
+                          </div>
+                        ) : null}
+
+                        {selectedEvent.referral_hold_reason ? (
+                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                            {referralHoldReasonLabel(selectedEvent.referral_hold_reason)}
                           </div>
                         ) : null}
 

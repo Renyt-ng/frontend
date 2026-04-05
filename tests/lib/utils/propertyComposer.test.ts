@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  deriveDraftAgencyFeeAmount,
+  buildDraftReferralBasisSummary,
   buildDraftChecklist,
   buildDraftPricingSummary,
   calculateDraftFeeAmount,
@@ -73,6 +75,11 @@ describe("propertyComposer utilities", () => {
       bedrooms: 2,
       bathrooms: 2,
       rent_amount: 1_200_000,
+      fees: [],
+      feeTypes: [],
+      fallback_agency_fee: null,
+      listing_authority_mode: null,
+      declared_commission_share_percent: null,
       imageCount: 2,
     });
 
@@ -81,6 +88,9 @@ describe("propertyComposer utilities", () => {
       "Write at least 150 characters of description",
     );
     expect(incomplete.blockers).toContain("Upload at least 5 photos");
+    expect(incomplete.blockers).toContain(
+      "Choose who controls the commission side of this listing",
+    );
 
     const ready = buildDraftChecklist({
       title: "Elegant 2-bedroom apartment in Lekki Phase 1",
@@ -92,10 +102,96 @@ describe("propertyComposer utilities", () => {
       bedrooms: 2,
       bathrooms: 2,
       rent_amount: 1_200_000,
+      fees: [
+        {
+          fee_type_id: "agency-fee-type",
+          value_type: "fixed",
+          amount: 120_000,
+        },
+      ],
+      feeTypes: [
+        {
+          id: "agency-fee-type",
+          name: "Agency Fee",
+          slug: "agency_fee",
+          description: null,
+          supports_fixed: true,
+          supports_percentage: true,
+          is_active: true,
+          created_by: null,
+          created_at: "2026-04-05T00:00:00.000Z",
+        },
+      ],
+      fallback_agency_fee: null,
+      listing_authority_mode: "owner_agent",
+      declared_commission_share_percent: null,
       imageCount: 5,
     });
 
     expect(ready.ready_to_publish).toBe(true);
     expect(ready.progress_percentage).toBe(100);
+  });
+
+  it("derives the eligible referral basis for authorized listing agents", () => {
+    const summary = buildDraftReferralBasisSummary({
+      listing_purpose: "rent",
+      rent_amount: 1_200_000,
+      fees: [
+        {
+          fee_type_id: "agency-fee-type",
+          value_type: "fixed",
+          amount: 500_000,
+        },
+      ],
+      feeTypes: [
+        {
+          id: "agency-fee-type",
+          name: "Agency Fee",
+          slug: "agency_fee",
+          description: null,
+          supports_fixed: true,
+          supports_percentage: true,
+          is_active: true,
+          created_by: null,
+          created_at: "2026-04-05T00:00:00.000Z",
+        },
+      ],
+      listing_authority_mode: "authorized_listing_agent",
+      declared_commission_share_percent: 40,
+    });
+
+    expect(summary.referral_eligibility_status).toBe("eligible");
+    expect(summary.public_commission_basis_amount).toBe(500_000);
+    expect(summary.eligible_referral_basis_amount).toBe(200_000);
+    expect(summary.publish_blocker).toBeNull();
+  });
+
+  it("derives agency fee from fee lines", () => {
+    const amount = deriveDraftAgencyFeeAmount({
+      listingPurpose: "rent",
+      rentAmount: 1_200_000,
+      fees: [
+        {
+          fee_type_id: "agency-fee-type",
+          value_type: "percentage",
+          percentage: 10,
+        },
+      ],
+      feeTypes: [
+        {
+          id: "agency-fee-type",
+          name: "Agency Fee",
+          slug: "agency_fee",
+          description: null,
+          supports_fixed: true,
+          supports_percentage: true,
+          is_active: true,
+          created_by: null,
+          created_at: "2026-04-05T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(amount).toBe(120_000);
   });
 });

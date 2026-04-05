@@ -114,17 +114,17 @@ function QueueSummaryCard({
   return (
     <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
+        <div className="min-w-0 flex-1">
+          <p className="break-words text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
             {label}
           </p>
-          <p className="mt-3 text-2xl font-semibold tracking-tight text-[var(--dashboard-text-primary)]">
+          <p className="mt-3 break-words text-2xl font-semibold tracking-tight text-[var(--dashboard-text-primary)]">
             {value}
           </p>
         </div>
-        <Icon className="h-5 w-5 text-[var(--dashboard-text-secondary)]" />
+        <Icon className="h-5 w-5 flex-shrink-0 text-[var(--dashboard-text-secondary)]" />
       </div>
-      <p className="mt-3 text-sm text-[var(--dashboard-text-secondary)]">{meta}</p>
+      <p className="mt-3 break-words text-sm text-[var(--dashboard-text-secondary)]">{meta}</p>
       {action ? <div className="mt-3">{action}</div> : null}
     </div>
   );
@@ -422,12 +422,12 @@ function AdvancedOperationsSection({
                         : "border-[var(--dashboard-border)] hover:border-[var(--dashboard-border-strong)]"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
                         <p className="font-medium text-[var(--dashboard-text-primary)]">
                           {formatQueueName(queue.name)}
                         </p>
-                        <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
+                        <p className="mt-1 break-words text-xs uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
                           {queue.jobName}
                         </p>
                       </div>
@@ -444,7 +444,7 @@ function AdvancedOperationsSection({
                     </div>
 
                     {queue.counts ? (
-                      <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-[var(--dashboard-text-secondary)]">
+                      <div className="mt-4 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] sm:grid-cols-3">
                         <div>
                           <p className="text-xs uppercase tracking-[0.16em]">Waiting</p>
                           <p className="mt-1 text-lg font-semibold text-[var(--dashboard-text-primary)]">
@@ -1007,7 +1007,7 @@ function ProviderEditor({
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--dashboard-text-tertiary)]">
               Sender
             </p>
-            <p className="mt-2 text-sm font-medium text-[var(--dashboard-text-primary)]">
+            <p className="mt-2 break-all text-sm font-medium text-[var(--dashboard-text-primary)]">
               {fromEmail || "No sender email"}
             </p>
           </div>
@@ -1161,7 +1161,7 @@ function ProviderEditor({
         </div>
 
         <div className="rounded-[24px] border border-[var(--dashboard-border)] bg-white p-5 shadow-sm">
-          <div className="mb-1.5 flex items-center justify-between gap-3">
+          <div className="mb-1.5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <label className="block text-sm font-medium text-[var(--color-text-primary)]">
             Provider configuration (JSON)
           </label>
@@ -1184,7 +1184,7 @@ function ProviderEditor({
             autoCorrect="off"
             autoCapitalize="off"
             wrap="off"
-            className="min-h-[28rem] w-full rounded-2xl border border-[var(--color-border)] bg-slate-950 px-4 py-3 font-mono text-[13px] leading-6 text-slate-100 placeholder:text-slate-500 focus:border-[var(--color-deep-slate-blue)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+            className="min-h-[28rem] w-full overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-slate-950 px-4 py-3 font-mono text-[13px] leading-6 text-slate-100 placeholder:text-slate-500 focus:border-[var(--color-deep-slate-blue)]/40 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
             style={{ tabSize: 2 }}
           />
           <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
@@ -1736,21 +1736,21 @@ export default function EmailSettingsPage() {
                     </div>
 
                     <div className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-3">
                         <span className="text-[var(--color-text-secondary)]">Primary</span>
-                        <span className="font-medium text-[var(--color-text-primary)]">
+                        <span className="text-right font-medium text-[var(--color-text-primary)]">
                           {provider.is_primary ? "Yes" : "No"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-3">
                         <span className="text-[var(--color-text-secondary)]">Fallback order</span>
-                        <span className="font-medium text-[var(--color-text-primary)]">
+                        <span className="text-right font-medium text-[var(--color-text-primary)]">
                           {provider.fallback_order ?? "None"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-3">
                         <span className="text-[var(--color-text-secondary)]">Enabled</span>
-                        <span className="font-medium text-[var(--color-text-primary)]">
+                        <span className="text-right font-medium text-[var(--color-text-primary)]">
                           {provider.is_enabled ? "Yes" : "No"}
                         </span>
                       </div>

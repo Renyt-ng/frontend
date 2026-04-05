@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import MyPropertiesPage from "@/app/(dashboard)/dashboard/properties/page";
 
 const state = vi.hoisted(() => ({
@@ -12,7 +12,9 @@ const state = vi.hoisted(() => ({
     refresh: vi.fn(),
   },
   updatePropertyMutateAsync: vi.fn(),
+  deletePropertyMutateAsync: vi.fn(),
   hooks: {
+    useDeleteProperty: vi.fn(),
     useMyAgent: vi.fn(),
     useMyPropertyInsights: vi.fn(),
     useMyProperties: vi.fn(),
@@ -97,10 +99,10 @@ const baseProperty = {
 
 describe("MyPropertiesPage", () => {
   beforeEach(() => {
-    HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
       this.open = true;
     });
-    HTMLDialogElement.prototype.close = vi.fn(function close() {
+    HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
       this.open = false;
     });
     state.searchParams = new URLSearchParams();
@@ -109,6 +111,7 @@ describe("MyPropertiesPage", () => {
     state.router.push.mockReset();
     state.router.refresh.mockReset();
     state.updatePropertyMutateAsync.mockReset();
+    state.deletePropertyMutateAsync.mockReset();
     window.sessionStorage.clear();
 
     state.hooks.useMyAgent.mockReturnValue({
@@ -194,18 +197,34 @@ describe("MyPropertiesPage", () => {
       }),
       isPending: false,
     });
+    state.hooks.useDeleteProperty.mockReturnValue({
+      mutateAsync: state.deletePropertyMutateAsync.mockResolvedValue({ success: true }),
+      isPending: false,
+    });
   });
 
   it("renders listing health as a bar chart summary", () => {
     render(<MyPropertiesPage />);
 
     expect(screen.getByText(/Health volume/i)).toBeInTheDocument();
-    expect(screen.getByText(/Property insight/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Views, shares, contact attempts, reactions/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /View insights/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /Listing health volume/i })).toBeInTheDocument();
     expect(screen.getAllByText(/Publishing/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Active/i).length).toBeGreaterThan(0);
   }, 15000);
+
+  it("opens a compact insight modal for a property", async () => {
+    render(<MyPropertiesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /View insights/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /Property insights dialog/i });
+    expect(within(dialog).getByText("Urban Modern Studio")).toBeInTheDocument();
+    expect(within(dialog).getByText(/^12$/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Qualified referrals/i)).toBeInTheDocument();
+  });
 
   it("requires matched-account selection before confirming a Renyt close", async () => {
     render(<MyPropertiesPage />);
@@ -301,4 +320,37 @@ describe("MyPropertiesPage", () => {
       expect(screen.queryByText(/Your property is now live/i)).toBeNull();
     });
   }, 15000);
+
+  it("shows a delete icon for drafts and confirms deletion", async () => {
+    const draftProperty = {
+      ...baseProperty,
+      id: "draft-1",
+      title: "Draft listing",
+      status: "draft",
+      publish_error: null,
+      completion: {
+        ready_to_publish: false,
+        blockers: ["Upload at least 5 photos"],
+      },
+    };
+
+    state.hooks.useMyProperties.mockReturnValue({
+      data: { data: [draftProperty] },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MyPropertiesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Delete draft Draft listing/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /Delete draft property/i });
+    expect(within(dialog).getByText(/Permanently remove this draft listing/i)).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Delete draft$/i }));
+
+    await waitFor(() => {
+      expect(state.deletePropertyMutateAsync).toHaveBeenCalledWith("draft-1");
+    });
+  });
 });

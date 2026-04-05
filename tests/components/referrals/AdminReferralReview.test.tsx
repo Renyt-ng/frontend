@@ -110,6 +110,12 @@ describe("AdminReferralReview", () => {
             commission_value: 30000,
             commission_basis_label: null,
             commission_basis_amount: null,
+            listing_authority_mode: "authorized_listing_agent",
+            commission_basis_snapshot_type: "listing_eligible_basis",
+            commission_basis_snapshot_amount: 500000,
+            commission_share_percent_snapshot: 40,
+            eligible_basis_snapshot_amount: 200000,
+            referral_hold_reason: "authority_review_required",
             campaign_name: "Festive push",
             close_status: null,
             close_source: null,
@@ -165,6 +171,10 @@ describe("AdminReferralReview", () => {
     expect(screen.getByText(/Campaign overrides/i)).toBeInTheDocument();
     expect(screen.getByText(/Referral review queue/i)).toBeInTheDocument();
     expect(screen.getByText(/Matched account/i)).toBeInTheDocument();
+    expect(screen.getByText(/Listing authority/i)).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/Authority review required before payout can proceed/i).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /Configure policy/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Configure defaults/i })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Configure override/i }).length).toBeGreaterThan(0);

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, Gift, Share2, ShieldCheck, Wallet } from "lucide-react";
+import { CircleAlert, Copy, Gift, Share2, ShieldCheck, Wallet } from "lucide-react";
 import { Badge, Button, Card, CardContent, Modal } from "@/components/ui";
 import {
   useCreateReferralShareLink,
@@ -70,6 +70,19 @@ export function ReferralProgramModal({
     } as ReferralCommissionPreview);
   const summary = useMemo(() => commissionSummary(preview), [preview]);
   const previewState = previewQuery.data?.data ?? null;
+  const shareBasisExplanation = useMemo(() => {
+    if (
+      previewState?.listing_authority_mode !== "authorized_listing_agent" ||
+      previewState.declared_commission_share_percent == null ||
+      previewState.public_commission_basis_amount == null ||
+      previewState.eligible_referral_basis_amount == null ||
+      previewState.public_commission_basis_amount === previewState.eligible_referral_basis_amount
+    ) {
+      return null;
+    }
+
+    return `This listing is marketed by an authorized listing agent. Referral earnings are calculated from their declared ${previewState.declared_commission_share_percent}% share of the agency fee, not the full agency fee.`;
+  }, [previewState]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -223,6 +236,12 @@ export function ReferralProgramModal({
                     Active campaign: {previewState.campaign_name}
                   </p>
                 ) : null}
+                {shareBasisExplanation ? (
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-2 text-xs text-emerald-900">
+                    <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <p>{shareBasisExplanation}</p>
+                  </div>
+                ) : null}
               </div>
             </CardContent>
           </Card>
@@ -319,6 +338,12 @@ export function ReferralProgramModal({
                   <p className="mt-2 text-xs text-emerald-800">
                     Active campaign: {previewState.campaign_name}
                   </p>
+                ) : null}
+                {shareBasisExplanation ? (
+                  <div className="mt-3 flex items-start gap-2 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-2 text-xs text-emerald-900">
+                    <CircleAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                    <p>{shareBasisExplanation}</p>
+                  </div>
                 ) : null}
               </div>
             </CardContent>

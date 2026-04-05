@@ -31,7 +31,7 @@ export function PropertyAgentCard({ property }: PropertyAgentCardProps) {
             <h3 className="text-xl font-semibold text-[var(--color-text-primary)]">
               {agentName}
             </h3>
-            <p className="text-sm text-[var(--color-text-secondary)]">{businessName}</p>
+            <p className="break-words text-sm text-[var(--color-text-secondary)]">{businessName}</p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {/* <Badge variant="verified" size="sm">
                 Renyt agent identity on file

@@ -14,6 +14,7 @@ import {
   PencilLine,
   Plus,
   RefreshCw,
+  Trash2,
   X,
 } from "lucide-react";
 import { Badge, Button, Card, CardContent, Modal, type ButtonProps } from "@/components/ui";
@@ -29,6 +30,7 @@ import {
 } from "@/components/dashboard";
 import {
   useConfirmPropertyAvailability,
+  useDeleteProperty,
   useMyAgent,
   useMyPropertyInsights,
   useMyProperties,
@@ -145,6 +147,7 @@ export default function MyPropertiesPage() {
     },
   });
   const confirmAvailability = useConfirmPropertyAvailability();
+  const deleteProperty = useDeleteProperty();
   const updateProperty = useUpdateProperty();
   const insightsQuery = useMyPropertyInsights();
   const [activeAction, setActiveAction] = useState<string | null>(null);
@@ -156,6 +159,8 @@ export default function MyPropertiesPage() {
     propertyId: string;
     status: Property["status"];
   } | null>(null);
+  const [pendingDraftDeleteId, setPendingDraftDeleteId] = useState<string | null>(null);
+  const [activeInsightPropertyId, setActiveInsightPropertyId] = useState<string | null>(null);
   const [matchedUserId, setMatchedUserId] = useState("");
   const [resolutionFeedback, setResolutionFeedback] = useState<Record<string, string>>({});
 
@@ -222,6 +227,56 @@ export default function MyPropertiesPage() {
         : null,
     [pendingConfirmation, properties],
   );
+  const pendingDraftDeleteProperty = useMemo(
+    () =>
+      pendingDraftDeleteId
+        ? properties.find((property) => property.id === pendingDraftDeleteId) ?? null
+        : null,
+    [pendingDraftDeleteId, properties],
+  );
+  const activeInsightProperty = useMemo(
+    () =>
+      activeInsightPropertyId
+        ? properties.find((property) => property.id === activeInsightPropertyId) ?? null
+        : null,
+    [activeInsightPropertyId, properties],
+  );
+  const activeInsight = useMemo(() => {
+    if (!activeInsightPropertyId) {
+      return null;
+    }
+
+    const existingInsight = insightByPropertyId.get(activeInsightPropertyId);
+    if (existingInsight) {
+      return existingInsight;
+    }
+
+    if (!activeInsightProperty) {
+      return null;
+    }
+
+    return {
+      property_id: activeInsightProperty.id,
+      property_title: activeInsightProperty.title,
+      property_area: activeInsightProperty.area,
+      property_status: activeInsightProperty.status,
+      property_is_verified: Boolean(activeInsightProperty.is_verified),
+      view_count: 0,
+      share_count: 0,
+      cta_attempt_count: 0,
+      wishlist_count: 0,
+      like_count: 0,
+      qualified_referrals: 0,
+      open_referral_count: 0,
+      under_review_count: 0,
+      confirmed_count: 0,
+      paid_count: 0,
+      ineligible_count: 0,
+      candidate_count: 0,
+      latest_contact_at: null,
+      resolution_summary: null,
+    };
+  }, [activeInsightProperty, activeInsightPropertyId, insightByPropertyId]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -508,6 +563,20 @@ export default function MyPropertiesPage() {
     }
   }
 
+  async function handleDeleteDraft() {
+    if (!pendingDraftDeleteId) {
+      return;
+    }
+
+    setActiveAction(`delete:${pendingDraftDeleteId}`);
+    try {
+      await deleteProperty.mutateAsync(pendingDraftDeleteId);
+      setPendingDraftDeleteId(null);
+    } finally {
+      setActiveAction(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <DashboardPanel padding="lg" className="space-y-4">
@@ -547,77 +616,6 @@ export default function MyPropertiesPage() {
           emptyMessage="No listing activity yet. Add a property to start tracking listing health."
         />
       </DashboardPanel>
-
-      {properties.length > 0 ? (
-        <DashboardPanel padding="lg" className="space-y-4">
-          <DashboardSectionHeading
-            title="Property insight"
-            description="Views, shares, contact attempts, reactions, and qualified referrals in one scan."
-            action={<Badge variant="dashboard">Agent insight</Badge>}
-          />
-
-          {insightsQuery.isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="h-36 animate-pulse rounded-2xl bg-gray-100" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {propertyInsights.map((insight) => (
-                <Card key={insight.property_id}>
-                  <CardContent className="space-y-4 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-[var(--color-text-primary)]">
-                          {insight.property_title}
-                        </p>
-                        <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                          {insight.property_area} · {insight.property_status.replace(/_/g, " ")}
-                        </p>
-                      </div>
-                      {insight.property_is_verified ? (
-                        <Badge variant="verified">Verified</Badge>
-                      ) : null}
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Views</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.view_count}</p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Shares</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.share_count}</p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">CTA</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.cta_attempt_count}</p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Likes</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.like_count}</p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Wishlist</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.wishlist_count}</p>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--dashboard-border)] p-3">
-                        <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">Qualified</p>
-                        <p className="mt-1 font-semibold text-[var(--color-text-primary)]">{insight.qualified_referrals}</p>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-[var(--color-text-secondary)]">
-                      {insight.open_referral_count} open referral item(s), {insight.under_review_count} under review, {insight.confirmed_count} confirmed, {insight.paid_count} paid.
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </DashboardPanel>
-      ) : null}
 
       {trackedPublishId && (!isTrackedPublishSuccess || !isTrackedPublishDismissed) ? (
         <Card className="border-0 shadow-sm ring-1 ring-black/5" aria-live="polite">
@@ -837,14 +835,19 @@ export default function MyPropertiesPage() {
                                   {getPropertyFinalOutcomeLabel(p.status)}
                                 </p>
                               ) : null}
-                              {insightByPropertyId.get(p.id) ? (
-                                <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-                                  {(() => {
-                                    const insight = insightByPropertyId.get(p.id)!;
-                                    return `${insight.view_count} views · ${insight.share_count} shares · ${insight.cta_attempt_count} CTA attempts · ${insight.qualified_referrals} qualified referrals`;
-                                  })()}
-                                </p>
-                              ) : null}
+                              <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1">
+                                  <Eye className="h-3.5 w-3.5" />
+                                  {insightByPropertyId.get(p.id)?.view_count ?? 0}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveInsightPropertyId(p.id)}
+                                  className="font-medium text-[var(--color-deep-slate-blue)]"
+                                >
+                                  View insights
+                                </button>
+                              </div>
                               {p.status === "publishing" ? (
                                 <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
                                   We&apos;re preparing this listing for search. You can publish another property while this completes.
@@ -862,13 +865,13 @@ export default function MyPropertiesPage() {
                               ) : null}
                             </div>
                             <div className="flex flex-col gap-2 lg:w-[420px] lg:items-end">
-                              <div className="w-full rounded-[24px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] p-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
-                                <div className="space-y-2">
-                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
-                                    Listing Health
-                                  </p>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    {p.status === "active" ? (
+                              {p.status === "active" ? (
+                                <div className="w-full rounded-[24px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] p-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
+                                  <div className="space-y-2">
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
+                                      Listing Health
+                                    </p>
+                                    <div className="grid grid-cols-2 gap-2">
                                       <ReferralShareTriggerButton
                                         property={p}
                                         variant="secondary"
@@ -876,62 +879,60 @@ export default function MyPropertiesPage() {
                                         label="Share"
                                         className="justify-start border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                                       />
-                                    ) : null}
-                                    {p.status !== "draft" && p.status !== "publishing" && p.status !== "archived" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
-                                      const action = getLifecycleActionStyles("confirm");
-                                      const Icon = action.icon;
+                                      {(() => {
+                                        const action = getLifecycleActionStyles("confirm");
+                                        const Icon = action.icon;
 
-                                      return (
-                                        <Button
-                                          size="sm"
-                                          variant={action.variant}
-                                          className={action.className}
-                                          onClick={() => handleConfirmAvailability(p.id)}
-                                          isLoading={activeAction === `confirm:${p.id}`}
-                                        >
-                                          <Icon className="h-4 w-4" />
-                                          {action.label}
-                                        </Button>
-                                      );
-                                    })() : null}
-                                    {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
-                                      const action = getLifecycleActionStyles("unavailable");
-                                      const Icon = action.icon;
+                                        return (
+                                          <Button
+                                            size="sm"
+                                            variant={action.variant}
+                                            className={action.className}
+                                            onClick={() => handleConfirmAvailability(p.id)}
+                                            isLoading={activeAction === `confirm:${p.id}`}
+                                          >
+                                            <Icon className="h-4 w-4" />
+                                            {action.label}
+                                          </Button>
+                                        );
+                                      })()}
+                                      {(() => {
+                                        const action = getLifecycleActionStyles("unavailable");
+                                        const Icon = action.icon;
 
-                                      return (
-                                        <Button
-                                          variant={action.variant}
-                                          size="sm"
-                                          className={action.className}
-                                          onClick={() => handleStatusUpdate(p.id, "unavailable")}
-                                          isLoading={activeAction === `unavailable:${p.id}`}
-                                        >
-                                          <Icon className="h-4 w-4" />
-                                          {action.label}
-                                        </Button>
-                                      );
-                                    })() : null}
-                                    {p.status !== "draft" && p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (() => {
-                                      const action = getLifecycleActionStyles("archived");
-                                      const Icon = action.icon;
+                                        return (
+                                          <Button
+                                            variant={action.variant}
+                                            size="sm"
+                                            className={action.className}
+                                            onClick={() => handleStatusUpdate(p.id, "unavailable")}
+                                            isLoading={activeAction === `unavailable:${p.id}`}
+                                          >
+                                            <Icon className="h-4 w-4" />
+                                            {action.label}
+                                          </Button>
+                                        );
+                                      })()}
+                                      {(() => {
+                                        const action = getLifecycleActionStyles("archived");
+                                        const Icon = action.icon;
 
-                                      return (
-                                        <Button
-                                          variant={action.variant}
-                                          size="sm"
-                                          className={action.className}
-                                          onClick={() => handleStatusUpdate(p.id, "archived")}
-                                          isLoading={activeAction === `archived:${p.id}`}
-                                        >
-                                          <Icon className="h-4 w-4" />
-                                          {action.label}
-                                        </Button>
-                                      );
-                                    })() : null}
+                                        return (
+                                          <Button
+                                            variant={action.variant}
+                                            size="sm"
+                                            className={action.className}
+                                            onClick={() => handleStatusUpdate(p.id, "archived")}
+                                            isLoading={activeAction === `archived:${p.id}`}
+                                          >
+                                            <Icon className="h-4 w-4" />
+                                            {action.label}
+                                          </Button>
+                                        );
+                                      })()}
+                                    </div>
                                   </div>
-                                </div>
 
-                                {p.status !== "publishing" && !getPropertyFinalOutcomeLabel(p.status) ? (
                                   <div className="mt-3 space-y-2 border-t border-[var(--dashboard-border)] pt-3">
                                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
                                       Close As
@@ -958,19 +959,31 @@ export default function MyPropertiesPage() {
                                       })}
                                     </div>
                                   </div>
-                                ) : null}
-                              </div>
+                                </div>
+                              ) : null}
                               <div className="flex items-center gap-2 lg:justify-end">
                                 <Link href={p.status === "active" ? `/properties/${p.id}` : `/dashboard/properties/${p.id}/edit`}>
                                   <Button variant="ghost" size="icon">
                                     {p.status === "active" ? <Eye className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
                                   </Button>
                                 </Link>
-                                <Link href={`/dashboard/properties/${p.id}/edit`}>
-                                  <Button variant="ghost" size="icon">
-                                    <Edit3 className="h-4 w-4" />
+                                {p.status === "draft" ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    aria-label={`Delete draft ${p.title}`}
+                                    className="text-[var(--color-rejected)] hover:bg-red-50 hover:text-[var(--color-rejected)]"
+                                    onClick={() => setPendingDraftDeleteId(p.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
-                                </Link>
+                                ) : (
+                                  <Link href={`/dashboard/properties/${p.id}/edit`}>
+                                    <Button variant="ghost" size="icon">
+                                      <Edit3 className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -1120,6 +1133,124 @@ export default function MyPropertiesPage() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={Boolean(pendingDraftDeleteId)}
+        onClose={() => setPendingDraftDeleteId(null)}
+        title="Delete draft"
+        ariaLabel="Delete draft property"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Permanently remove this draft listing and all media saved on it.
+          </p>
+
+          {pendingDraftDeleteProperty ? (
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              <p className="font-medium text-[var(--color-text-primary)]">{pendingDraftDeleteProperty.title}</p>
+              <p className="mt-1">{pendingDraftDeleteProperty.area}</p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setPendingDraftDeleteId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteDraft}
+              isLoading={Boolean(pendingDraftDeleteId && activeAction === `delete:${pendingDraftDeleteId}`)}
+              className="bg-[var(--color-rejected)] text-white hover:bg-[var(--color-rejected)]/90"
+            >
+              Delete draft
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(activeInsight)}
+        onClose={() => setActiveInsightPropertyId(null)}
+        title="Property insights"
+        ariaLabel="Property insights dialog"
+        dialogClassName="max-w-2xl"
+      >
+        {activeInsight ? (
+          <div className="space-y-5">
+            <div className="flex items-start justify-between gap-3 rounded-3xl border border-[var(--dashboard-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5">
+              <div>
+                <p className="text-sm text-[var(--color-text-secondary)]">{activeInsight.property_area}</p>
+                <h3 className="mt-1 text-lg font-semibold text-[var(--color-text-primary)]">
+                  {activeInsight.property_title}
+                </h3>
+                <p className="mt-1 text-sm text-[var(--color-text-secondary)] capitalize">
+                  {activeInsight.property_status.replace(/_/g, " ")}
+                </p>
+              </div>
+              {activeInsight.property_is_verified ? <Badge variant="verified">Verified</Badge> : null}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+              <div className="rounded-3xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] p-5 text-center">
+                <p className="text-sm uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">Views</p>
+                <p className="mt-4 text-5xl font-semibold leading-none text-[var(--color-text-primary)]">
+                  {activeInsight.view_count}
+                </p>
+                <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
+                  {activeInsight.latest_contact_at
+                    ? `Latest contact ${new Date(activeInsight.latest_contact_at).toLocaleDateString()}`
+                    : "No recent contact yet"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <InsightMetricCard label="Shares" value={activeInsight.share_count} />
+                <InsightMetricCard label="CTA attempts" value={activeInsight.cta_attempt_count} />
+                <InsightMetricCard label="Wishlist" value={activeInsight.wishlist_count} />
+                <InsightMetricCard label="Likes" value={activeInsight.like_count} />
+                <InsightMetricCard label="Qualified referrals" value={activeInsight.qualified_referrals} />
+                <InsightMetricCard label="Candidates" value={activeInsight.candidate_count} />
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">
+                Referral pipeline
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <InsightMetricCard label="Open" value={activeInsight.open_referral_count} compact />
+                <InsightMetricCard label="Under review" value={activeInsight.under_review_count} compact />
+                <InsightMetricCard label="Confirmed" value={activeInsight.confirmed_count} compact />
+                <InsightMetricCard label="Paid" value={activeInsight.paid_count} compact />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="secondary" onClick={() => setActiveInsightPropertyId(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+    </div>
+  );
+}
+
+function InsightMetricCard({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string;
+  value: number;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`rounded-2xl border border-[var(--dashboard-border)] bg-white ${compact ? "p-3" : "p-4"}`}>
+      <p className="text-xs uppercase tracking-wide text-[var(--color-text-secondary)]">{label}</p>
+      <p className={`mt-2 font-semibold text-[var(--color-text-primary)] ${compact ? "text-lg" : "text-2xl"}`}>
+        {value}
+      </p>
     </div>
   );
 }

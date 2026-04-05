@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { hasSupabaseAuthCookies } from "@/lib/authSession";
 import { updateSession } from "@/lib/supabase/middleware";
 
 /**
@@ -10,8 +11,7 @@ export async function proxy(request: NextRequest) {
   // Refresh auth session (sets/updates cookies)
   const { response, user, authError } = await updateSession(request);
 
-  const hasSupabaseCookies = (request.cookies?.getAll?.() ?? [])
-    .some((cookie) => cookie.name.startsWith("sb-"));
+  const hasSupabaseCookies = hasSupabaseAuthCookies(request.cookies?.getAll?.() ?? []);
 
   // Protect dashboard routes
   if (request.nextUrl.pathname.startsWith("/dashboard")) {

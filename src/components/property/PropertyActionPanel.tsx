@@ -186,7 +186,7 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
             Message the listing agent directly on WhatsApp for the fastest response. Call remains available if you prefer a direct phone conversation.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {phoneHref ? (
               isAuthenticated ? (
                 <a
