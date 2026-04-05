@@ -115,11 +115,6 @@ export default async function PropertyDetailPage({
   if (!property) notFound();
 
   const images = property.images ?? property.property_images ?? [];
-  const price = formatPropertyPriceLabel({
-    listingPurpose: property.listing_purpose,
-    rentAmount: property.rent_amount,
-    askingPrice: property.asking_price,
-  });
   const freshnessLabel = getPropertyFreshnessLabel(property);
   const freshnessMeta = getPropertyFreshnessMeta(property);
 
@@ -260,21 +255,7 @@ export default async function PropertyDetailPage({
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
           <div className="mx-auto w-full max-w-3xl space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-w-none">
-            {property.listing_purpose === "rent" ? (
-              <PricingBreakdown property={property} />
-            ) : (
-              <div className="rounded-3xl border border-[var(--color-border)] bg-white p-6 shadow-sm">
-                <p className="text-sm font-medium uppercase tracking-wide text-[var(--color-text-secondary)]">
-                  Asking Price
-                </p>
-                <p className="mt-2 text-3xl font-bold text-[var(--color-deep-slate-blue)]">
-                  {price.amount}
-                </p>
-                <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  Agent-led contact intent only in this release.
-                </p>
-              </div>
-            )}
+            <PricingBreakdown property={property} />
 
             <PropertyAgentCard property={property} />
 
