@@ -119,7 +119,7 @@ export default async function PropertyDetailPage({
   const freshnessMeta = getPropertyFreshnessMeta(property);
 
   return (
-    <div className="pb-16">
+    <div className="min-w-0 overflow-x-hidden pb-16">
       <PropertyViewTracker propertyId={property.id} />
 
       {/* Breadcrumb bar */}
