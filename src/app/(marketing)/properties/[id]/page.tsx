@@ -125,30 +125,33 @@ export default async function PropertyDetailPage({
       {/* Breadcrumb bar */}
       <div className="border-b border-[var(--color-border)] bg-white py-3">
         <Container size="md">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
-            <Link
-              href="/search"
-              className="flex items-center gap-1 text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Search
-            </Link>
-            <span className="text-[var(--color-border)]">/</span>
-            <span className="max-w-full break-words text-[var(--color-text-secondary)]">
-              {property.area}
-            </span>
-            <span className="text-[var(--color-border)]">/</span>
-            <span className="min-w-0 flex-1 break-words text-[var(--color-text-primary)]">
-              {property.title}
-            </span>
+          <div className="mx-auto w-full max-w-[42rem] px-1 sm:px-0 lg:max-w-none">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+              <Link
+                href="/search"
+                className="flex items-center gap-1 text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Search
+              </Link>
+              <span className="text-[var(--color-border)]">/</span>
+              <span className="max-w-full break-words text-[var(--color-text-secondary)]">
+                {property.area}
+              </span>
+              <span className="text-[var(--color-border)]">/</span>
+              <span className="min-w-0 flex-1 break-words text-[var(--color-text-primary)]">
+                {property.title}
+              </span>
+            </div>
           </div>
         </Container>
       </div>
 
       <Container size="md" className="mt-4 sm:mt-6">
-        <div className="mx-auto grid w-full gap-8 lg:max-w-none lg:grid-cols-3">
+        <div className="mx-auto w-full max-w-[42rem] px-1 sm:px-0 lg:max-w-none">
+          <div className="grid w-full gap-8 lg:grid-cols-3">
           {/* ─── Left column (2/3) ─────────────────── */}
-          <div className="mx-auto w-full max-w-3xl space-y-8 lg:col-span-2 lg:max-w-none">
+            <div className="mx-auto w-full max-w-3xl space-y-8 lg:col-span-2 lg:max-w-none">
             {/* Gallery */}
             <PropertyGallery images={images} title={property.title} />
 
@@ -251,46 +254,47 @@ export default async function PropertyDetailPage({
                 ))}
               </div>
             </div> */}
-          </div>
+            </div>
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
-          <div className="mx-auto w-full max-w-3xl space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-w-none">
-            <PricingBreakdown property={property} />
+            <div className="mx-auto w-full max-w-3xl space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-w-none">
+              <PricingBreakdown property={property} />
 
-            <PropertyAgentCard property={property} />
+              <PropertyAgentCard property={property} />
 
-            <div className="hidden lg:block">
-              <PropertyActionPanel property={property} />
-            </div>
+              <div className="hidden lg:block">
+                <PropertyActionPanel property={property} />
+              </div>
 
-            {/* Safety notice */}
-            <div className="rounded-xl border border-[var(--color-emerald)]/20 bg-emerald-50 p-4">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--color-emerald)]" />
-                <div>
-                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                    {property.is_verified ? "Verified Listing" : "Verification In Progress"}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-                    {property.is_verified
-                      ? "This property has been verified by the Renyt team. The agent is ID-verified and approved."
-                      : "This listing is visible, but final property verification is still pending review by the Renyt team."}
-                  </p>
+              {/* Safety notice */}
+              <div className="rounded-xl border border-[var(--color-emerald)]/20 bg-emerald-50 p-4">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-[var(--color-emerald)]" />
+                  <div>
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                      {property.is_verified ? "Verified Listing" : "Verification In Progress"}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                      {property.is_verified
+                        ? "This property has been verified by the Renyt team. The agent is ID-verified and approved."
+                        : "This listing is visible, but final property verification is still pending review by the Renyt team."}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-[var(--color-border)] bg-white p-4">
-              <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                {freshnessLabel}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-                {property.freshness_state === "fresh"
-                  ? "This listing was recently reconfirmed by the agent and is still open for direct contact."
-                  : property.freshness_state === "confirmation_due"
-                    ? "This listing is temporarily being reconfirmed. Contact response may be slower until the agent refreshes availability."
-                    : "This listing is no longer active for new contact."}
-              </p>
+              <div className="rounded-xl border border-[var(--color-border)] bg-white p-4">
+                <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                  {freshnessLabel}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
+                  {property.freshness_state === "fresh"
+                    ? "This listing was recently reconfirmed by the agent and is still open for direct contact."
+                    : property.freshness_state === "confirmation_due"
+                      ? "This listing is temporarily being reconfirmed. Contact response may be slower until the agent refreshes availability."
+                      : "This listing is no longer active for new contact."}
+                </p>
+              </div>
             </div>
           </div>
         </div>
