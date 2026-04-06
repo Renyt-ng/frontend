@@ -119,13 +119,12 @@ export default async function PropertyDetailPage({
   const freshnessMeta = getPropertyFreshnessMeta(property);
 
   return (
-    <div className="min-w-0 overflow-x-hidden pb-16">
+    <div className="min-w-0 pb-16">
       <PropertyViewTracker propertyId={property.id} />
 
-      {/* Breadcrumb bar */}
-      <div className="border-b border-[var(--color-border)] bg-white py-3">
-        <Container size="md">
-          <div className="mx-auto w-full max-w-[42rem] px-1 sm:px-0 lg:max-w-none">
+      <Container size="lg" className="mt-4 sm:mt-6">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mx-auto mb-5 w-full max-w-3xl lg:mb-6 lg:max-w-none">
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
               <Link
                 href="/search"
@@ -144,16 +143,14 @@ export default async function PropertyDetailPage({
               </span>
             </div>
           </div>
-        </Container>
-      </div>
 
-      <Container size="md" className="mt-4 sm:mt-6">
-        <div className="mx-auto w-full max-w-[42rem] px-1 sm:px-0 lg:max-w-none">
           <div className="grid w-full gap-8 lg:grid-cols-3">
           {/* ─── Left column (2/3) ─────────────────── */}
             <div className="mx-auto w-full max-w-3xl space-y-8 lg:col-span-2 lg:max-w-none">
-            {/* Gallery */}
-            <PropertyGallery images={images} title={property.title} />
+            {/* Gallery — full-bleed on mobile */}
+            <div className="-mx-4 sm:-mx-6 lg:mx-0">
+              <PropertyGallery images={images} title={property.title} />
+            </div>
 
             {/* Title & Meta */}
             <div className="min-w-0">
