@@ -45,9 +45,9 @@ export function PropertyAgentCard({ property }: PropertyAgentCardProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+        {/* <div className="rounded-2xl border border-[var(--color-border)] bg-white/80 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
           Contact actions on this page route directly to the verified listing agent by WhatsApp or phone.
-        </div>
+        </div> */}
       </CardContent>
     </Card>
   );

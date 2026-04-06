@@ -101,4 +101,32 @@ describe("property detail metadata", () => {
       "https://renyt.ng/uploads/property-2-cover.jpg",
     ]);
   }, 15000);
+
+  it("omits the asking qualifier from sale metadata when the price is not negotiable", async () => {
+    getProperty.mockResolvedValue({
+      data: {
+        id: "property-3",
+        title: "4 Bedroom Duplex",
+        area: "Ikoyi",
+        property_type: "duplex",
+        listing_purpose: "sale",
+        bedrooms: 4,
+        bathrooms: 4,
+        rent_amount: null,
+        asking_price: 95000000,
+        is_price_negotiable: false,
+        images: [],
+      },
+    });
+
+    const { generateMetadata } = await import(
+      "@/app/(marketing)/properties/[id]/page"
+    );
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ id: "property-3" }),
+    });
+
+    expect(metadata.description).toContain("₦95,000,000.");
+    expect(metadata.description).not.toContain("asking");
+  }, 15000);
 });

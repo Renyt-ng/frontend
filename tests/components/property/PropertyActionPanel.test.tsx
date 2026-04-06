@@ -205,4 +205,12 @@ describe("PropertyActionPanel", () => {
 
     expect(screen.getByRole("button", { name: /share and earn/i })).toBeInTheDocument();
   });
+
+  it("renders a compact sticky variant without the share action", () => {
+    render(<PropertyActionPanel property={property} variant="sticky" />);
+
+    expect(screen.getByRole("button", { name: /whatsapp/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /call/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /share and earn/i })).not.toBeInTheDocument();
+  });
 });

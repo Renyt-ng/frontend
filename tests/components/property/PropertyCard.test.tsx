@@ -97,4 +97,39 @@ describe("PropertyCard", () => {
 
     expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
   });
+
+  it("shows the asking qualifier only when a sale listing is negotiable", () => {
+    render(
+      <>
+        <PropertyCard
+          property={{
+            ...property,
+            id: "sale-property-1",
+            listing_purpose: "sale",
+            rent_amount: null,
+            asking_price: 95000000,
+            is_price_negotiable: true,
+          } as never}
+          images={[]}
+        />
+        <PropertyCard
+          property={{
+            ...property,
+            id: "sale-property-2",
+            title: "Fixed Sale Listing",
+            listing_purpose: "sale",
+            rent_amount: null,
+            asking_price: 88000000,
+            is_price_negotiable: false,
+          } as never}
+          images={[]}
+        />
+      </>,
+    );
+
+    expect(screen.getByText("asking")).toBeInTheDocument();
+    expect(screen.getByText("₦95,000,000")).toBeInTheDocument();
+    expect(screen.getByText("₦88,000,000")).toBeInTheDocument();
+    expect(screen.getAllByText("asking")).toHaveLength(1);
+  });
 });

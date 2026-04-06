@@ -24,7 +24,7 @@ import {
   Upload,
   Video,
 } from "lucide-react";
-import { Button, Card, CardContent, Input, Modal, NumericInput, Select } from "@/components/ui";
+import { Button, Card, CardContent, ContextualHelp, Input, Modal, NumericInput, Select } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
 import {
   useCreateFeeType,
@@ -50,6 +50,7 @@ import {
   buildDraftChecklist,
   deriveDraftAgencyFeeAmount,
   buildDraftReferralBasisSummary,
+  filterDraftFeesForListingPurpose,
   buildDraftPricingSummary,
   formatListingPurpose,
   formatPropertyPriceLabel,
@@ -78,6 +79,17 @@ interface PropertyComposerProps {
   propertyId?: string;
 }
 
+function getAllowedFeeTypes(
+  listingPurpose: PropertyListingPurpose,
+  feeTypes: FeeType[] = [],
+) {
+  if (listingPurpose !== "sale") {
+    return feeTypes;
+  }
+
+  return feeTypes.filter((feeType) => feeType.slug === "agency_fee");
+}
+
 interface ComposerValues {
   title: string;
   description: string;
@@ -89,6 +101,7 @@ interface ComposerValues {
   bathrooms: number | null;
   rent_amount: number | null;
   asking_price: number | null;
+  is_price_negotiable: boolean;
   listing_authority_mode: ListingAuthorityMode | null;
   declared_commission_share_percent: number | null;
   application_mode: "instant_apply" | "message_agent";
@@ -130,6 +143,7 @@ const defaultValues: ComposerValues = {
   bathrooms: 1,
   rent_amount: null,
   asking_price: null,
+  is_price_negotiable: false,
   listing_authority_mode: null,
   declared_commission_share_percent: null,
   application_mode: "message_agent",
@@ -292,6 +306,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       bathrooms: hydratedProperty.bathrooms,
       rent_amount: hydratedProperty.rent_amount,
       asking_price: hydratedProperty.asking_price,
+      is_price_negotiable: Boolean(hydratedProperty.is_price_negotiable),
       listing_authority_mode: hydratedProperty.listing_authority_mode ?? null,
       declared_commission_share_percent:
         hydratedProperty.declared_commission_share_percent ?? null,
@@ -438,10 +453,34 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       ),
     [values.asking_price, values.fees, values.listing_purpose, values.rent_amount],
   );
+  const allowedFeeTypes = useMemo(
+    () => getAllowedFeeTypes(values.listing_purpose, feeTypesQuery.data?.data ?? []),
+    [feeTypesQuery.data?.data, values.listing_purpose],
+  );
+  const visibleFees = useMemo(
+    () =>
+      values.fees
+        .map((fee, index) => ({ fee, index }))
+        .filter(({ fee }) =>
+          filterDraftFeesForListingPurpose(
+            values.listing_purpose,
+            [fee],
+            feeTypesQuery.data?.data ?? [],
+          ).length > 0,
+        ),
+    [feeTypesQuery.data?.data, values.fees, values.listing_purpose],
+  );
+  const saleAgencyFeeExists =
+    values.listing_purpose === "sale" &&
+    visibleFees.some(
+      ({ fee }) =>
+        feeTypesQuery.data?.data?.find((feeType) => feeType.id === fee.fee_type_id)?.slug ===
+        "agency_fee",
+    );
 
   const currentStepIndex = stepOrder.indexOf(step);
   const draftStatus = (hydratedProperty?.status ?? "draft") as PropertyStatus;
-  const feeTypeOptions = (feeTypesQuery.data?.data ?? []).map((feeType) => ({
+  const feeTypeOptions = allowedFeeTypes.map((feeType) => ({
     value: feeType.id,
     label: feeType.name,
   }));
@@ -499,7 +538,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   }
 
   function addFee() {
-    const firstFeeType = feeTypesQuery.data?.data?.[0];
+    const firstFeeType = allowedFeeTypes[0];
     if (!firstFeeType) {
       return;
     }
@@ -1131,6 +1170,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                           event.target.value === "sale"
                             ? current.asking_price
                             : null,
+                        is_price_negotiable:
+                          event.target.value === "sale"
+                            ? current.is_price_negotiable
+                            : false,
                         rent_amount:
                           event.target.value === "rent"
                             ? current.rent_amount
@@ -1191,20 +1234,44 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                   title="Pricing Breakdown"
                   description={
                     values.listing_purpose === "sale"
-                      ? "Set the asking price in naira, then add structured fee lines so buyers can understand the full purchase cost upfront."
+                      ? "Set the asking price in naira. Agency fee is tracked internally for referral calculations and is not added to the buyer-facing price."
                       : "Use annual rent in naira, then add structured fee lines so tenants see the full move-in cost upfront."
                   }
                 />
 
                 {values.listing_purpose === "sale" ? (
-                  <NumericInput
-                    id="asking_price"
-                    label="Asking Price (NGN)"
-                    value={values.asking_price}
-                    onValueChange={(value) => updateField("asking_price", value)}
-                    format="currency"
-                    error={fieldErrors.asking_price}
-                  />
+                  <div className="space-y-4">
+                    <NumericInput
+                      id="asking_price"
+                      label="Sale Price (NGN)"
+                      value={values.asking_price}
+                      onValueChange={(value) => updateField("asking_price", value)}
+                      format="currency"
+                      error={fieldErrors.asking_price}
+                    />
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="font-medium text-[var(--color-text-primary)]">
+                          Asking
+                        </span>
+                        <ContextualHelp
+                          label="More information about the asking tag"
+                          title="When to use Asking"
+                        >
+                          Turn this on only when the advertised sale price is negotiable.
+                        </ContextualHelp>
+                      </span>
+                      <input
+                        type="checkbox"
+                        aria-label="Asking"
+                        checked={values.is_price_negotiable}
+                        onChange={(event) =>
+                          updateField("is_price_negotiable", event.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-[var(--color-border)] text-[var(--color-deep-slate-blue)] focus:ring-[var(--color-deep-slate-blue)]"
+                      />
+                    </label>
+                  </div>
                 ) : (
                   <NumericInput
                     id="rent_amount"
@@ -1217,7 +1284,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                 )}
 
                 <div className="space-y-3">
-                  {values.fees.map((fee, index) => {
+                  {visibleFees.map(({ fee, index }) => {
                     const feeType = feeTypesQuery.data?.data?.find(
                       (item) => item.id === fee.fee_type_id,
                     );
@@ -1300,23 +1367,35 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                           </div>
                         </div>
                         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
-                          This fee adds {formatCurrency(buildDraftPricingSummary(values.listing_purpose, values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the {values.listing_purpose === "sale" ? "buyer" : "move-in"} total.
+                          {values.listing_purpose === "sale"
+                            ? "Agency fee is stored for internal referral and commission workflows only."
+                            : `This fee adds ${formatCurrency(buildDraftPricingSummary(values.listing_purpose, values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the move-in total.`}
                         </p>
                       </div>
                     );
                   })}
 
-                  {values.fees.length === 0 ? (
+                  {visibleFees.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] px-4 py-4 text-sm text-[var(--color-text-secondary)]">
-                      Add fee lines to make the full {values.listing_purpose === "sale" ? "purchase" : "move-in"} cost clear before someone contacts the agent.
+                      {values.listing_purpose === "sale"
+                        ? "Add an agency fee so Renyt can calculate internal referral eligibility for this sale listing."
+                        : "Add fee lines to make the full move-in cost clear before someone contacts the agent."}
                     </div>
                   ) : null}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button type="button" variant="secondary" onClick={addFee} disabled={!feeTypesQuery.data?.data?.length}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={addFee}
+                    disabled={
+                      !allowedFeeTypes.length ||
+                      (values.listing_purpose === "sale" && saleAgencyFeeExists)
+                    }
+                  >
                     <Plus className="h-4 w-4" />
-                    Add Fee
+                    {values.listing_purpose === "sale" ? "Add Agency Fee" : "Add Fee"}
                   </Button>
                   <button
                     type="button"
@@ -1764,7 +1843,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                 <h2 className="font-semibold text-[var(--color-text-primary)]">Pricing summary</h2>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
                   {values.listing_purpose === "sale"
-                    ? "Buyer-facing asking price plus structured fees"
+                    ? "Buyer-facing sale price with an optional asking tag when the price is negotiable"
                     : "Transparent move-in cost shown to tenants"}
                 </p>
               </div>
@@ -1778,18 +1857,18 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                         listingPurpose: values.listing_purpose,
                         rentAmount: values.rent_amount,
                         askingPrice: values.asking_price,
+                        isPriceNegotiable: values.is_price_negotiable,
                       }).amount
                     }
                   />
-                  <SummaryRow label="Fees total" value={formatCurrency(pricingSummary.fees_total)} />
+                  <SummaryRow
+                    label="Asking tag"
+                    value={values.is_price_negotiable ? "Visible" : "Hidden"}
+                  />
                   <SummaryRow
                     label="Agency fee"
                     value={derivedAgencyFeeAmount ? formatCurrency(derivedAgencyFeeAmount) : "—"}
                   />
-
-                  <div className="border-t border-[var(--color-border)] pt-4">
-                    <SummaryRow label="Total buyer cost" value={formatCurrency(pricingSummary.total_move_in_cost)} strong />
-                  </div>
                 </>
               ) : (
                 <>
@@ -1895,6 +1974,12 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 }
 
 function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreatePropertyInput {
+  const normalizedFees = filterDraftFeesForListingPurpose(
+    values.listing_purpose,
+    values.fees,
+    feeTypes,
+  );
+
   return {
     title: values.title,
     description: values.description,
@@ -1906,13 +1991,15 @@ function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreateP
     bathrooms: values.bathrooms ?? 0,
     rent_amount: values.listing_purpose === "rent" ? values.rent_amount ?? 0 : null,
     asking_price: values.listing_purpose === "sale" ? values.asking_price ?? 0 : null,
+    is_price_negotiable:
+      values.listing_purpose === "sale" ? values.is_price_negotiable : false,
     service_charge: null,
     caution_deposit: null,
     agency_fee: deriveDraftAgencyFeeAmount({
       listingPurpose: values.listing_purpose,
       rentAmount: values.rent_amount ?? 0,
       askingPrice: values.asking_price ?? 0,
-      fees: values.fees,
+      fees: normalizedFees,
       feeTypes,
     }),
     listing_authority_mode: values.listing_authority_mode,
@@ -1921,7 +2008,7 @@ function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreateP
         ? values.declared_commission_share_percent
         : null,
     application_mode: "message_agent",
-    fees: values.fees.map((fee, index) => ({
+    fees: normalizedFees.map((fee: PropertyFeeInput, index: number) => ({
       ...fee,
       display_order: index,
     })),

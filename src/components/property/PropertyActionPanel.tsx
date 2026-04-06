@@ -20,6 +20,7 @@ import type { PropertyWithImages } from "@/types";
 
 interface PropertyActionPanelProps {
   property: PropertyWithImages;
+  variant?: "default" | "sticky";
 }
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -35,7 +36,10 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
+export function PropertyActionPanel({
+  property,
+  variant = "default",
+}: PropertyActionPanelProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuthStore();
@@ -143,6 +147,78 @@ export function PropertyActionPanel({ property }: PropertyActionPanelProps) {
         window.location.assign(href);
       },
     });
+  }
+
+  if (variant === "sticky") {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {phoneHref ? (
+          isAuthenticated ? (
+            <a
+              href={phoneHref}
+              onClick={() => handleContactClick("phone")}
+              className={cn(
+                buttonVariants({ variant: "secondary", size: "lg" }),
+                "flex w-full rounded-xl",
+              )}
+            >
+              <Phone className="h-4 w-4" />
+              Call
+            </a>
+          ) : (
+            <Button
+              variant="secondary"
+              size="lg"
+              className="w-full rounded-xl"
+              type="button"
+              onClick={() => resumeContactFlow("phone", phoneHref)}
+            >
+              <Phone className="h-4 w-4" />
+              Call
+            </Button>
+          )
+        ) : (
+          <Button variant="secondary" size="lg" className="w-full rounded-xl" type="button" disabled>
+            <Phone className="h-4 w-4" />
+            Call
+          </Button>
+        )}
+
+        {whatsappHref ? (
+          isAuthenticated ? (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => handleContactClick("whatsapp")}
+              className={cn(buttonVariants({ size: "lg" }), "flex w-full rounded-xl")}
+            >
+              <WhatsAppIcon className="h-4 w-4" />
+              WhatsApp
+            </a>
+          ) : (
+            <Button
+              size="lg"
+              className="w-full rounded-xl"
+              type="button"
+              onClick={() =>
+                resumeContactFlow("whatsapp", whatsappHref, {
+                  openInNewWindow: true,
+                })
+              }
+            >
+              <WhatsAppIcon className="h-4 w-4" />
+              WhatsApp
+            </Button>
+          )
+        ) : (
+          <Button size="lg" className="w-full rounded-xl" type="button" disabled>
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
+          </Button>
+        )}
+      </div>
+    );
   }
 
   return (

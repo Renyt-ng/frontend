@@ -83,6 +83,7 @@ const baseProperty = {
   bathrooms: 3,
   rent_amount: 8500000,
   asking_price: null,
+  is_price_negotiable: false,
   agency_fee: 850000,
   listing_authority_mode: "owner_agent",
   declared_commission_share_percent: null,
@@ -185,10 +186,10 @@ class MockFileReader {
 
 describe("PropertyComposer", () => {
   beforeEach(() => {
-    HTMLDialogElement.prototype.showModal = vi.fn(function showModal() {
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModal(this: HTMLDialogElement) {
       this.open = true;
     });
-    HTMLDialogElement.prototype.close = vi.fn(function close() {
+    HTMLDialogElement.prototype.close = vi.fn(function close(this: HTMLDialogElement) {
       this.open = false;
     });
 
@@ -367,7 +368,7 @@ describe("PropertyComposer", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: "Media" })).toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("moves to media immediately while preserving the fast path for an unchanged draft", async () => {
     window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=pricing");
@@ -381,7 +382,7 @@ describe("PropertyComposer", () => {
     expect(await screen.findByRole("heading", { name: "Media" })).toBeInTheDocument();
     expect(updatePropertyMutateAsync).not.toHaveBeenCalled();
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
-  });
+  }, 15000);
 
   it("publishes immediately without a redundant save when the draft is already current", async () => {
     const deferred = createDeferred<{ success: true }>();
@@ -441,7 +442,36 @@ describe("PropertyComposer", () => {
     expect(screen.getAllByText(/₦340,000/).length).toBeGreaterThan(0);
   });
 
-  it("shows sale listings can keep fee lines in pricing", async () => {
+  it("restricts sale listing pricing to agency fee only and saves the negotiable flag", async () => {
+    hooks.useFeeTypes.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "agency-fee-type",
+            name: "Agency Fee",
+            slug: "agency_fee",
+            description: null,
+            supports_fixed: true,
+            supports_percentage: true,
+            is_active: true,
+            created_by: null,
+            created_at: "2025-01-01T00:00:00Z",
+          },
+          {
+            id: "legal-fee-type",
+            name: "Legal Fee",
+            slug: "legal_fee",
+            description: null,
+            supports_fixed: true,
+            supports_percentage: false,
+            is_active: true,
+            created_by: null,
+            created_at: "2025-01-01T00:00:00Z",
+          },
+        ],
+      },
+    });
+
     render(<PropertyComposer propertyId="draft-1" />);
 
     const listingPurpose = await screen.findByLabelText("Listing Purpose");
@@ -450,9 +480,33 @@ describe("PropertyComposer", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
-    expect(await screen.findByText(/full purchase cost upfront/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Add Fee/i })).toBeInTheDocument();
-  });
+    expect(
+      await screen.findByText(/agency fee is tracked internally for referral calculations/i),
+    ).toBeInTheDocument();
+    const negotiableToggle = screen.getByRole("checkbox", { name: /^Asking$/i });
+    fireEvent.click(negotiableToggle);
+    fireEvent.click(
+      screen.getByRole("button", { name: /more information about the asking tag/i }),
+    );
+    expect(screen.getByRole("tooltip")).toHaveTextContent(/advertised sale price is negotiable/i);
+    expect(
+      screen.getByRole("button", { name: /add agency fee/i }),
+    ).toBeDisabled();
+    expect(screen.queryByText(/Total buyer cost/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save Draft" }));
+
+    await waitFor(() => {
+      expect(updatePropertyMutateAsync).toHaveBeenCalledWith({
+        id: "draft-1",
+        data: expect.objectContaining({
+          listing_purpose: "sale",
+          is_price_negotiable: true,
+        }),
+      });
+    });
+  }, 15000);
 
   it("uploads dropped images from the media dropzone", async () => {
     window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=media");

@@ -142,6 +142,7 @@ export interface Property {
   bathrooms: number;
   rent_amount: number | null;
   asking_price: number | null;
+  is_price_negotiable?: boolean | null;
   service_charge: number | null;
   caution_deposit: number | null;
   agency_fee: number | null;
@@ -196,6 +197,7 @@ export interface CreatePropertyInput {
   bathrooms: number;
   rent_amount: number | null;
   asking_price: number | null;
+  is_price_negotiable?: boolean | null;
   service_charge: number | null;
   caution_deposit: number | null;
   agency_fee: number | null;

@@ -5,6 +5,7 @@ import {
   buildDraftChecklist,
   buildDraftPricingSummary,
   calculateDraftFeeAmount,
+  filterDraftFeesForListingPurpose,
 } from "@/lib/utils";
 
 describe("propertyComposer utilities", () => {
@@ -45,7 +46,7 @@ describe("propertyComposer utilities", () => {
     expect(summary.monthly_equivalent).toBe(100_000);
   });
 
-  it("builds a pricing summary from asking price and fee lines for sale listings", () => {
+  it("keeps sale pricing summaries at the asking price only", () => {
     const summary = buildDraftPricingSummary("sale", 0, 95_000_000, [
       {
         fee_type_id: "fee-1",
@@ -60,9 +61,59 @@ describe("propertyComposer utilities", () => {
     ]);
 
     expect(summary.asking_price).toBe(95_000_000);
-    expect(summary.fees_total).toBe(4_950_000);
-    expect(summary.total_move_in_cost).toBe(99_950_000);
+    expect(summary.fees_total).toBe(0);
+    expect(summary.total_move_in_cost).toBe(95_000_000);
     expect(summary.monthly_equivalent).toBe(0);
+  });
+
+  it("filters sale listing fees down to agency fee only", () => {
+    const fees = filterDraftFeesForListingPurpose(
+      "sale",
+      [
+        {
+          fee_type_id: "agency-fee-type",
+          value_type: "fixed",
+          amount: 5_000_000,
+        },
+        {
+          fee_type_id: "legal-fee-type",
+          value_type: "fixed",
+          amount: 1_000_000,
+        },
+      ],
+      [
+        {
+          id: "agency-fee-type",
+          name: "Agency Fee",
+          slug: "agency_fee",
+          description: null,
+          supports_fixed: true,
+          supports_percentage: true,
+          is_active: true,
+          created_by: null,
+          created_at: "2026-04-05T00:00:00.000Z",
+        },
+        {
+          id: "legal-fee-type",
+          name: "Legal Fee",
+          slug: "legal_fee",
+          description: null,
+          supports_fixed: true,
+          supports_percentage: false,
+          is_active: true,
+          created_by: null,
+          created_at: "2026-04-05T00:00:00.000Z",
+        },
+      ],
+    );
+
+    expect(fees).toEqual([
+      {
+        fee_type_id: "agency-fee-type",
+        value_type: "fixed",
+        amount: 5_000_000,
+      },
+    ]);
   });
 
   it("marks listing as publish-ready only when core checks pass", () => {

@@ -19,6 +19,7 @@ vi.mock("@/components/property", async () => {
     PropertyGallery: () => <div>Gallery</div>,
     PropertyAgentCard: () => <div>Agent card</div>,
     PropertySpecs: () => <div>Specs</div>,
+    PricingBreakdown: () => <div data-testid="pricing-breakdown">Pricing</div>,
     PropertyEngagementButtons: () => <div>Engagement</div>,
     PropertyViewTracker: () => null,
   };
@@ -32,6 +33,16 @@ vi.mock("@/components/property/WalkthroughVideoPlayer", () => ({
   WalkthroughVideoPlayer: () => <div>Video player</div>,
 }));
 
+vi.mock("@/components/property/PropertyStickyCta", () => ({
+  PropertyStickyCta: () => <div data-testid="sticky-cta">Sticky CTA</div>,
+}));
+
+vi.mock("@/components/referrals", () => ({
+  ReferralShareTriggerButton: ({ label }: { label?: string }) => (
+    <button type="button">{label ?? "Share"}</button>
+  ),
+}));
+
 vi.mock("@/components/shared", () => ({
   VerifiedBadge: () => <span>Verified</span>,
 }));
@@ -41,7 +52,7 @@ describe("PropertyDetailPage", () => {
     getProperty.mockReset();
   });
 
-  it("shows sale fee lines and total buyer cost on the property detail page", async () => {
+  it("renders pricing directly beneath the gallery and keeps the sticky CTA available", async () => {
     getProperty.mockResolvedValue({
       data: {
         id: "sale-property-1",
@@ -56,6 +67,7 @@ describe("PropertyDetailPage", () => {
         bathrooms: 4,
         rent_amount: null,
         asking_price: 150000000,
+        is_price_negotiable: false,
         service_charge: null,
         caution_deposit: null,
         agency_fee: 7500000,
@@ -108,11 +120,57 @@ describe("PropertyDetailPage", () => {
 
     render(await Page({ params: Promise.resolve({ id: "sale-property-1" }) }));
 
-    expect(screen.getByText("Pricing Breakdown")).toBeInTheDocument();
-    expect(screen.getByText("Asking Price")).toBeInTheDocument();
-    expect(screen.getByText("Legal Fee")).toBeInTheDocument();
-    expect(screen.getByText("5% of asking price")).toBeInTheDocument();
-    expect(screen.getByText("Documentation")).toBeInTheDocument();
-    expect(screen.getByText("Total Buyer Cost")).toBeInTheDocument();
-  });
+    const gallery = screen.getByText("Gallery");
+    const pricing = screen.getByTestId("pricing-breakdown");
+    const title = screen.getByRole("heading", { name: "Modern Luxury Apartment" });
+
+    expect(gallery.compareDocumentPosition(pricing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pricing.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId("sticky-cta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /share and earn/i })).toBeInTheDocument();
+  }, 15000);
+
+  it("keeps the pricing block above the property title for negotiable sale listings too", async () => {
+    getProperty.mockResolvedValue({
+      data: {
+        id: "sale-property-2",
+        agent_id: "agent-1",
+        title: "Negotiable Family Duplex",
+        description: "A negotiable sale listing.",
+        area: "Lekki",
+        address_line: "12 Admiralty Way",
+        property_type: "duplex",
+        listing_purpose: "sale",
+        bedrooms: 5,
+        bathrooms: 5,
+        rent_amount: null,
+        asking_price: 95000000,
+        is_price_negotiable: true,
+        service_charge: null,
+        caution_deposit: null,
+        agency_fee: 4500000,
+        application_mode: "message_agent",
+        is_verified: true,
+        verification_status: "approved",
+        status: "active",
+        availability_confirmed_at: "2026-04-06T08:00:00.000Z",
+        last_updated_at: "2026-04-06T08:00:00.000Z",
+        created_at: "2026-04-05T08:00:00.000Z",
+        images: [],
+        property_fees: [],
+      },
+    });
+
+    const module = await import("@/app/(marketing)/properties/[id]/page");
+    const Page = module.default;
+
+    render(await Page({ params: Promise.resolve({ id: "sale-property-2" }) }));
+
+    const gallery = screen.getByText("Gallery");
+    const pricing = screen.getByTestId("pricing-breakdown");
+    const title = screen.getByRole("heading", { name: "Negotiable Family Duplex" });
+
+    expect(gallery.compareDocumentPosition(pricing) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pricing.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }, 15000);
 });

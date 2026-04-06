@@ -82,11 +82,12 @@ export function formatPropertyPriceLabel(params: {
   listingPurpose: "rent" | "sale";
   rentAmount?: number | null;
   askingPrice?: number | null;
+  isPriceNegotiable?: boolean | null;
 }) {
   if (params.listingPurpose === "sale") {
     return {
       amount: formatCurrency(params.askingPrice ?? 0),
-      qualifier: "asking",
+      qualifier: params.isPriceNegotiable ? "asking" : null,
     };
   }
 

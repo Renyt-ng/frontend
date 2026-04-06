@@ -19,6 +19,7 @@ import {
   PropertyViewTracker,
 } from "@/components/property";
 import { PropertyActionPanel } from "@/components/property/PropertyActionPanel";
+import { ReferralShareTriggerButton } from "@/components/referrals";
 import { Badge } from "@/components/ui";
 import { VerifiedBadge } from "@/components/shared";
 import { propertiesApi } from "@/lib/api";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/utils";
 import type { PropertyWithImages } from "@/types";
 import { WalkthroughVideoPlayer } from "@/components/property/WalkthroughVideoPlayer";
+import { PropertyStickyCta } from "@/components/property/PropertyStickyCta";
 
 interface PropertyPageProps {
   params: Promise<{ id: string }>;
@@ -65,9 +67,13 @@ export async function generateMetadata({
       listingPurpose: property.listing_purpose,
       rentAmount: property.rent_amount,
       askingPrice: property.asking_price,
+      isPriceNegotiable: property.is_price_negotiable,
     });
     const title = `${property.title} in ${property.area}`;
-    const description = `${formatPropertyType(property.property_type)} ${formatListingPurpose(property.listing_purpose).toLowerCase()} in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${price.amount} ${price.qualifier}.`;
+    const priceDescription = price.qualifier
+      ? `${price.amount} ${price.qualifier}`
+      : price.amount;
+    const description = `${formatPropertyType(property.property_type)} ${formatListingPurpose(property.listing_purpose).toLowerCase()} in ${property.area}. ${property.bedrooms} bed, ${property.bathrooms} bath. ${priceDescription}.`;
 
     return {
       title,
@@ -119,8 +125,9 @@ export default async function PropertyDetailPage({
   const freshnessMeta = getPropertyFreshnessMeta(property);
 
   return (
-    <div className="min-w-0 pb-16">
+    <div className="min-w-0 pb-32 lg:pb-16">
       <PropertyViewTracker propertyId={property.id} />
+      <PropertyStickyCta property={property} />
 
       <Container size="lg" className="mt-4 sm:mt-6">
         <div className="mx-auto w-full max-w-6xl">
@@ -151,6 +158,8 @@ export default async function PropertyDetailPage({
             <div className="-mx-4 sm:-mx-6 lg:mx-0">
               <PropertyGallery images={images} title={property.title} />
             </div>
+
+            <PricingBreakdown property={property} />
 
             {/* Title & Meta */}
             <div className="min-w-0">
@@ -189,11 +198,16 @@ export default async function PropertyDetailPage({
 
               <div className="mt-4 flex flex-wrap items-center justify-start gap-4 border-t border-[var(--color-border)] pt-4">
                 <PropertyEngagementButtons propertyId={property.id} />
+                <div className="lg:hidden">
+                  <ReferralShareTriggerButton
+                    property={property}
+                    variant="secondary"
+                    size="sm"
+                    label="Share and Earn"
+                  />
+                </div>
               </div>
 
-              <div className="lg:hidden">
-                <PropertyActionPanel property={property} />
-              </div>
             </div>
 
             {/* Specs */}
@@ -255,8 +269,6 @@ export default async function PropertyDetailPage({
 
           {/* ─── Right column (1/3) — Sticky sidebar ── */}
             <div className="mx-auto w-full max-w-3xl space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-w-none">
-              <PricingBreakdown property={property} />
-
               <PropertyAgentCard property={property} />
 
               <div className="hidden lg:block">

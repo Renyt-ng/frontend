@@ -154,6 +154,20 @@ export function calculateDraftFeeAmount(
   return Number((fee.amount ?? 0).toFixed(2));
 }
 
+export function filterDraftFeesForListingPurpose(
+  listingPurpose: PropertyListingPurpose,
+  fees: PropertyFeeInput[],
+  feeTypes: FeeType[] = [],
+) {
+  if (listingPurpose !== "sale") {
+    return fees;
+  }
+
+  const feeTypesById = new Map(feeTypes.map((feeType) => [feeType.id, feeType]));
+
+  return fees.filter((fee) => feeTypesById.get(fee.fee_type_id)?.slug === "agency_fee");
+}
+
 export function buildDraftPricingSummary(
   listingPurpose: PropertyListingPurpose,
   rentAmount: number,
@@ -162,6 +176,16 @@ export function buildDraftPricingSummary(
 ): PropertyPricingSummary {
   const pricingBaseAmount = listingPurpose === "sale" ? askingPrice : rentAmount;
 
+  if (listingPurpose === "sale") {
+    return {
+      annual_rent: rentAmount,
+      monthly_equivalent: 0,
+      asking_price: askingPrice,
+      fees_total: 0,
+      total_move_in_cost: Number(pricingBaseAmount.toFixed(2)),
+    };
+  }
+
   const feesTotal = fees.reduce(
     (sum, fee) => sum + calculateDraftFeeAmount(pricingBaseAmount, fee),
     0,
@@ -169,8 +193,7 @@ export function buildDraftPricingSummary(
 
   return {
     annual_rent: rentAmount,
-    monthly_equivalent:
-      listingPurpose === "sale" ? 0 : Number((rentAmount / 12).toFixed(2)),
+    monthly_equivalent: Number((rentAmount / 12).toFixed(2)),
     asking_price: askingPrice,
     fees_total: Number(feesTotal.toFixed(2)),
     total_move_in_cost: Number((pricingBaseAmount + feesTotal).toFixed(2)),

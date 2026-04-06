@@ -31,6 +31,8 @@ describe("Footer", () => {
   it("links How It Works to the homepage section and removes FAQ", () => {
     render(<Footer />);
 
+    expect(document.getElementById("site-footer")).toBeInTheDocument();
+
     expect(screen.getByRole("link", { name: /how it works/i })).toHaveAttribute(
       "href",
       "/#how-it-works",

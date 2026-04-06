@@ -8,3 +8,4 @@ export { Select, type SelectProps } from "./Select";
 export { Skeleton, PropertyCardSkeleton } from "./Skeleton";
 export { Modal } from "./Modal";
 export { Avatar } from "./Avatar";
+export { ContextualHelp } from "./ContextualHelp";

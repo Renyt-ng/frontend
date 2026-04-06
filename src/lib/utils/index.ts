@@ -27,6 +27,7 @@ export {
   deriveDraftAgencyFeeAmount,
   buildDraftReferralBasisSummary,
   buildDraftChecklist,
+  filterDraftFeesForListingPurpose,
 } from "./propertyComposer";
 export {
   appendPropertyTypeParams,

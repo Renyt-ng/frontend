@@ -272,6 +272,7 @@ export function PropertyCard({
                   listingPurpose: property.listing_purpose,
                   rentAmount: property.rent_amount,
                   askingPrice: property.asking_price,
+                  isPriceNegotiable: property.is_price_negotiable,
                 });
 
                 return (
@@ -279,9 +280,11 @@ export function PropertyCard({
                     <p className="text-lg font-bold text-[var(--color-deep-slate-blue)]">
                       {price.amount}
                     </p>
-                    <p className="text-xs text-[var(--color-text-secondary)]">
-                      {price.qualifier}
-                    </p>
+                    {price.qualifier ? (
+                      <p className="text-xs text-[var(--color-text-secondary)]">
+                        {price.qualifier}
+                      </p>
+                    ) : null}
                   </>
                 );
               })()}
