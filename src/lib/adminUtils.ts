@@ -9,6 +9,11 @@ import type {
   SmsDeliveryEventStatus,
   SmsProvider,
   SmsProviderStatus,
+  WhatsAppActionStatus,
+  WhatsAppAgentAccessStatus,
+  WhatsAppDeliveryEventStatus,
+  WhatsAppProvider,
+  WhatsAppProviderStatus,
 } from "@/types/admin";
 
 export function formatEmailProvider(provider: EmailProvider) {
@@ -197,6 +202,82 @@ export function getSmsEventBadgeVariant(status: SmsDeliveryEventStatus) {
     case "queued":
       return "info" as const;
     case "failed":
+      return "pending" as const;
+  }
+}
+
+// ── WhatsApp Helpers ──
+
+export function formatWhatsAppProvider(provider: WhatsAppProvider) {
+  switch (provider) {
+    case "meta":
+      return "Meta Cloud API";
+  }
+}
+
+export function formatWhatsAppProviderStatus(status: WhatsAppProviderStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getWhatsAppProviderBadgeVariant(status: WhatsAppProviderStatus) {
+  switch (status) {
+    case "configured":
+    case "sandbox":
+      return "active" as const;
+    case "degraded":
+    case "paused":
+      return "pending" as const;
+    case "not_configured":
+      return "default" as const;
+  }
+}
+
+export function formatWhatsAppEventStatus(status: WhatsAppDeliveryEventStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getWhatsAppEventBadgeVariant(status: WhatsAppDeliveryEventStatus) {
+  switch (status) {
+    case "sent":
+    case "delivered":
+    case "read":
+      return "active" as const;
+    case "queued":
+      return "info" as const;
+    case "failed":
+      return "pending" as const;
+  }
+}
+
+export function formatWhatsAppActionStatus(status: WhatsAppActionStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getWhatsAppActionBadgeVariant(status: WhatsAppActionStatus) {
+  switch (status) {
+    case "enabled":
+      return "active" as const;
+    case "paused":
+      return "pending" as const;
+    case "trial_only":
+    case "paid_only":
+      return "info" as const;
+  }
+}
+
+export function formatWhatsAppAgentAccessStatus(status: WhatsAppAgentAccessStatus) {
+  return status.replace(/_/g, " ");
+}
+
+export function getWhatsAppAgentAccessBadgeVariant(status: WhatsAppAgentAccessStatus) {
+  switch (status) {
+    case "eligible_trial":
+    case "eligible_paid":
+      return "active" as const;
+    case "approved_not_enrolled":
+      return "info" as const;
+    case "disabled":
+    case "suspended":
       return "pending" as const;
   }
 }

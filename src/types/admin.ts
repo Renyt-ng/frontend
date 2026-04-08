@@ -336,6 +336,126 @@ export interface EmailNotificationSettings {
   updated_at: string;
 }
 
+export type WhatsAppProvider = "meta";
+
+export type WhatsAppProviderStatus =
+  | "not_configured"
+  | "configured"
+  | "sandbox"
+  | "degraded"
+  | "paused";
+
+export type WhatsAppDeliveryEventStatus =
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
+
+export type WhatsAppMessageType =
+  | "template"
+  | "text"
+  | "interactive"
+  | "image"
+  | "document"
+  | "video"
+  | "audio";
+
+export type WhatsAppActionType =
+  | "verification_followup"
+  | "listing_update"
+  | "availability_confirmation"
+  | "final_outcome_capture"
+  | "operational_prompt";
+
+export type WhatsAppActionStatus = "enabled" | "paused" | "trial_only" | "paid_only";
+
+export type WhatsAppAgentAccessStatus =
+  | "eligible_trial"
+  | "eligible_paid"
+  | "disabled"
+  | "approved_not_enrolled"
+  | "suspended";
+
+export interface WhatsAppOverview {
+  provider: WhatsAppProvider;
+  status: WhatsAppProviderStatus;
+  phone_number_id: string | null;
+  display_phone_number: string | null;
+  waba_id: string | null;
+  webhook_configured: boolean;
+  balance: {
+    credit_balance: number | null;
+    currency: string;
+    fetched_at: string;
+    error: string | null;
+  };
+  action_summary: {
+    total_enabled: number;
+    total_paused: number;
+    total_agents_enrolled: number;
+  };
+  recent_summary: {
+    total: number;
+    sent: number;
+    delivered: number;
+    read: number;
+    failed: number;
+    last_sent_at: string | null;
+  };
+}
+
+export interface WhatsAppDeliveryEvent {
+  id: string;
+  provider: WhatsAppProvider;
+  event_status: WhatsAppDeliveryEventStatus;
+  event_type: string;
+  message_type: WhatsAppMessageType | null;
+  recipient_phone: string | null;
+  agent_id: string | null;
+  provider_message_id: string | null;
+  provider_event_id: string | null;
+  template_name: string | null;
+  source: "system" | "webhook";
+  payload: Record<string, unknown>;
+  headers: Record<string, unknown>;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface WhatsAppTestSendResult {
+  provider: WhatsAppProvider;
+  provider_message_id: string | null;
+  recipient_phone: string;
+}
+
+export interface WhatsAppActionControl {
+  id: string;
+  action_type: WhatsAppActionType;
+  status: WhatsAppActionStatus;
+  paused_reason: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface WhatsAppAgentAccess {
+  id: string;
+  agent_id: string;
+  access_status: WhatsAppAgentAccessStatus;
+  enabled_actions: WhatsAppActionType[];
+  trial_started_at: string | null;
+  trial_expires_at: string | null;
+  paused_reason: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+  business_name?: string | null;
+  primary_phone?: string | null;
+  whatsapp_phone?: string | null;
+  verification_status?: string | null;
+}
+
 export type AdminPropertyType = PropertyTypeDefinition;
 export type AdminFeeType = FeeType;
 

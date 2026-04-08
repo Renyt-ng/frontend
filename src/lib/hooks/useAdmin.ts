@@ -37,6 +37,11 @@ import type {
   SmsDeliveryEvent,
   SmsOverview,
   SmsTestSendResult,
+  WhatsAppActionControl,
+  WhatsAppAgentAccess,
+  WhatsAppDeliveryEvent,
+  WhatsAppOverview,
+  WhatsAppTestSendResult,
 } from "@/types/admin";
 import type {
   AdminUser,
@@ -45,6 +50,8 @@ import type {
   GetAdminAgentsParams,
   GetAdminEmailEventsParams,
   GetAdminSmsEventsParams,
+  GetAdminWhatsAppEventsParams,
+  GetAdminWhatsAppAgentAccessParams,
   GetAdminQueueFailedJobsParams,
   GetAdminLocationsParams,
   GetAdminPropertiesParams,
@@ -80,6 +87,12 @@ export const adminKeys = {
     ["admin", "email-events", params] as const,
   smsEvents: (params?: GetAdminSmsEventsParams) =>
     ["admin", "sms-events", params] as const,
+  whatsappOverview: () => ["admin", "whatsapp-overview"] as const,
+  whatsappEvents: (params?: GetAdminWhatsAppEventsParams) =>
+    ["admin", "whatsapp-events", params] as const,
+  whatsappActionControls: () => ["admin", "whatsapp-action-controls"] as const,
+  whatsappAgentAccess: (params?: GetAdminWhatsAppAgentAccessParams) =>
+    ["admin", "whatsapp-agent-access", params] as const,
 };
 
 export function useAdminOverview(
@@ -726,6 +739,115 @@ export function useSendAdminTestSms() {
       queryClient.invalidateQueries({ queryKey: ["admin", "sms-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "sms-events"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+// ── WhatsApp Hooks ──
+
+export function useAdminWhatsAppOverview(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppOverview>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappOverview(),
+    queryFn: () => adminApi.getWhatsAppOverview(),
+    ...options,
+  });
+}
+
+export function useAdminWhatsAppEvents(
+  params?: GetAdminWhatsAppEventsParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppDeliveryEvent[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappEvents(params),
+    queryFn: () => adminApi.getWhatsAppEvents(params),
+    ...options,
+  });
+}
+
+export function useAdminWhatsAppActionControls(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppActionControl[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappActionControls(),
+    queryFn: () => adminApi.getWhatsAppActionControls(),
+    ...options,
+  });
+}
+
+export function useAdminWhatsAppAgentAccessList(
+  params?: GetAdminWhatsAppAgentAccessParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppAgentAccess[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappAgentAccess(params),
+    queryFn: () => adminApi.getWhatsAppAgentAccessList(params),
+    ...options,
+  });
+}
+
+export function useSendAdminWhatsAppTest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.sendWhatsAppTest,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+export function useUpdateAdminWhatsAppActionControl() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      actionType,
+      data,
+    }: {
+      actionType: string;
+      data: { status: string; paused_reason?: string | null };
+    }) => adminApi.updateWhatsAppActionControl(actionType as Parameters<typeof adminApi.updateWhatsAppActionControl>[0], data as Parameters<typeof adminApi.updateWhatsAppActionControl>[1]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-action-controls"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+    },
+  });
+}
+
+export function useUpdateAdminWhatsAppAgentAccess() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      agentId,
+      data,
+    }: {
+      agentId: string;
+      data: {
+        access_status: string;
+        enabled_actions?: string[];
+        paused_reason?: string | null;
+      };
+    }) => adminApi.updateWhatsAppAgentAccess(agentId, data as Parameters<typeof adminApi.updateWhatsAppAgentAccess>[1]),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-agent-access"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
     },
   });
 }

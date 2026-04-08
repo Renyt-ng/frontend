@@ -39,6 +39,14 @@ import type {
   SmsDeliveryEvent,
   SmsOverview,
   SmsTestSendResult,
+  WhatsAppActionControl,
+  WhatsAppActionStatus,
+  WhatsAppActionType,
+  WhatsAppAgentAccess,
+  WhatsAppAgentAccessStatus,
+  WhatsAppDeliveryEvent,
+  WhatsAppOverview,
+  WhatsAppTestSendResult,
 } from "@/types/admin";
 
 export interface AdminUser extends Profile {
@@ -91,6 +99,19 @@ export interface GetAdminEmailEventsParams {
 
 export interface GetAdminSmsEventsParams {
   event_status?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface GetAdminWhatsAppEventsParams {
+  event_status?: string;
+  message_type?: string;
+  search?: string;
+  limit?: number;
+}
+
+export interface GetAdminWhatsAppAgentAccessParams {
+  access_status?: string;
   search?: string;
   limit?: number;
 }
@@ -598,6 +619,86 @@ export async function sendSmsTest(data: {
 }) {
   const res = await apiClient.post<ApiSuccessResponse<SmsTestSendResult>>(
     "/admin/sms/test-send",
+    data,
+  );
+  return res.data;
+}
+
+// ── WhatsApp Admin API ──
+
+export async function getWhatsAppOverview() {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppOverview>>(
+    "/admin/whatsapp/overview",
+  );
+  return res.data;
+}
+
+export async function getWhatsAppEvents(params?: GetAdminWhatsAppEventsParams) {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppDeliveryEvent[]>>(
+    "/admin/whatsapp/events",
+    { params },
+  );
+  return res.data;
+}
+
+export async function sendWhatsAppTest(data: {
+  recipient_phone: string;
+  template_name?: string | null;
+  message?: string | null;
+}) {
+  const res = await apiClient.post<ApiSuccessResponse<WhatsAppTestSendResult>>(
+    "/admin/whatsapp/test-send",
+    data,
+  );
+  return res.data;
+}
+
+export async function getWhatsAppActionControls() {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppActionControl[]>>(
+    "/admin/whatsapp/actions",
+  );
+  return res.data;
+}
+
+export async function updateWhatsAppActionControl(
+  actionType: WhatsAppActionType,
+  data: {
+    status: WhatsAppActionStatus;
+    paused_reason?: string | null;
+  },
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<WhatsAppActionControl>>(
+    `/admin/whatsapp/actions/${actionType}`,
+    data,
+  );
+  return res.data;
+}
+
+export async function getWhatsAppAgentAccessList(params?: GetAdminWhatsAppAgentAccessParams) {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppAgentAccess[]>>(
+    "/admin/whatsapp/agents",
+    { params },
+  );
+  return res.data;
+}
+
+export async function getWhatsAppAgentAccess(agentId: string) {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppAgentAccess>>(
+    `/admin/whatsapp/agents/${agentId}`,
+  );
+  return res.data;
+}
+
+export async function updateWhatsAppAgentAccess(
+  agentId: string,
+  data: {
+    access_status: WhatsAppAgentAccessStatus;
+    enabled_actions?: WhatsAppActionType[];
+    paused_reason?: string | null;
+  },
+) {
+  const res = await apiClient.patch<ApiSuccessResponse<WhatsAppAgentAccess>>(
+    `/admin/whatsapp/agents/${agentId}`,
     data,
   );
   return res.data;
