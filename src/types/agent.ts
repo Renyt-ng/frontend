@@ -1,5 +1,11 @@
 export type VerificationStatus = "pending" | "approved" | "rejected";
 
+export type AdminAssistanceSegment =
+  | "organic"
+  | "admin_assisted_activation"
+  | "admin_assisted_listing"
+  | "admin_assisted_activation_and_listing";
+
 export type AgentVerificationDocumentType =
   | "government_id"
   | "work_id"
@@ -40,6 +46,9 @@ export interface Agent {
   whatsapp_same_as_primary_phone: boolean;
   approved_by: string | null;
   approved_at: string | null;
+  activation_segment?: AdminAssistanceSegment;
+  activation_assisted_by?: string | null;
+  activation_assisted_at?: string | null;
   created_at: string;
 }
 
@@ -59,5 +68,35 @@ export interface AgentWithProfile extends Agent {
   profile: {
     full_name: string;
     phone: string;
+  };
+}
+
+export interface AdminAgentActivationCandidate {
+  profile: {
+    id: string;
+    full_name: string;
+    email: string | null;
+    phone: string | null;
+    role: "admin" | "agent" | "tenant";
+    avatar_url: string | null;
+    avatar_review_status: "pending" | "approved" | "flagged";
+    is_suspended: boolean;
+  };
+  agent: Agent | null;
+  eligible: boolean;
+  reasons: string[];
+}
+
+export interface AdminAgentVerificationWorkspace {
+  candidate: AdminAgentActivationCandidate;
+  settings: AgentVerificationSettings;
+  readiness: {
+    profile_photo_ready: boolean;
+    primary_phone_ready: boolean;
+    whatsapp_ready: boolean;
+    business_details_ready: boolean;
+    required_documents_ready: boolean;
+    missing_items: string[];
+    ready_for_approval: boolean;
   };
 }

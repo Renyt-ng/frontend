@@ -1,5 +1,6 @@
 export {
   DashboardContextualHelp,
+  DashboardListSkeleton,
   DashboardPanel,
   DashboardSectionNav,
   DashboardSectionHeading,

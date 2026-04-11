@@ -48,6 +48,24 @@ function isUserRole(value: unknown): value is UserRole {
   return value === "admin" || value === "agent" || value === "tenant";
 }
 
+function getMetadataAvatarUrl(metadata: Record<string, unknown>) {
+  const avatarUrl =
+    typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
+      ? metadata.avatar_url.trim()
+      : null;
+
+  if (avatarUrl) {
+    return avatarUrl;
+  }
+
+  const pictureUrl =
+    typeof metadata.picture === "string" && metadata.picture.trim().length > 0
+      ? metadata.picture.trim()
+      : null;
+
+  return pictureUrl;
+}
+
 export function isUnauthorizedAuthError(error: unknown) {
   const status = getErrorStatus(error);
   return status === 401 || status === 403;
@@ -102,10 +120,7 @@ export function buildFallbackProfile(
       ? metadata.full_name.trim()
       : null;
   const metadataRole = isUserRole(metadata.role) ? metadata.role : null;
-  const metadataAvatar =
-    typeof metadata.avatar_url === "string" && metadata.avatar_url.trim().length > 0
-      ? metadata.avatar_url
-      : null;
+  const metadataAvatar = getMetadataAvatarUrl(metadata);
 
   return {
     id: authUser.id,

@@ -36,6 +36,7 @@ export function Navbar() {
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchParamsString = searchParams?.toString() ?? "";
   const { isAuthenticated, user } = useAuthStore();
   const logout = useLogout();
   const openOverlay = useAuthOverlayStore((state) => state.openOverlay);
@@ -47,6 +48,32 @@ export function Navbar() {
     openOverlay({ mode, redirectTo: currentUrl });
     setMobileOpen(false);
   }
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname, searchParamsString]);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      document.body.style.overflow = "";
+      return undefined;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setMobileOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen]);
 
   useEffect(() => {
     if (!accountMenuOpen) {
@@ -201,88 +228,168 @@ export function Navbar() {
           </div>
 
           {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-lg p-2 text-[var(--color-text-secondary)] hover:bg-gray-100 md:hidden"
-          >
-            {mobileOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </button>
+          <div className="flex items-center gap-2 md:hidden">
+            {!isAuthenticated ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="px-4"
+                onClick={() => openAuth("login")}
+              >
+                Sign In
+              </Button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setMobileOpen((open) => !open)}
+              className="rounded-xl border border-[var(--color-border)] p-2 text-[var(--color-text-secondary)] shadow-sm transition-colors hover:bg-gray-100"
+              aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
+              aria-controls="mobile-navigation-drawer"
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
+            </button>
+          </div>
         </nav>
       </Container>
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="border-t border-[var(--color-border)] bg-white px-4 pb-4 pt-2 md:hidden">
-          <div className="space-y-1">
-            {NAV_LINKS.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                    pathname === link.href
-                      ? "bg-gray-100 text-[var(--color-deep-slate-blue)]"
-                      : "text-[var(--color-text-secondary)] hover:bg-gray-50",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
-          <div className="mt-3 border-t border-[var(--color-border)] pt-3">
-            {!isAuthenticated ? (
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
-                    <LogIn className="h-4 w-4" />
-                    Sign In
-                  </Button>
-                </div>
-                <div className="flex-1">
-                  <Button className="w-full" onClick={() => openAuth("register")}>
-                    <User className="h-4 w-4" />
-                    Get Started
-                  </Button>
-                </div>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          className="fixed inset-0 z-50 md:hidden"
+        >
+          <button
+            type="button"
+            aria-label="Dismiss navigation menu"
+            className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px]"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div
+            id="mobile-navigation-drawer"
+            className="absolute right-0 top-0 flex h-dvh w-[75vw] max-w-[24rem] flex-col overflow-hidden border-l border-[var(--color-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] shadow-[0_24px_80px_rgba(15,23,42,0.22)]"
+          >
+            <div className="flex items-center justify-between border-b border-[var(--color-border)] bg-white/90 px-5 py-4 backdrop-blur-sm">
+              <Link href="/" className="flex items-center gap-1" onClick={() => setMobileOpen(false)}>
+                <Image
+                  src="/logo-primary.png"
+                  alt="Renyt"
+                  width={176}
+                  height={40}
+                  className="h-auto w-[68px]"
+                  unoptimized
+                  priority
+                />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="rounded-xl border border-[var(--color-deep-slate-blue)] p-3 text-[var(--color-text-secondary)] shadow-sm transition-colors hover:bg-gray-100"
+                aria-label="Close navigation menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-5">
+              <p className="px-3 pb-3 text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-[var(--color-text-secondary)]/80">
+                Explore
+              </p>
+              <div className="space-y-2">
+                {NAV_LINKS.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        "group flex items-center gap-3 rounded-2xl border px-3 py-3.5 text-base font-medium transition-[border-color,background-color,color,transform,box-shadow]",
+                        pathname === link.href
+                          ? "border-[var(--color-deep-slate-blue)]/15 bg-[var(--color-deep-slate-blue)]/6 text-[var(--color-deep-slate-blue)] shadow-sm"
+                          : "border-transparent bg-white/70 text-[var(--color-text-secondary)] hover:border-[var(--color-border)] hover:bg-white hover:text-[var(--color-text-primary)] hover:shadow-sm",
+                      )}
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-[var(--color-text-secondary)] transition-colors group-hover:bg-slate-200 group-hover:text-[var(--color-text-primary)] group-[.bg-[var(--color-deep-slate-blue)]/6]:bg-[var(--color-deep-slate-blue)]/10 group-[.bg-[var(--color-deep-slate-blue)]/6]:text-[var(--color-deep-slate-blue)]">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span>{link.label}</span>
+                    </Link>
+                  );
+                })}
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-slate-50 px-3 py-3">
-                  <Avatar
-                    src={user?.avatar_url}
-                    fallback={accountLabel}
-                    size="sm"
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
-                      {accountLabel}
-                    </p>
-                    <p className="truncate text-xs text-[var(--color-text-secondary)]">
-                      {accountSubLabel}
+            </div>
+
+            <div className="border-t border-[var(--color-border)] bg-white/92 px-4 py-4 backdrop-blur-sm">
+              {!isAuthenticated ? (
+                <div className="space-y-3 rounded-[28px] border border-[var(--color-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">Continue with your account</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--color-text-secondary)]">
+                      Sign in to save homes, track listings, and pick up where you left off.
                     </p>
                   </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
+                        <LogIn className="h-4 w-4" />
+                        Sign In
+                      </Button>
+                    </div>
+                    <div className="flex-1">
+                      <Button className="w-full" onClick={() => openAuth("register")}>
+                        <User className="h-4 w-4" />
+                        Get Started
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                  <Button variant="secondary" className="w-full">
-                    <LayoutDashboard className="h-4 w-4" />
-                    Account
-                  </Button>
-                </Link>
-                <Button className="w-full" onClick={() => void handleLogout()}>
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-              </div>
-            )}
+              ) : (
+                <div className="space-y-4 rounded-[28px] border border-[var(--color-border)] bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)]">
+                  <div className="rounded-3xl border border-[var(--color-border)] bg-white px-3 py-3 shadow-sm">
+                    <p className="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.24em] text-[var(--color-text-secondary)]/80">
+                      Signed In
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        src={user?.avatar_url}
+                        fallback={accountLabel}
+                        size="sm"
+                        className="ring-2 ring-white shadow-sm"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-semibold text-[var(--color-text-primary)]">
+                          {accountLabel}
+                        </p>
+                        <p className="truncate text-sm text-[var(--color-text-secondary)]">
+                          {accountSubLabel}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid gap-3">
+                    <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
+                      <Button variant="secondary" className="w-full justify-center rounded-2xl">
+                        <LayoutDashboard className="h-4 w-4" />
+                        Account
+                      </Button>
+                    </Link>
+                    <div className="border-t border-[var(--color-border)] pt-3">
+                      <Button className="w-full justify-center rounded-2xl" onClick={() => void handleLogout()}>
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

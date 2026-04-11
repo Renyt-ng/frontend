@@ -12,6 +12,7 @@ import {
   Gift,
   Heart,
   Mail,
+  MessageCircle,
   Search,
   Settings,
   ShieldAlert,
@@ -33,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/stores/authStore";
 import {
   useAdminOverview,
+  useAdminWhatsAppListingCreationReport,
   useMyProperties,
   useMyPropertyEngagementSummary,
   useReferralDashboard,
@@ -142,12 +144,18 @@ function OverviewShell({
 
 function AdminView({
   overview,
+  listingReport,
   isLoading,
   isError,
+  isListingReportLoading,
+  isListingReportError,
 }: {
   overview?: AdminOverview;
+  listingReport?: import("@/types/admin").WhatsAppListingCreationReport;
   isLoading: boolean;
   isError: boolean;
+  isListingReportLoading: boolean;
+  isListingReportError: boolean;
 }) {
   const metrics = overview?.metrics;
   const emailHealth = overview?.email_health;
@@ -162,6 +170,11 @@ function AdminView({
       id: "admin-priority-queues",
       label: "Priority queues",
       count: pendingVerifications,
+    },
+    {
+      id: "admin-whatsapp-health",
+      label: "WhatsApp health",
+      count: listingReport?.summary.stale_tasks ?? 0,
     },
     {
       id: "admin-critical-activity",
@@ -322,6 +335,114 @@ function AdminView({
               />
             </div>
           </div>
+        </DashboardPanel>
+      </section>
+
+      <section id="admin-whatsapp-health" className="scroll-mt-28 space-y-4">
+        <DashboardPanel padding="lg" className="space-y-6">
+          <DashboardSectionHeading
+            title="WhatsApp listing health"
+            description="Stale create-listing drafts, reminder pressure, and publish-ready inventory without leaving the main admin dashboard."
+            helper={
+              <DashboardContextualHelp
+                label="More information about WhatsApp listing health"
+                title="Why this belongs here"
+              >
+                This section surfaces the highest-signal WhatsApp workflow risks early, so admins can spot reminder drift and stuck draft patterns before opening the detailed operations page.
+              </DashboardContextualHelp>
+            }
+            action={<ActionLink href="/dashboard/whatsapp-settings">Open WhatsApp operations</ActionLink>}
+          />
+
+          {isListingReportError ? (
+            <StatusPanel
+              icon={MessageCircle}
+              tone="warning"
+              title="WhatsApp reporting unavailable"
+              badgeLabel="Degraded"
+              description="Create-listing reminder health could not be loaded. Open WhatsApp operations to inspect the detailed surface."
+              action={<ActionLink href="/dashboard/whatsapp-settings">Inspect WhatsApp operations</ActionLink>}
+            />
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                  icon={MessageCircle}
+                  label="Active create-listing tasks"
+                  value={isListingReportLoading ? "..." : listingReport?.summary.active_tasks ?? 0}
+                  meta={`${listingReport?.summary.offered_tasks ?? 0} offered`}
+                  href="/dashboard/whatsapp-settings#wa-listing-report"
+                />
+                <MetricCard
+                  icon={AlertTriangle}
+                  label="Stale drafts"
+                  value={isListingReportLoading ? "..." : listingReport?.summary.stale_tasks ?? 0}
+                  meta="Need reminder or manual recovery"
+                  href="/dashboard/whatsapp-settings#wa-listing-report"
+                  emphasis={(listingReport?.summary.stale_tasks ?? 0) > 0 ? "warning" : "default"}
+                />
+                <MetricCard
+                  icon={TrendingUp}
+                  label="Publish ready"
+                  value={isListingReportLoading ? "..." : listingReport?.summary.publish_ready_drafts ?? 0}
+                  meta="Drafts that can move straight into publish"
+                  href="/dashboard/whatsapp-settings#wa-listing-report"
+                  emphasis={(listingReport?.summary.publish_ready_drafts ?? 0) > 0 ? "highlight" : "default"}
+                />
+                <MetricCard
+                  icon={Clock3}
+                  label="Reminders in 24h"
+                  value={isListingReportLoading ? "..." : listingReport?.summary.reminders_sent_last_24h ?? 0}
+                  meta="Recent reminder volume"
+                  href="/dashboard/whatsapp-settings#wa-listing-report"
+                />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+                <DashboardPanel padding="lg" className="space-y-6">
+                  <DashboardSectionHeading
+                    title="Reminder pressure"
+                    description="How current task volume is aging across the create-listing workflow."
+                  />
+                  <MiniBarChart
+                    ariaLabel="Admin WhatsApp create-listing age distribution"
+                    isLoading={isListingReportLoading}
+                    values={listingReport?.charts.age_buckets.map((item) => item.count) ?? [0, 0, 0, 0]}
+                    labels={listingReport?.charts.age_buckets.map((item) => item.label) ?? ["<3h", "3-12h", "12-24h", "24h+"]}
+                    highlightIndex={3}
+                    emptyMessage="No create-listing activity has accumulated yet."
+                  />
+                </DashboardPanel>
+
+                <div className="space-y-4">
+                  <StatusPanel
+                    icon={AlertTriangle}
+                    tone={(listingReport?.summary.stale_tasks ?? 0) > 0 ? "warning" : "default"}
+                    badgeLabel={(listingReport?.summary.stale_tasks ?? 0) > 0 ? "Watch stale drafts" : "Stable"}
+                    title="Stale draft risk"
+                    description={
+                      (listingReport?.summary.stale_tasks ?? 0) > 0
+                        ? `${listingReport?.summary.stale_tasks ?? 0} WhatsApp draft(s) are currently due for recovery or reminder.`
+                        : "No stale WhatsApp create-listing drafts are due right now."
+                    }
+                    action={<ActionLink href="/dashboard/whatsapp-settings#wa-listing-report">Review draft watchlist</ActionLink>}
+                  />
+                  <StatusPanel
+                    icon={FileText}
+                    tone="accent"
+                    badgeLabel="Top blocker"
+                    title="Most common missing field"
+                    description={
+                      listingReport?.charts.pending_field_hotspots[0]
+                        ? `${listingReport.charts.pending_field_hotspots[0].field.replace(/_/g, " ")} appears on ${listingReport.charts.pending_field_hotspots[0].count} active draft(s).`
+                        : "No repeated missing-field hotspot is standing out right now."
+                    }
+                    action={<ActionLink href="/dashboard/whatsapp-settings#wa-listing-report">Open blocker breakdown</ActionLink>}
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </DashboardPanel>
       </section>
 
@@ -825,7 +946,9 @@ export default function DashboardPage() {
   const firstName = user?.full_name?.split(" ")[0] ?? "there";
 
   const overviewQuery = useAdminOverview({ enabled: role === "admin" });
+  const listingReportQuery = useAdminWhatsAppListingCreationReport({ enabled: role === "admin" });
   const adminOverview = overviewQuery.data?.data;
+  const listingReport = listingReportQuery.data?.data;
 
   return (
     <div className="space-y-6">
@@ -834,8 +957,11 @@ export default function DashboardPage() {
       {role === "admin" ? (
         <AdminView
           overview={adminOverview}
+          listingReport={listingReport}
           isLoading={overviewQuery.isLoading}
           isError={overviewQuery.isError}
+          isListingReportLoading={listingReportQuery.isLoading}
+          isListingReportError={listingReportQuery.isError}
         />
       ) : role === "agent" ? (
         <AgentView />

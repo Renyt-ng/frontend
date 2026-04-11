@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { MapPinned, Plus, Save } from "lucide-react";
 import { Button, Card, CardContent, Select } from "@/components/ui";
+import { DashboardListSkeleton } from "@/components/dashboard";
+import { EmptyState } from "@/components/shared";
 import {
   useAdminLocations,
   useCreateAdminLocation,
@@ -50,6 +52,7 @@ export default function LocationsPage() {
   });
   const createLocation = useCreateAdminLocation();
   const updateLocation = useUpdateAdminLocation();
+  const isLoading = locationsQuery.isLoading;
   const locations = locationsQuery.data?.data ?? [];
 
   const lgaOptions = useMemo(
@@ -222,11 +225,16 @@ export default function LocationsPage() {
             />
           </div>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {locations.length} {locations.length === 1 ? "location" : "locations"}
+            {isLoading ? "Loading locations" : `${locations.length} ${locations.length === 1 ? "location" : "locations"}`}
           </p>
         </CardContent>
       </Card>
 
+      {isLoading ? (
+        <DashboardListSkeleton rows={4} itemClassName="h-72" className="grid gap-4 lg:grid-cols-2" />
+      ) : locations.length === 0 ? (
+        <EmptyState title="No locations yet" description="Location management will appear here once entries are available." />
+      ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {locations.map((location) => (
           <Card key={location.id}>
@@ -348,6 +356,7 @@ export default function LocationsPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }

@@ -77,6 +77,8 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 
 interface PropertyComposerProps {
   propertyId?: string;
+  adminMode?: boolean;
+  adminAgentId?: string;
 }
 
 function getAllowedFeeTypes(
@@ -228,10 +230,42 @@ function moveImageToIndex(images: PropertyImage[], fromIndex: number, toIndex: n
   return normalizeComposerImages(reordered);
 }
 
-export function PropertyComposer({ propertyId }: PropertyComposerProps) {
+function buildPendingFieldSet(pendingFields?: string[] | null) {
+  return new Set(pendingFields ?? []);
+}
+
+function resolveDraftTextValue(
+  pendingFields: Set<string>,
+  field: string,
+  value: string | null | undefined,
+) {
+  return pendingFields.has(field) ? "" : value ?? "";
+}
+
+function resolveDraftNumberValue(
+  pendingFields: Set<string>,
+  field: string,
+  value: number | null | undefined,
+) {
+  return pendingFields.has(field) ? null : value ?? null;
+}
+
+function resolveDraftBooleanValue(
+  pendingFields: Set<string>,
+  field: string,
+  value: boolean | null | undefined,
+) {
+  return pendingFields.has(field) ? false : Boolean(value);
+}
+
+export function PropertyComposer({
+  propertyId,
+  adminMode = false,
+  adminAgentId,
+}: PropertyComposerProps) {
   const router = useRouter();
   const { user, isLoading } = useAuthStore();
-  const myAgentQuery = useMyAgent({ enabled: user?.role === "agent", retry: false });
+  const myAgentQuery = useMyAgent({ enabled: user?.role === "agent" && !adminMode, retry: false });
   const managePropertyQuery = useManageProperty(propertyId ?? "", {
     enabled: Boolean(propertyId),
   });
@@ -295,21 +329,49 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       return;
     }
 
+    const pendingFields = buildPendingFieldSet(hydratedProperty.draft_metadata?.pending_fields);
+
     const initialValues: ComposerValues = {
-      title: hydratedProperty.title,
-      description: hydratedProperty.description,
+      title: resolveDraftTextValue(pendingFields, "title", hydratedProperty.title),
+      description: resolveDraftTextValue(
+        pendingFields,
+        "description",
+        hydratedProperty.description,
+      ),
       area: hydratedProperty.area,
-      address_line: hydratedProperty.address_line,
+      address_line: resolveDraftTextValue(
+        pendingFields,
+        "address_line",
+        hydratedProperty.address_line,
+      ),
       property_type: hydratedProperty.property_type,
       listing_purpose: hydratedProperty.listing_purpose,
-      bedrooms: hydratedProperty.bedrooms,
-      bathrooms: hydratedProperty.bathrooms,
-      rent_amount: hydratedProperty.rent_amount,
-      asking_price: hydratedProperty.asking_price,
-      is_price_negotiable: Boolean(hydratedProperty.is_price_negotiable),
-      listing_authority_mode: hydratedProperty.listing_authority_mode ?? null,
+      bedrooms: resolveDraftNumberValue(pendingFields, "bedrooms", hydratedProperty.bedrooms),
+      bathrooms: resolveDraftNumberValue(pendingFields, "bathrooms", hydratedProperty.bathrooms),
+      rent_amount: resolveDraftNumberValue(
+        pendingFields,
+        "rent_amount",
+        hydratedProperty.rent_amount,
+      ),
+      asking_price: resolveDraftNumberValue(
+        pendingFields,
+        "asking_price",
+        hydratedProperty.asking_price,
+      ),
+      is_price_negotiable: resolveDraftBooleanValue(
+        pendingFields,
+        "is_price_negotiable",
+        hydratedProperty.is_price_negotiable,
+      ),
+      listing_authority_mode: pendingFields.has("listing_authority_mode")
+        ? null
+        : hydratedProperty.listing_authority_mode ?? null,
       declared_commission_share_percent:
-        hydratedProperty.declared_commission_share_percent ?? null,
+        resolveDraftNumberValue(
+          pendingFields,
+          "declared_commission_share_percent",
+          hydratedProperty.declared_commission_share_percent,
+        ),
       application_mode: "message_agent",
       fees: (hydratedProperty.property_fees ?? []).map((fee) => ({
         fee_type_id: fee.fee_type_id,
@@ -372,8 +434,9 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
   const agentProfile = myAgentQuery.data?.data ?? null;
   const agentStatus = agentProfile?.verification_status;
-  const needsAgentApplication = user?.role === "agent" && !agentProfile;
+  const needsAgentApplication = !adminMode && user?.role === "agent" && !agentProfile;
   const agentApprovalPending =
+    !adminMode &&
     user?.role === "agent" &&
     agentProfile &&
     agentProfile.verification_status !== "approved";
@@ -616,7 +679,10 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
       autosaveTimeoutRef.current = null;
     }
 
-    const payload = buildPayload(values, feeTypesQuery.data?.data ?? []);
+    const payload = buildPayload(values, feeTypesQuery.data?.data ?? [], {
+      agentId: adminMode ? adminAgentId : undefined,
+      listingSegment: adminMode ? "admin_assisted_listing" : undefined,
+    });
     setServerError("");
 
     if (!draftId) {
@@ -1305,7 +1371,7 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
 
                     return (
                       <div key={`${fee.fee_type_id}-${index}`} className="rounded-2xl border border-[var(--color-border)] p-4">
-                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_180px_minmax(0,1fr)_auto]">
+                        <div className="grid gap-4 md:grid-cols-2">
                           <Select
                             id={`fee_type_${index}`}
                             label="Fee Type"
@@ -1354,12 +1420,12 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
                               error={fieldErrors[`fee-${index}`]}
                             />
                           )}
-                          <div className="flex items-end">
+                          <div className="flex items-end md:col-span-2 md:justify-end">
                             <Button
                               type="button"
                               variant="ghost"
                               onClick={() => removeFee(index)}
-                              className="w-full"
+                              className="w-full md:w-auto"
                             >
                               <Trash2 className="h-4 w-4" />
                               Remove
@@ -1973,7 +2039,14 @@ export function PropertyComposer({ propertyId }: PropertyComposerProps) {
   );
 }
 
-function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreatePropertyInput {
+function buildPayload(
+  values: ComposerValues,
+  feeTypes: FeeType[] = [],
+  options?: {
+    agentId?: string;
+    listingSegment?: CreatePropertyInput["listing_segment"];
+  },
+): CreatePropertyInput {
   const normalizedFees = filterDraftFeesForListingPurpose(
     values.listing_purpose,
     values.fees,
@@ -1981,6 +2054,7 @@ function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreateP
   );
 
   return {
+    agent_id: options?.agentId,
     title: values.title,
     description: values.description,
     area: values.area,
@@ -2008,6 +2082,7 @@ function buildPayload(values: ComposerValues, feeTypes: FeeType[] = []): CreateP
         ? values.declared_commission_share_percent
         : null,
     application_mode: "message_agent",
+    listing_segment: options?.listingSegment,
     fees: normalizedFees.map((fee: PropertyFeeInput, index: number) => ({
       ...fee,
       display_order: index,

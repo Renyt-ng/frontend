@@ -1,3 +1,4 @@
+import type { AdminAssistanceSegment } from "./agent";
 import type { PropertyReferralResolutionSummary } from "./referral";
 
 export type PropertyType = string;
@@ -35,6 +36,13 @@ export type PropertyReferralEligibilityStatus =
   | "blocked_missing_share"
   | "blocked_missing_basis";
 export type FeeValueType = "fixed" | "percentage";
+
+export interface PropertyDraftMetadata {
+  created_via?: "whatsapp_fast_start" | "dashboard";
+  last_updated_channel?: "whatsapp" | "dashboard";
+  last_whatsapp_step?: string | null;
+  pending_fields?: string[];
+}
 
 export interface PropertyAuthorityOption {
   value: ListingAuthorityMode;
@@ -160,6 +168,12 @@ export interface Property {
   publish_error?: string | null;
   availability_confirmed_at: string | null;
   last_freshness_reminder_sent_at?: string | null;
+  draft_metadata?: PropertyDraftMetadata | null;
+  listing_segment?: AdminAssistanceSegment;
+  listing_assisted_by?: string | null;
+  listing_assisted_at?: string | null;
+  listing_published_by?: string | null;
+  listing_published_at?: string | null;
   freshness_state?: ListingFreshnessState;
   last_updated_at: string;
   created_at: string;
@@ -204,7 +218,18 @@ export interface CreatePropertyInput {
   listing_authority_mode?: ListingAuthorityMode | null;
   declared_commission_share_percent?: number | null;
   application_mode: PropertyApplicationMode;
+  listing_segment?: AdminAssistanceSegment;
   fees?: PropertyFeeInput[];
+}
+
+export interface AdminListingHealthSummary {
+  publishing: number;
+  needs_confirmation: number;
+  active: number;
+  final_outcomes: number;
+  unavailable: number;
+  archived: number;
+  draft: number;
 }
 
 export interface PropertyImage {

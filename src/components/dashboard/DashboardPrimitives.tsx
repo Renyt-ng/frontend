@@ -12,7 +12,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight, CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui";
+import { Badge, Skeleton } from "@/components/ui";
 
 type DashboardPanelTone = "default" | "accent" | "warning" | "critical";
 
@@ -159,6 +159,29 @@ export function MetricCard({
   }
 
   return <div className={cardClassName}>{content}</div>;
+}
+
+interface DashboardListSkeletonProps {
+  rows?: number;
+  className?: string;
+  itemClassName?: string;
+}
+
+export function DashboardListSkeleton({
+  rows = 3,
+  className,
+  itemClassName = "h-24",
+}: DashboardListSkeletonProps) {
+  return (
+    <div aria-hidden="true" className={cn("space-y-3", className)}>
+      {Array.from({ length: rows }).map((_, index) => (
+        <Skeleton
+          key={index}
+          className={cn("w-full rounded-2xl", itemClassName)}
+        />
+      ))}
+    </div>
+  );
 }
 
 export interface DashboardSectionNavItem {

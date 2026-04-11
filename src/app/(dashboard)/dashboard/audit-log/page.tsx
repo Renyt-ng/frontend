@@ -10,6 +10,7 @@ import {
   ScrollText,
 } from "lucide-react";
 import { Card, Badge, Select } from "@/components/ui";
+import { DashboardListSkeleton } from "@/components/dashboard";
 import { EmptyState } from "@/components/shared";
 import { useAdminAuditLogs } from "@/lib/hooks";
 import { formatAuditActor } from "@/lib/adminUtils";
@@ -105,6 +106,12 @@ export default function AuditLogPage() {
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
           Audit log data could not be loaded. Confirm the backend is running and you are signed in as an admin.
         </div>
+      ) : logsQuery.isLoading ? (
+        <Card>
+          <div className="p-4">
+            <DashboardListSkeleton rows={5} itemClassName="h-16" />
+          </div>
+        </Card>
       ) : entries.length === 0 ? (
         <EmptyState
           icon={<ClipboardList size={28} />}

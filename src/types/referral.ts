@@ -26,6 +26,8 @@ export type ReferralClosureType = "rented" | "sold";
 
 export type ReferralSourceChannel = "whatsapp" | "phone";
 
+export type CtaInsightType = "message_agent" | "call_agent";
+
 export type ReferralShareChannel =
   | "copy_link"
   | "whatsapp"
@@ -300,4 +302,33 @@ export interface AdminReferralEvent {
   created_at: string;
   confirmed_at: string | null;
   paid_at: string | null;
+}
+
+export interface AdminCtaInsightEvent {
+  id: string;
+  property_inquiry_id: string | null;
+  property_id: string;
+  property_title: string;
+  property_area: string;
+  property_status: string;
+  agent_id: string;
+  agent_name: string;
+  agent_email: string | null;
+  agent_phone: string | null;
+  listing_segment: import("./agent").AdminAssistanceSegment | null;
+  cta_type: CtaInsightType;
+  user_id: string | null;
+  user_name: string;
+  user_email: string | null;
+  user_phone: string | null;
+  created_at: string;
+  qualified_referral: {
+    id: string;
+    status: ReferralEventStatus;
+    amount: number;
+    referrer_name: string;
+    referrer_email: string | null;
+    close_status: ReferralClosureStatus | null;
+    hold_reason: string | null;
+  } | null;
 }

@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Navbar } from "@/components/layout/Navbar";
+import { useAuthOverlayStore } from "@/stores/authOverlayStore";
 import { useAuthStore } from "@/stores/authStore";
 
 const push = vi.fn();
@@ -22,6 +23,15 @@ describe("Navbar", () => {
     logout.mockClear();
     push.mockReset();
     refresh.mockReset();
+    useAuthOverlayStore.setState({
+      isOpen: false,
+      mode: "login",
+      redirectTo: "/",
+      resumeAction: null,
+      onAuthenticated: null,
+      onClose: null,
+      restoreFocusTo: null,
+    });
     useAuthStore.setState({
       user: {
         id: "user-1",
@@ -66,5 +76,29 @@ describe("Navbar", () => {
     fireEvent.click(screen.getByRole("button", { name: /logout/i }));
 
     expect(logout).toHaveBeenCalledOnce();
+  });
+
+  it("opens mobile navigation as a side drawer and exposes mobile sign-in when signed out", () => {
+    useAuthStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+
+    render(<Navbar />);
+
+    expect(screen.getAllByRole("button", { name: /^Sign In$/i }).length).toBe(2);
+
+    fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    const drawer = dialog.querySelector("#mobile-navigation-drawer");
+
+    expect(drawer).toHaveClass("absolute", "right-0", "top-0", "h-dvh");
+    expect(screen.getAllByRole("button", { name: /^Sign In$/i }).length).toBe(3);
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Close navigation menu$/i }));
+
+    expect(screen.queryByRole("dialog", { name: /navigation menu/i })).not.toBeInTheDocument();
   });
 });

@@ -54,4 +54,51 @@ describe("authSession", () => {
       avatar_url: "https://cdn.renyt.ng/avatar.jpg",
     });
   });
+
+  it("falls back to the Google picture when avatar_url is not present", () => {
+    expect(
+      buildFallbackProfile({
+        id: "user-1",
+        email: "user@example.com",
+        created_at: "2026-03-28T00:00:00.000Z",
+        user_metadata: {
+          full_name: "James User",
+          role: "tenant",
+          picture: "https://lh3.googleusercontent.com/avatar.jpg",
+        },
+      } as never),
+    ).toMatchObject({
+      avatar_url: "https://lh3.googleusercontent.com/avatar.jpg",
+    });
+  });
+
+  it("prefers the uploaded profile avatar over Google metadata", () => {
+    expect(
+      buildFallbackProfile(
+        {
+          id: "user-1",
+          email: "user@example.com",
+          created_at: "2026-03-28T00:00:00.000Z",
+          user_metadata: {
+            full_name: "James User",
+            role: "tenant",
+            picture: "https://lh3.googleusercontent.com/avatar.jpg",
+          },
+        } as never,
+        {
+          id: "user-1",
+          email: "user@example.com",
+          full_name: "James User",
+          phone: null,
+          avatar_url: "https://cdn.renyt.ng/uploaded-avatar.jpg",
+          avatar_review_status: "pending",
+          avatar_review_note: null,
+          role: "tenant",
+          created_at: "2026-03-28T00:00:00.000Z",
+        },
+      ),
+    ).toMatchObject({
+      avatar_url: "https://cdn.renyt.ng/uploaded-avatar.jpg",
+    });
+  });
 });

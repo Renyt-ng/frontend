@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { Activity, ShieldCheck } from "lucide-react";
 import {
   DashboardContextualHelp,
+  DashboardListSkeleton,
   DashboardPanel,
   DashboardSectionHeading,
   DashboardSectionNav,
@@ -110,6 +111,14 @@ describe("Dashboard primitives", () => {
     expect(screen.getByText("Verification queue")).toBeTruthy();
     expect(screen.getByText("Needs review")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Open queue" })).toBeTruthy();
+  });
+
+  it("renders a configurable dashboard list skeleton", () => {
+    const { container } = render(
+      <DashboardListSkeleton rows={4} itemClassName="h-12" />,
+    );
+
+    expect(container.querySelectorAll(".animate-pulse")).toHaveLength(4);
   });
 
   it("reveals contextual help content when toggled", () => {

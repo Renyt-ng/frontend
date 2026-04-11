@@ -18,12 +18,18 @@ import {
   DashboardSectionHeading,
   DashboardSectionNav,
   MetricCard,
+  MiniBarChart,
 } from "@/components/dashboard";
 import {
   useAdminWhatsAppOverview,
   useAdminWhatsAppEvents,
   useAdminWhatsAppActionControls,
   useAdminWhatsAppAgentAccessList,
+  useAdminWhatsAppListingCreationReport,
+  useAdminWhatsAppTasks,
+  useDispatchAdminWhatsAppListingCreation,
+  useDispatchAdminWhatsAppFinalOutcome,
+  useRecoverAdminWhatsAppTask,
   useSendAdminWhatsAppTest,
   useUpdateAdminWhatsAppActionControl,
   useUpdateAdminWhatsAppAgentAccess,
@@ -43,6 +49,7 @@ import type {
   WhatsAppActionType,
   WhatsAppActionStatus,
   WhatsAppAgentAccessStatus,
+  WhatsAppTask,
 } from "@/types/admin";
 
 const LIVE_REFRESH_INTERVAL_MS = 15_000;
@@ -72,6 +79,14 @@ function formatTimestamp(value?: string | null) {
   return value ? new Date(value).toLocaleString("en-NG") : "Not yet recorded";
 }
 
+function formatStepLabel(value?: string | null) {
+  return value ? value.replace(/_/g, " ") : "Unknown step";
+}
+
+function formatPendingFieldLabel(value: string) {
+  return value.replace(/_/g, " ");
+}
+
 export default function WhatsAppSettingsPage() {
   const overviewQuery = useAdminWhatsAppOverview({
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
@@ -99,6 +114,20 @@ export default function WhatsAppSettingsPage() {
       staleTime: 10_000,
     },
   );
+  const tasksQuery = useAdminWhatsAppTasks(
+    { limit: 12 },
+    {
+      refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+      staleTime: 10_000,
+    },
+  );
+  const listingReportQuery = useAdminWhatsAppListingCreationReport({
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    staleTime: 10_000,
+  });
+  const dispatchListingCreation = useDispatchAdminWhatsAppListingCreation();
+  const dispatchFinalOutcome = useDispatchAdminWhatsAppFinalOutcome();
+  const recoverTask = useRecoverAdminWhatsAppTask();
   const sendTestWhatsApp = useSendAdminWhatsAppTest();
   const updateAction = useUpdateAdminWhatsAppActionControl();
   const updateAgentAccess = useUpdateAdminWhatsAppAgentAccess();
@@ -107,6 +136,8 @@ export default function WhatsAppSettingsPage() {
   const events = eventsQuery.data?.data ?? [];
   const actions = actionsQuery.data?.data ?? [];
   const agentAccessList = agentAccessQuery.data?.data ?? [];
+  const tasks = tasksQuery.data?.data ?? [];
+  const listingReport = listingReportQuery.data?.data;
 
   const [form, setForm] = useState({
     recipient_phone: "",
@@ -114,6 +145,8 @@ export default function WhatsAppSettingsPage() {
     message: "",
   });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [operationsStatusMessage, setOperationsStatusMessage] = useState<string | null>(null);
+  const [finalOutcomePropertyId, setFinalOutcomePropertyId] = useState("");
   const [actionDrafts, setActionDrafts] = useState<Record<string, WhatsAppActionStatus>>({});
   const [agentDrafts, setAgentDrafts] = useState<Record<string, AgentAccessDraft>>({});
 
@@ -142,15 +175,25 @@ export default function WhatsAppSettingsPage() {
       { id: "wa-overview", label: "Overview" },
       { id: "wa-actions", label: "Action controls", count: actions.length },
       { id: "wa-agents", label: "Agent access", count: agentAccessList.length },
+      { id: "wa-listing-report", label: "Listing flow report", count: listingReport?.stale_drafts.length ?? 0 },
+      { id: "wa-dispatch", label: "Task dispatch" },
+      { id: "wa-tasks", label: "Task queue", count: tasks.length },
       { id: "wa-test-send", label: "Test send" },
       { id: "wa-events", label: "Recent activity", count: events.length },
     ],
-    [actions.length, agentAccessList.length, events.length],
+    [actions.length, agentAccessList.length, events.length, listingReport?.stale_drafts.length, tasks.length],
   );
-  const manageableActionTypes = useMemo(
-    () => actions.map((action) => action.action_type),
+  const visibleActions = useMemo(
+    () => actions.filter((action) => action.action_type !== "listing_update"),
     [actions],
   );
+  const manageableActionTypes = useMemo(
+    () => visibleActions.map((action) => action.action_type),
+    [visibleActions],
+  );
+  const listingAgeBuckets = listingReport?.charts.age_buckets ?? [];
+  const reminderDistribution = listingReport?.charts.reminder_distribution ?? [];
+  const pendingFieldHotspots = listingReport?.charts.pending_field_hotspots ?? [];
 
   async function handleTestSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,6 +245,55 @@ export default function WhatsAppSettingsPage() {
     }
   }
 
+  async function handleListingCreationDispatch(agentId: string) {
+    setOperationsStatusMessage(null);
+
+    try {
+      const result = await dispatchListingCreation.mutateAsync({ agent_id: agentId });
+      setOperationsStatusMessage(
+        `Listing creation prompt sent to ${result.data.recipient_phone}${result.data.mode === "recovered_existing" ? " by recovering the current task." : "."}`,
+      );
+    } catch (error) {
+      setOperationsStatusMessage(
+        error instanceof Error ? error.message : "Unable to dispatch listing creation right now.",
+      );
+    }
+  }
+
+  async function handleFinalOutcomeDispatch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOperationsStatusMessage(null);
+
+    try {
+      const result = await dispatchFinalOutcome.mutateAsync({
+        property_id: finalOutcomePropertyId.trim(),
+      });
+      setOperationsStatusMessage(
+        `Final outcome prompt sent to ${result.data.recipient_phone} for listing ${result.data.property_id ?? "unknown"}.`,
+      );
+      setFinalOutcomePropertyId("");
+    } catch (error) {
+      setOperationsStatusMessage(
+        error instanceof Error ? error.message : "Unable to dispatch final outcome right now.",
+      );
+    }
+  }
+
+  async function handleRecoverTask(taskId: string) {
+    setOperationsStatusMessage(null);
+
+    try {
+      const result = await recoverTask.mutateAsync(taskId);
+      setOperationsStatusMessage(
+        `Recovered ${result.data.task.action_type.replace(/_/g, " ")} for ${result.data.recipient_phone}.`,
+      );
+    } catch (error) {
+      setOperationsStatusMessage(
+        error instanceof Error ? error.message : "Unable to recover this task right now.",
+      );
+    }
+  }
+
   function toggleAgentAction(agentId: string, actionType: WhatsAppActionType) {
     setAgentDrafts((current) => {
       const existing = current[agentId];
@@ -233,6 +325,13 @@ export default function WhatsAppSettingsPage() {
     return (
       saved.access_status !== draft.access_status
       || JSON.stringify(saved.enabled_actions) !== JSON.stringify(draft.enabled_actions)
+    );
+  }
+
+  function canRecoverTask(task: WhatsAppTask) {
+    return (
+      (task.action_type === "listing_creation" || task.action_type === "final_outcome_capture")
+      && task.status !== "completed"
     );
   }
 
@@ -273,6 +372,8 @@ export default function WhatsAppSettingsPage() {
                   void eventsQuery.refetch();
                   void actionsQuery.refetch();
                   void agentAccessQuery.refetch();
+                  void listingReportQuery.refetch();
+                  void tasksQuery.refetch();
                 }}
               >
                 <RefreshCw className="h-4 w-4" />
@@ -408,7 +509,7 @@ export default function WhatsAppSettingsPage() {
               <DashboardSectionHeading
                 title="Action controls"
                 description="Enable, pause, or restrict each automated WhatsApp action type. Changes apply globally across all agents."
-                action={<Badge variant="dashboard">{actions.length} actions</Badge>}
+                action={<Badge variant="dashboard">{visibleActions.length} actions</Badge>}
               />
 
               {actionsQuery.isError ? (
@@ -417,7 +518,7 @@ export default function WhatsAppSettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {actions.map((action) => (
+                  {visibleActions.map((action) => (
                     <div
                       key={action.id}
                       className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
@@ -574,15 +675,299 @@ export default function WhatsAppSettingsPage() {
                       </div>
 
                       <div className="mt-4 flex justify-start">
-                        <Button
-                          type="button"
-                          variant="dashboardPrimary"
-                          size="sm"
-                          onClick={() => handleAgentAccessSave(access.agent_id)}
-                          disabled={updateAgentAccess.isPending || !isAgentDraftDirty(access.agent_id)}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="dashboardPrimary"
+                            size="sm"
+                            onClick={() => handleAgentAccessSave(access.agent_id)}
+                            disabled={updateAgentAccess.isPending || !isAgentDraftDirty(access.agent_id)}
+                          >
+                            Save agent access
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="dashboard"
+                            size="sm"
+                            onClick={() => handleListingCreationDispatch(access.agent_id)}
+                            disabled={dispatchListingCreation.isPending}
+                          >
+                            Prompt create listing
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DashboardPanel>
+          </section>
+
+          <section id="wa-listing-report" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Listing flow report"
+                description="Track create-listing v2 progress, stalled drafts, and reminder pressure."
+                action={
+                  <Badge variant="dashboard">
+                    {listingReport?.flow_version ?? "listing_creation_v2"}
+                  </Badge>
+                }
+              />
+
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <MetricCard
+                  icon={MessageCircle}
+                  label="Active listing tasks"
+                  value={listingReport?.summary.active_tasks ?? "..."}
+                  meta={`${listingReport?.summary.offered_tasks ?? 0} offered`}
+                />
+                <MetricCard
+                  icon={Activity}
+                  label="In progress"
+                  value={listingReport?.summary.in_progress_tasks ?? "..."}
+                  meta={`${listingReport?.summary.publish_ready_drafts ?? 0} publish ready`}
+                />
+                <MetricCard
+                  icon={CircleAlert}
+                  label="Stale drafts"
+                  value={listingReport?.summary.stale_tasks ?? "..."}
+                  meta="Require reminder or manual recovery"
+                  emphasis={(listingReport?.summary.stale_tasks ?? 0) > 0 ? "warning" : "default"}
+                />
+                <MetricCard
+                  icon={RefreshCw}
+                  label="Reminders sent"
+                  value={listingReport?.summary.reminders_sent_last_24h ?? "..."}
+                  meta="Last 24 hours"
+                />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5">
+                  <h3 className="font-medium text-[var(--dashboard-text-primary)]">Step concentration</h3>
+                  <div className="mt-4 space-y-3">
+                    {(listingReport?.step_breakdown ?? []).slice(0, 6).map((item) => (
+                      <div key={item.step} className="flex items-center justify-between gap-4 text-sm">
+                        <span className="text-[var(--dashboard-text-secondary)]">
+                          {formatStepLabel(item.step)}
+                        </span>
+                        <span className="font-medium text-[var(--dashboard-text-primary)]">{item.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
+                  <h3 className="font-medium text-[var(--dashboard-text-primary)]">Stale draft watchlist</h3>
+                  <div className="mt-4 space-y-3">
+                    {(listingReport?.stale_drafts ?? []).length === 0 ? (
+                      <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                        No stale create-listing drafts are currently due for reminder.
+                      </p>
+                    ) : (
+                      listingReport?.stale_drafts.map((draft) => (
+                        <div
+                          key={draft.task_id}
+                          className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
                         >
-                          Save agent access
-                        </Button>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-[var(--dashboard-text-primary)]">
+                                {draft.property_title ?? "Untitled WhatsApp draft"}
+                              </p>
+                              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                                {formatStepLabel(draft.current_step)}
+                                {draft.next_recommended_step
+                                  ? ` · next ${formatStepLabel(draft.next_recommended_step)}`
+                                  : ""}
+                              </p>
+                            </div>
+                            <Badge variant="dashboard">{draft.age_hours.toFixed(1)}h idle</Badge>
+                          </div>
+
+                          <div className="mt-3 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-2">
+                            <p>Pending fields: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.pending_fields.length === 0 ? "None" : draft.pending_fields.join(", ")}</span></p>
+                            <p>Images uploaded: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.uploaded_image_count}</span></p>
+                            <p>Reminders sent: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.reminder_count}</span></p>
+                            <p>Last reminder: <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(draft.last_reminder_sent_at)}</span></p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
+                    <h3 className="font-medium text-[var(--dashboard-text-primary)]">Draft age spread</h3>
+                    <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                      Active create-listing tasks by time since last activity.
+                    </p>
+                    <div className="mt-4">
+                      <MiniBarChart
+                        ariaLabel="Create-listing draft age distribution"
+                        values={listingAgeBuckets.map((item) => item.count)}
+                        labels={listingAgeBuckets.map((item) => item.label)}
+                        highlightIndex={listingAgeBuckets.findIndex((item) => item.label === "24h+")}
+                        emptyMessage="No listing tasks have been recorded yet."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
+                    <h3 className="font-medium text-[var(--dashboard-text-primary)]">Reminder saturation</h3>
+                    <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                      How many nudges active tasks have already received.
+                    </p>
+                    <div className="mt-4">
+                      <MiniBarChart
+                        ariaLabel="Create-listing reminder distribution"
+                        values={reminderDistribution.map((item) => item.count)}
+                        labels={reminderDistribution.map((item) => item.label)}
+                        highlightIndex={reminderDistribution.findIndex((item) => item.label === "3+")}
+                        emptyMessage="Reminder pressure will appear here once reminders are sent."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5">
+                  <h3 className="font-medium text-[var(--dashboard-text-primary)]">Top missing fields</h3>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    The most common blockers across current create-listing tasks.
+                  </p>
+                  <div className="mt-4 space-y-3">
+                    {pendingFieldHotspots.length === 0 ? (
+                      <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                        No repeated missing-field hotspots right now.
+                      </p>
+                    ) : (
+                      pendingFieldHotspots.map((item) => (
+                        <div key={item.field} className="flex items-center justify-between gap-4 text-sm">
+                          <span className="text-[var(--dashboard-text-secondary)]">
+                            {formatPendingFieldLabel(item.field)}
+                          </span>
+                          <span className="font-medium text-[var(--dashboard-text-primary)]">
+                            {item.count}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </DashboardPanel>
+          </section>
+
+          <section id="wa-dispatch" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Task dispatch"
+                description="Send targeted operational prompts without leaving the WhatsApp admin surface."
+              />
+
+              <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+                <form
+                  className="space-y-4 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5"
+                  onSubmit={handleFinalOutcomeDispatch}
+                >
+                  <Input
+                    id="wa-final-outcome-property-id"
+                    label="Listing ID for final outcome"
+                    placeholder="Paste the property UUID"
+                    value={finalOutcomePropertyId}
+                    onChange={(event) => setFinalOutcomePropertyId(event.target.value)}
+                  />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                      type="submit"
+                      variant="dashboardPrimary"
+                      disabled={dispatchFinalOutcome.isPending || finalOutcomePropertyId.trim().length === 0}
+                    >
+                      Send final outcome prompt
+                    </Button>
+                    <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                      Use the agent cards above to trigger create-listing prompts directly.
+                    </p>
+                  </div>
+                </form>
+
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5 text-sm text-[var(--dashboard-text-secondary)]">
+                  <h3 className="font-medium text-[var(--dashboard-text-primary)]">Operational notes</h3>
+                  <div className="mt-3 space-y-2">
+                    <p>Create-listing dispatch is agent-targeted and restores any active WhatsApp draft instead of duplicating it.</p>
+                    <p>Final-outcome dispatch is listing-targeted and reaches the assigned listing agent.</p>
+                    <p>Recovery resumes the saved workflow step, so agents continue from the last prompt they saw.</p>
+                  </div>
+                </div>
+              </div>
+
+              {operationsStatusMessage ? (
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white px-4 py-3 text-sm text-[var(--dashboard-text-secondary)]">
+                  {operationsStatusMessage}
+                </div>
+              ) : null}
+            </DashboardPanel>
+          </section>
+
+          <section id="wa-tasks" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Task queue"
+                description="Review recent WhatsApp workflow tasks and recover create-listing or final-outcome tasks when an agent needs another prompt."
+                action={<Badge variant="dashboard">{tasks.length} tasks</Badge>}
+              />
+
+              {tasksQuery.isError ? (
+                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
+                  WhatsApp task data could not be loaded. Confirm the backend admin endpoints are reachable.
+                </div>
+              ) : tasks.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface-alt)] px-5 py-8 text-sm text-[var(--dashboard-text-secondary)]">
+                  No WhatsApp tasks have been recorded yet.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-[var(--dashboard-text-primary)]">
+                            {task.action_type.replace(/_/g, " ")}
+                          </p>
+                          <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                            Status: {task.status.replace(/_/g, " ")}
+                            {task.current_step ? ` · step ${task.current_step.replace(/_/g, " ")}` : ""}
+                            {task.failure_reason ? ` · ${task.failure_reason}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="dashboard">{task.source_trigger.replace(/_/g, " ")}</Badge>
+                          {canRecoverTask(task) ? (
+                            <Button
+                              type="button"
+                              variant="dashboard"
+                              size="sm"
+                              onClick={() => handleRecoverTask(task.id)}
+                              disabled={recoverTask.isPending}
+                            >
+                              Recover task
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-2 xl:grid-cols-4">
+                        <p>Task ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.id}</span></p>
+                        <p>Agent ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.agent_id}</span></p>
+                        <p>Listing ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.entity_id ?? "Not bound yet"}</span></p>
+                        <p>Updated: <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(task.updated_at)}</span></p>
                       </div>
                     </div>
                   ))}

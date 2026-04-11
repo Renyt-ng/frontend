@@ -384,6 +384,22 @@ describe("PropertyComposer", () => {
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 0, behavior: "smooth" });
   }, 15000);
 
+  it("keeps fee controls in a two-column grid on the pricing step", async () => {
+    window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=pricing");
+
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Pricing Breakdown" })).toBeInTheDocument();
+
+    const feeField = screen.getByText("Fee Type").parentElement;
+    const feeGrid = feeField?.parentElement;
+    const removeButton = screen.getByRole("button", { name: /^Remove$/i });
+
+    expect(feeGrid).toHaveClass("grid", "gap-4", "md:grid-cols-2");
+    expect(removeButton.parentElement).toHaveClass("md:col-span-2", "md:justify-end");
+    expect(removeButton).toHaveClass("w-full", "md:w-auto");
+  });
+
   it("publishes immediately without a redundant save when the draft is already current", async () => {
     const deferred = createDeferred<{ success: true }>();
     publishPropertyMutateAsync.mockReturnValueOnce(deferred.promise);

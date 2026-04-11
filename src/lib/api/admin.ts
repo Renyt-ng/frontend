@@ -1,6 +1,10 @@
 import apiClient from "./client";
 import type {
   Agent,
+  AdminAgentActivationCandidate,
+  AdminAgentVerificationWorkspace,
+  AdminCtaInsightEvent,
+  AdminAssistanceSegment,
   AgentVerificationSettings,
   AdminReferralEvent,
   AvatarReviewStatus,
@@ -45,7 +49,10 @@ import type {
   WhatsAppAgentAccess,
   WhatsAppAgentAccessStatus,
   WhatsAppDeliveryEvent,
+  WhatsAppListingCreationReport,
   WhatsAppOverview,
+  WhatsAppTask,
+  WhatsAppTaskDispatchResult,
   WhatsAppTestSendResult,
 } from "@/types/admin";
 
@@ -61,6 +68,7 @@ export interface GetAdminUsersParams {
 
 export interface GetAdminAgentsParams {
   verification_status?: VerificationStatus;
+  activation_segment?: AdminAssistanceSegment;
 }
 
 export interface GetAdminPropertiesParams {
@@ -75,6 +83,16 @@ export interface GetAdminPropertiesParams {
     | "sold_off_platform";
   verification_status?: PropertyVerificationStatus;
   agent_id?: string;
+  listing_segment?: AdminAssistanceSegment;
+}
+
+export interface GetAdminCtaInsightsParams {
+  property_id?: string;
+  agent_id?: string;
+  cta_type?: "message_agent" | "call_agent";
+  listing_segment?: AdminAssistanceSegment;
+  search?: string;
+  limit?: number;
 }
 
 export interface GetAdminAuditLogsParams {
@@ -113,6 +131,14 @@ export interface GetAdminWhatsAppEventsParams {
 export interface GetAdminWhatsAppAgentAccessParams {
   access_status?: string;
   search?: string;
+  limit?: number;
+}
+
+export interface GetAdminWhatsAppTasksParams {
+  status?: string;
+  action_type?: string;
+  agent_id?: string;
+  entity_type?: string;
   limit?: number;
 }
 
@@ -197,6 +223,45 @@ export async function getAgents(params?: GetAdminAgentsParams) {
   return res.data;
 }
 
+export async function getAgentActivationCandidates(search?: string) {
+  const res = await apiClient.get<ApiSuccessResponse<AdminAgentActivationCandidate[]>>(
+    "/admin/agent-activation/candidates",
+    { params: search ? { search } : undefined },
+  );
+  return res.data;
+}
+
+export async function getAgentActivationWorkspace(id: string) {
+  const res = await apiClient.get<ApiSuccessResponse<AdminAgentVerificationWorkspace>>(
+    `/admin/agent-activation/${id}/workspace`,
+  );
+  return res.data;
+}
+
+export async function upsertAgentActivation(
+  id: string,
+  data: {
+    business_name: string;
+    business_address: string;
+    primary_phone: string;
+    whatsapp_same_as_primary_phone: boolean;
+    whatsapp_phone?: string | null;
+    verification_documents: Array<{
+      document_type: string;
+      file_name: string;
+      content_type: string;
+      base64_data: string;
+    }>;
+    approve?: boolean;
+  },
+) {
+  const res = await apiClient.put<ApiSuccessResponse<AdminAgentVerificationWorkspace>>(
+    `/admin/agent-activation/${id}`,
+    data,
+  );
+  return res.data;
+}
+
 export async function getAgentVerificationSettings() {
   const res = await apiClient.get<ApiSuccessResponse<AgentVerificationSettings>>(
     "/admin/agent-verification-settings",
@@ -240,6 +305,14 @@ export async function getAuditLogs(params?: GetAdminAuditLogsParams) {
 export async function getReferralEvents(params?: GetAdminReferralEventsParams) {
   const res = await apiClient.get<ApiSuccessResponse<AdminReferralEvent[]>>(
     "/admin/referrals/events",
+    { params },
+  );
+  return res.data;
+}
+
+export async function getCtaInsights(params?: GetAdminCtaInsightsParams) {
+  const res = await apiClient.get<ApiSuccessResponse<AdminCtaInsightEvent[]>>(
+    "/admin/cta-insights",
     { params },
   );
   return res.data;
@@ -689,6 +762,21 @@ export async function getWhatsAppAgentAccess(agentId: string) {
   return res.data;
 }
 
+export async function getWhatsAppTasks(params?: GetAdminWhatsAppTasksParams) {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppTask[]>>(
+    "/admin/whatsapp/tasks",
+    { params },
+  );
+  return res.data;
+}
+
+export async function getWhatsAppListingCreationReport() {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppListingCreationReport>>(
+    "/admin/whatsapp/listing-creation/report",
+  );
+  return res.data;
+}
+
 export async function updateWhatsAppAgentAccess(
   agentId: string,
   data: {
@@ -700,6 +788,30 @@ export async function updateWhatsAppAgentAccess(
   const res = await apiClient.patch<ApiSuccessResponse<WhatsAppAgentAccess>>(
     `/admin/whatsapp/agents/${agentId}`,
     data,
+  );
+  return res.data;
+}
+
+export async function dispatchWhatsAppListingCreation(data: { agent_id: string }) {
+  const res = await apiClient.post<ApiSuccessResponse<WhatsAppTaskDispatchResult>>(
+    "/admin/whatsapp/listing-creation/dispatch",
+    data,
+  );
+  return res.data;
+}
+
+export async function dispatchWhatsAppFinalOutcome(data: { property_id: string }) {
+  const res = await apiClient.post<ApiSuccessResponse<WhatsAppTaskDispatchResult>>(
+    "/admin/whatsapp/final-outcome/dispatch",
+    data,
+  );
+  return res.data;
+}
+
+export async function recoverWhatsAppTask(taskId: string) {
+  const res = await apiClient.post<ApiSuccessResponse<WhatsAppTaskDispatchResult>>(
+    `/admin/whatsapp/tasks/${taskId}/recover`,
+    {},
   );
   return res.data;
 }

@@ -355,6 +355,7 @@ export type WhatsAppDeliveryEventStatus =
 export type WhatsAppMessageType =
   | "template"
   | "text"
+  | "flow"
   | "interactive"
   | "image"
   | "document"
@@ -362,11 +363,26 @@ export type WhatsAppMessageType =
   | "audio";
 
 export type WhatsAppActionType =
-  | "verification_followup"
+  | "listing_creation"
   | "listing_update"
   | "availability_confirmation"
   | "final_outcome_capture"
   | "operational_prompt";
+
+export type WhatsAppTaskStatus =
+  | "pending"
+  | "offered"
+  | "in_progress"
+  | "completed"
+  | "expired"
+  | "cancelled"
+  | "failed";
+
+export type WhatsAppTaskSourceTrigger =
+  | "freshness_policy"
+  | "agent_initiated"
+  | "admin_prompt"
+  | "system_recovery";
 
 export type WhatsAppActionStatus = "enabled" | "paused" | "trial_only" | "paid_only";
 
@@ -454,6 +470,72 @@ export interface WhatsAppAgentAccess {
   primary_phone?: string | null;
   whatsapp_phone?: string | null;
   verification_status?: string | null;
+}
+
+export interface WhatsAppTask {
+  id: string;
+  agent_id: string;
+  action_type: WhatsAppActionType;
+  entity_type: "property";
+  entity_id: string | null;
+  status: WhatsAppTaskStatus;
+  source_trigger: WhatsAppTaskSourceTrigger;
+  priority: number;
+  payload_snapshot: Record<string, unknown>;
+  result_snapshot: Record<string, unknown>;
+  current_step: string | null;
+  offered_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  expires_at: string | null;
+  last_inbound_message_id: string | null;
+  last_outbound_message_id: string | null;
+  failure_reason: string | null;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppTaskDispatchResult {
+  mode: string;
+  task: WhatsAppTask;
+  agent_id: string;
+  recipient_phone: string;
+  property_id: string | null;
+}
+
+export interface WhatsAppListingCreationReport {
+  flow_version: string;
+  summary: {
+    active_tasks: number;
+    offered_tasks: number;
+    in_progress_tasks: number;
+    completed_tasks: number;
+    stale_tasks: number;
+    reminders_sent_last_24h: number;
+    publish_ready_drafts: number;
+  };
+  step_breakdown: Array<{ step: string; count: number }>;
+  charts: {
+    age_buckets: Array<{ label: string; count: number }>;
+    reminder_distribution: Array<{ label: string; count: number }>;
+    pending_field_hotspots: Array<{ field: string; count: number }>;
+  };
+  stale_drafts: Array<{
+    task_id: string;
+    agent_id: string;
+    property_id: string | null;
+    property_title: string | null;
+    current_step: string | null;
+    next_recommended_step: string | null;
+    pending_fields: string[];
+    uploaded_image_count: number;
+    age_hours: number;
+    reminder_count: number;
+    last_reminder_sent_at: string | null;
+    updated_at: string;
+  }>;
 }
 
 export type AdminPropertyType = PropertyTypeDefinition;

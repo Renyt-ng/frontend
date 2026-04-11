@@ -1,5 +1,6 @@
 export type {
   CreatePropertyInput,
+  AdminListingHealthSummary,
   FeeType,
   Property,
   PropertyCompletion,
@@ -23,6 +24,7 @@ export type {
   PropertyVerificationStatus,
   PropertyReferralBasisSummary,
   PropertyReferralEligibilityStatus,
+  PropertyDraftMetadata,
   PropertySearchParams,
   PropertyAgentContact,
   UpdatePropertyInput,
@@ -31,6 +33,9 @@ export type {
 export type { AvatarReviewStatus, Profile, UserRole } from "./user";
 export type {
   Agent,
+  AdminAssistanceSegment,
+  AdminAgentActivationCandidate,
+  AdminAgentVerificationWorkspace,
   AgentVerificationDocument,
   AgentVerificationDocumentType,
   AgentVerificationSettings,
@@ -74,6 +79,8 @@ export type {
   ReferralDashboard,
   ReferralShareLink,
   AdminReferralEvent,
+  AdminCtaInsightEvent,
+  CtaInsightType,
 } from "./referral";
 export type {
   AdminOverview,

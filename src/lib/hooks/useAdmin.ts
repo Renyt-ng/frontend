@@ -17,6 +17,9 @@ import type {
   PropertyTypeDefinition,
   ReferralCampaign,
   ReferralClosureStatus,
+  AdminAgentActivationCandidate,
+  AdminAgentVerificationWorkspace,
+  AdminCtaInsightEvent,
   ReferralEventStatus,
   ReferralProgramAdminConfig,
   ReferralProgramSettings,
@@ -40,7 +43,9 @@ import type {
   WhatsAppActionControl,
   WhatsAppAgentAccess,
   WhatsAppDeliveryEvent,
+  WhatsAppListingCreationReport,
   WhatsAppOverview,
+  WhatsAppTask,
   WhatsAppTestSendResult,
 } from "@/types/admin";
 import type {
@@ -52,10 +57,12 @@ import type {
   GetAdminSmsEventsParams,
   GetAdminWhatsAppEventsParams,
   GetAdminWhatsAppAgentAccessParams,
+  GetAdminWhatsAppTasksParams,
   GetAdminQueueFailedJobsParams,
   GetAdminLocationsParams,
   GetAdminPropertiesParams,
   GetAdminReferralEventsParams,
+  GetAdminCtaInsightsParams,
 } from "@/lib/api/admin";
 
 export const adminKeys = {
@@ -64,11 +71,17 @@ export const adminKeys = {
     ["admin", "audit-logs", params] as const,
   referrals: (params?: GetAdminReferralEventsParams) =>
     ["admin", "referrals", params] as const,
+  ctaInsights: (params?: GetAdminCtaInsightsParams) =>
+    ["admin", "cta-insights", params] as const,
   referralProgram: () => ["admin", "referrals", "program"] as const,
   agentVerificationSettings: () => ["admin", "agent-verification-settings"] as const,
   listingFreshnessPolicy: () => ["admin", "listing-freshness-policy"] as const,
   users: (params?: GetAdminUsersParams) => ["admin", "users", params] as const,
   agents: (params?: GetAdminAgentsParams) => ["admin", "agents", params] as const,
+  agentActivationCandidates: (search?: string) =>
+    ["admin", "agent-activation-candidates", search] as const,
+  agentActivationWorkspace: (id: string) =>
+    ["admin", "agent-activation-workspace", id] as const,
   properties: (params?: GetAdminPropertiesParams) =>
     ["admin", "properties", params] as const,
   locations: (params?: GetAdminLocationsParams) =>
@@ -93,6 +106,10 @@ export const adminKeys = {
   whatsappActionControls: () => ["admin", "whatsapp-action-controls"] as const,
   whatsappAgentAccess: (params?: GetAdminWhatsAppAgentAccessParams) =>
     ["admin", "whatsapp-agent-access", params] as const,
+  whatsappTasks: (params?: GetAdminWhatsAppTasksParams) =>
+    ["admin", "whatsapp-tasks", params] as const,
+  whatsappListingCreationReport: () =>
+    ["admin", "whatsapp-listing-creation-report"] as const,
 };
 
 export function useAdminOverview(
@@ -146,6 +163,20 @@ export function useAdminReferralEvents(
   return useQuery({
     queryKey: adminKeys.referrals(params),
     queryFn: () => adminApi.getReferralEvents(params),
+    ...options,
+  });
+}
+
+export function useAdminCtaInsights(
+  params?: GetAdminCtaInsightsParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AdminCtaInsightEvent[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.ctaInsights(params),
+    queryFn: () => adminApi.getCtaInsights(params),
     ...options,
   });
 }
@@ -349,6 +380,35 @@ export function useAdminAgents(
   });
 }
 
+export function useAdminAgentActivationCandidates(
+  search?: string,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AdminAgentActivationCandidate[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.agentActivationCandidates(search),
+    queryFn: () => adminApi.getAgentActivationCandidates(search),
+    ...options,
+  });
+}
+
+export function useAdminAgentActivationWorkspace(
+  id: string,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<AdminAgentVerificationWorkspace>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.agentActivationWorkspace(id),
+    queryFn: () => adminApi.getAgentActivationWorkspace(id),
+    enabled: Boolean(id),
+    ...options,
+  });
+}
+
 export function useAdminProperties(
   params?: GetAdminPropertiesParams,
   options?: Omit<
@@ -429,6 +489,39 @@ export function useUpdateAgentStatus() {
       verification_status: "approved" | "rejected";
     }) => adminApi.updateAgentStatus(id, verification_status),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "agents"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
+export function useUpsertAdminAgentActivation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: {
+        business_name: string;
+        business_address: string;
+        primary_phone: string;
+        whatsapp_same_as_primary_phone: boolean;
+        whatsapp_phone?: string | null;
+        verification_documents: Array<{
+          document_type: string;
+          file_name: string;
+          content_type: string;
+          base64_data: string;
+        }>;
+        approve?: boolean;
+      };
+    }) => adminApi.upsertAgentActivation(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.agentActivationWorkspace(variables.id) });
+      queryClient.invalidateQueries({ queryKey: ["admin", "agent-activation-candidates"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "agents"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
@@ -799,6 +892,33 @@ export function useAdminWhatsAppAgentAccessList(
   });
 }
 
+export function useAdminWhatsAppTasks(
+  params?: GetAdminWhatsAppTasksParams,
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppTask[]>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappTasks(params),
+    queryFn: () => adminApi.getWhatsAppTasks(params),
+    ...options,
+  });
+}
+
+export function useAdminWhatsAppListingCreationReport(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppListingCreationReport>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappListingCreationReport(),
+    queryFn: () => adminApi.getWhatsAppListingCreationReport(),
+    ...options,
+  });
+}
+
 export function useSendAdminWhatsAppTest() {
   const queryClient = useQueryClient();
 
@@ -848,6 +968,48 @@ export function useUpdateAdminWhatsAppAgentAccess() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-agent-access"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+    },
+  });
+}
+
+export function useDispatchAdminWhatsAppListingCreation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.dispatchWhatsAppListingCreation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-listing-creation-report"] });
+    },
+  });
+}
+
+export function useDispatchAdminWhatsAppFinalOutcome() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: adminApi.dispatchWhatsAppFinalOutcome,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-listing-creation-report"] });
+    },
+  });
+}
+
+export function useRecoverAdminWhatsAppTask() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (taskId: string) => adminApi.recoverWhatsAppTask(taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-events"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-listing-creation-report"] });
     },
   });
 }

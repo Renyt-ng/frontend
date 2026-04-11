@@ -16,7 +16,7 @@ export async function syncAuthenticatedProfile(
 
   try {
     const response = await authApi.getProfile();
-    return response.data;
+    return buildFallbackProfile(authUser, response.data);
   } catch (error) {
     if (isTransientAuthError(error)) {
       return buildFallbackProfile(authUser, existingProfile);

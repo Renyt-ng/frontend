@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Layers3, Plus, Save } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
+import { DashboardListSkeleton } from "@/components/dashboard";
+import { EmptyState } from "@/components/shared";
 import {
   useAdminPropertyTypes,
   useCreateAdminPropertyType,
@@ -13,6 +15,7 @@ export default function PropertyTypesPage() {
   const propertyTypesQuery = useAdminPropertyTypes();
   const createPropertyType = useCreateAdminPropertyType();
   const updatePropertyType = useUpdateAdminPropertyType();
+  const isLoading = propertyTypesQuery.isLoading;
   const [form, setForm] = useState({
     slug: "",
     label: "",
@@ -97,6 +100,11 @@ export default function PropertyTypesPage() {
         </CardContent>
       </Card>
 
+      {isLoading ? (
+        <DashboardListSkeleton rows={4} itemClassName="h-72" className="grid gap-4 lg:grid-cols-2" />
+      ) : propertyTypes.length === 0 ? (
+        <EmptyState title="No property types yet" description="Property types will appear here when available." />
+      ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {propertyTypes.map((propertyType) => (
           <Card key={propertyType.id}>
@@ -182,6 +190,7 @@ export default function PropertyTypesPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }

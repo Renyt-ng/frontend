@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { BadgePercent, Plus, Save } from "lucide-react";
 import { Button, Card, CardContent } from "@/components/ui";
+import { DashboardListSkeleton } from "@/components/dashboard";
+import { EmptyState } from "@/components/shared";
 import {
   useAdminFeeTypes,
   useCreateAdminFeeType,
@@ -21,6 +23,7 @@ export default function FeeTypesPage() {
   const feeTypesQuery = useAdminFeeTypes();
   const createFeeType = useCreateAdminFeeType();
   const updateFeeType = useUpdateAdminFeeType();
+  const isLoading = feeTypesQuery.isLoading;
   const [form, setForm] = useState({
     name: "",
     slug: "",
@@ -131,6 +134,11 @@ export default function FeeTypesPage() {
         </CardContent>
       </Card>
 
+      {isLoading ? (
+        <DashboardListSkeleton rows={4} itemClassName="h-72" className="grid gap-4 lg:grid-cols-2" />
+      ) : feeTypes.length === 0 ? (
+        <EmptyState title="No fee types yet" description="Fee types will appear here when available." />
+      ) : (
       <div className="grid gap-4 lg:grid-cols-2">
         {feeTypes.map((feeType) => (
           <Card key={feeType.id}>
@@ -221,6 +229,7 @@ export default function FeeTypesPage() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }
