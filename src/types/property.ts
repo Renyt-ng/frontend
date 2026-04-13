@@ -26,6 +26,7 @@ export type PropertyStatus =
   | "rented_off_platform"
   | "sold_renyt"
   | "sold_off_platform";
+export type CloseDurationUnit = "days" | "months" | "years";
 export type PropertyApplicationMode = "instant_apply" | "message_agent";
 export type PropertyListingPurpose = "rent" | "sale";
 export type ListingFreshnessState = "fresh" | "confirmation_due" | "unavailable";
@@ -137,6 +138,40 @@ export interface PropertyReferralBasisSummary {
   uses_declared_share: boolean;
 }
 
+export interface PropertyCloseoutFinancials {
+  status_recorded: PropertyStatus;
+  applied_property_status: PropertyStatus;
+  channel: "dashboard" | "whatsapp";
+  recorded_by: string;
+  recorded_at: string;
+  property_type: string;
+  listing_purpose: PropertyListingPurpose;
+  listing_authority_mode: ListingAuthorityMode | null;
+  declared_commission_share_percent: number | null;
+  matched_user_id: string | null;
+  close_start_date: string;
+  close_duration_unit: CloseDurationUnit;
+  close_duration_value: number;
+  close_end_date: string;
+  contract_value_amount: number;
+  public_commission_basis_amount: number;
+  eligible_commission_basis_amount: number;
+  expected_commission_pool_amount: number;
+  expected_referrer_amount: number;
+  expected_renyt_amount: number;
+  review_status: "pending_review" | "under_review" | "approved" | "rejected";
+  calculation_version: string;
+  is_shortlet_occupancy: boolean;
+}
+
+export interface ShortletOccupancyHold {
+  start_date: string;
+  end_date: string;
+  duration_days: number;
+  source_status: "rented_renyt" | "rented_off_platform";
+  last_reminder_sent_at: string | null;
+}
+
 export interface Property {
   id: string;
   agent_id: string;
@@ -168,6 +203,10 @@ export interface Property {
   publish_error?: string | null;
   availability_confirmed_at: string | null;
   last_freshness_reminder_sent_at?: string | null;
+  latest_closeout_financials?: PropertyCloseoutFinancials | null;
+  shortlet_occupancy_start_date?: string | null;
+  shortlet_occupancy_end_date?: string | null;
+  last_shortlet_occupancy_reminder_sent_at?: string | null;
   draft_metadata?: PropertyDraftMetadata | null;
   listing_segment?: AdminAssistanceSegment;
   listing_assisted_by?: string | null;
@@ -184,11 +223,22 @@ export interface Property {
   completion?: PropertyCompletion;
   referral_basis_summary?: PropertyReferralBasisSummary;
   referral_resolution_summary?: PropertyReferralResolutionSummary | null;
+  active_shortlet_occupancy_hold?: ShortletOccupancyHold | null;
+  discovery_availability_label?: string | null;
+  discovery_available_from?: string | null;
+  discovery_bookable?: boolean;
 }
 
 export type UpdatePropertyInput = Partial<Property> & {
   matched_user_id?: string | null;
+  close_start_date?: string | null;
+  close_duration_unit?: CloseDurationUnit | null;
+  close_duration_value?: number | null;
 };
+
+export interface ExtendShortletOccupancyInput {
+  additional_days: number;
+}
 
 export interface PropertyFeeInput {
   fee_type_id: string;

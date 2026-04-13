@@ -73,6 +73,8 @@ export function PropertyActionPanel({
     );
   }, [agentWhatsAppPhone, property.area, property.title, propertyShareUrl]);
   const phoneHref = agentPhone ? `tel:${agentPhone}` : "";
+  const isDiscoveryBookable = property.discovery_bookable !== false;
+  const discoveryAvailabilityLabel = property.discovery_availability_label;
 
   useEffect(() => {
     const queryReferralCode = searchParams.get("ref");
@@ -153,7 +155,7 @@ export function PropertyActionPanel({
     return (
       <div className="grid grid-cols-2 gap-3">
         {phoneHref ? (
-          isAuthenticated ? (
+          isAuthenticated && isDiscoveryBookable ? (
             <a
               href={phoneHref}
               onClick={() => handleContactClick("phone")}
@@ -171,10 +173,13 @@ export function PropertyActionPanel({
               size="lg"
               className="w-full rounded-xl"
               type="button"
-              onClick={() => resumeContactFlow("phone", phoneHref)}
+              onClick={() =>
+                isDiscoveryBookable ? resumeContactFlow("phone", phoneHref) : undefined
+              }
+              disabled={!isDiscoveryBookable}
             >
               <Phone className="h-4 w-4" />
-              Call
+              {isDiscoveryBookable ? "Call" : "Call paused"}
             </Button>
           )
         ) : (
@@ -185,7 +190,7 @@ export function PropertyActionPanel({
         )}
 
         {whatsappHref ? (
-          isAuthenticated ? (
+          isAuthenticated && isDiscoveryBookable ? (
             <a
               href={whatsappHref}
               target="_blank"
@@ -202,13 +207,16 @@ export function PropertyActionPanel({
               className="w-full rounded-xl"
               type="button"
               onClick={() =>
-                resumeContactFlow("whatsapp", whatsappHref, {
-                  openInNewWindow: true,
-                })
+                isDiscoveryBookable
+                  ? resumeContactFlow("whatsapp", whatsappHref, {
+                      openInNewWindow: true,
+                    })
+                  : undefined
               }
+              disabled={!isDiscoveryBookable}
             >
               <WhatsAppIcon className="h-4 w-4" />
-              WhatsApp
+              {isDiscoveryBookable ? "WhatsApp" : "Currently booked"}
             </Button>
           )
         ) : (
@@ -224,8 +232,16 @@ export function PropertyActionPanel({
   return (
     <Card>
       <CardContent className="space-y-4 p-5">
+          {discoveryAvailabilityLabel && !isDiscoveryBookable ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-medium">{discoveryAvailabilityLabel}</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                This shortlet is still visible in search, but direct contact actions stay paused until the agent reconfirms availability or extends the stay.
+              </p>
+            </div>
+          ) : null}
           {whatsappHref ? (
-            isAuthenticated ? (
+            isAuthenticated && isDiscoveryBookable ? (
               <a
                 href={whatsappHref}
                 target="_blank"
@@ -241,14 +257,17 @@ export function PropertyActionPanel({
                 size="lg"
                 className="w-full"
                 type="button"
+                disabled={!isDiscoveryBookable}
                 onClick={() =>
-                  resumeContactFlow("whatsapp", whatsappHref, {
-                    openInNewWindow: true,
-                  })
+                  isDiscoveryBookable
+                    ? resumeContactFlow("whatsapp", whatsappHref, {
+                        openInNewWindow: true,
+                      })
+                    : undefined
                 }
               >
                 <WhatsAppIcon className="h-4 w-4" />
-                Message Agent
+                {isDiscoveryBookable ? "Message Agent" : "Currently booked"}
               </Button>
             )
           ) : (
@@ -259,12 +278,14 @@ export function PropertyActionPanel({
           )}
 
           <p className="text-xs leading-relaxed text-[var(--color-text-secondary)]">
-            Message the listing agent directly on WhatsApp for the fastest response. Call remains available if you prefer a direct phone conversation.
+            {isDiscoveryBookable
+              ? "Message the listing agent directly on WhatsApp for the fastest response. Call remains available if you prefer a direct phone conversation."
+              : "This shortlet is visible for planning, but direct contact actions resume only after the agent confirms it is available again."}
           </p>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {phoneHref ? (
-              isAuthenticated ? (
+              isAuthenticated && isDiscoveryBookable ? (
                 <a
                   href={phoneHref}
                   onClick={() => handleContactClick("phone")}
@@ -282,10 +303,13 @@ export function PropertyActionPanel({
                   size="sm"
                   className="w-full"
                   type="button"
-                  onClick={() => resumeContactFlow("phone", phoneHref)}
+                  onClick={() =>
+                    isDiscoveryBookable ? resumeContactFlow("phone", phoneHref) : undefined
+                  }
+                  disabled={!isDiscoveryBookable}
                 >
                   <Phone className="h-4 w-4" />
-                  Call Agent
+                  {isDiscoveryBookable ? "Call Agent" : "Call paused"}
                 </Button>
               )
             ) : (
@@ -295,7 +319,7 @@ export function PropertyActionPanel({
               </Button>
             )}
             {whatsappHref ? (
-              isAuthenticated ? (
+              isAuthenticated && isDiscoveryBookable ? (
                 <a
                   href={whatsappHref}
                   target="_blank"
@@ -315,14 +339,17 @@ export function PropertyActionPanel({
                   size="sm"
                   className="w-full"
                   type="button"
+                  disabled={!isDiscoveryBookable}
                   onClick={() =>
-                    resumeContactFlow("whatsapp", whatsappHref, {
-                      openInNewWindow: true,
-                    })
+                    isDiscoveryBookable
+                      ? resumeContactFlow("whatsapp", whatsappHref, {
+                          openInNewWindow: true,
+                        })
+                      : undefined
                   }
                 >
                   <WhatsAppIcon className="h-4 w-4" />
-                  Open WhatsApp
+                  {isDiscoveryBookable ? "Open WhatsApp" : "WhatsApp paused"}
                 </Button>
               )
             ) : (

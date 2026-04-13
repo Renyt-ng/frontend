@@ -31,10 +31,14 @@ export function getPropertyFreshnessState(property: Pick<
 
 export function getPropertyFreshnessLabel(property: Pick<
   Property,
-  "status" | "availability_confirmed_at" | "freshness_state"
+  "status" | "availability_confirmed_at" | "freshness_state" | "discovery_availability_label"
 >) {
   if (property.status === "publishing") {
     return "Publishing in progress";
+  }
+
+  if (property.discovery_availability_label) {
+    return property.discovery_availability_label;
   }
 
   const state = getPropertyFreshnessState(property);
@@ -52,10 +56,14 @@ export function getPropertyFreshnessLabel(property: Pick<
 
 export function getPropertyFreshnessMeta(property: Pick<
   Property,
-  "status" | "availability_confirmed_at" | "freshness_state"
+  "status" | "availability_confirmed_at" | "freshness_state" | "discovery_available_from" | "discovery_bookable"
 >) {
   if (property.status === "publishing") {
     return "Not live yet";
+  }
+
+  if (property.discovery_bookable === false && property.discovery_available_from) {
+    return `Available from ${formatDate(property.discovery_available_from)}`;
   }
 
   if (!property.availability_confirmed_at) {
@@ -67,8 +75,12 @@ export function getPropertyFreshnessMeta(property: Pick<
 
 export function getPropertyFreshnessBadgeVariant(property: Pick<
   Property,
-  "status" | "availability_confirmed_at" | "freshness_state"
+  "status" | "availability_confirmed_at" | "freshness_state" | "discovery_bookable"
 >) {
+  if (property.discovery_bookable === false) {
+    return "pending" as const;
+  }
+
   const state = getPropertyFreshnessState(property);
 
   if (state === "fresh") {

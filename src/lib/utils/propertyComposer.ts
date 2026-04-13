@@ -170,11 +170,13 @@ export function filterDraftFeesForListingPurpose(
 
 export function buildDraftPricingSummary(
   listingPurpose: PropertyListingPurpose,
+  propertyType: string,
   rentAmount: number,
   askingPrice: number,
   fees: PropertyFeeInput[],
 ): PropertyPricingSummary {
   const pricingBaseAmount = listingPurpose === "sale" ? askingPrice : rentAmount;
+  const isShortlet = listingPurpose === "rent" && propertyType === "shortlet";
 
   if (listingPurpose === "sale") {
     return {
@@ -193,7 +195,7 @@ export function buildDraftPricingSummary(
 
   return {
     annual_rent: rentAmount,
-    monthly_equivalent: Number((rentAmount / 12).toFixed(2)),
+    monthly_equivalent: isShortlet ? 0 : Number((rentAmount / 12).toFixed(2)),
     asking_price: askingPrice,
     fees_total: Number(feesTotal.toFixed(2)),
     total_move_in_cost: Number((pricingBaseAmount + feesTotal).toFixed(2)),
@@ -263,7 +265,9 @@ export function buildDraftChecklist(params: {
       label:
         listingPurpose === "sale"
           ? "Add asking price"
-          : "Add annual rent",
+          : params.property_type === "shortlet"
+            ? "Add daily rate"
+            : "Add annual rent",
       completed:
         listingPurpose === "sale"
           ? (params.asking_price ?? 0) > 0

@@ -2,6 +2,7 @@ import apiClient from "./client";
 import type {
   AgentPropertyInsight,
   CreatePropertyInput,
+  ExtendShortletOccupancyInput,
   FeeType,
   Property,
   PropertyAuthorityOptionsResponse,
@@ -280,6 +281,17 @@ export async function publishProperty(id: string) {
 export async function confirmPropertyAvailability(id: string) {
   const res = await apiClient.post<ApiSuccessResponse<PropertyWithImages>>(
     `/properties/${id}/confirm-availability`,
+  );
+  return {
+    ...res.data,
+    data: normalizeProperty(res.data.data as RawProperty),
+  };
+}
+
+export async function extendShortletOccupancy(id: string, data: ExtendShortletOccupancyInput) {
+  const res = await apiClient.post<ApiSuccessResponse<PropertyWithImages>>(
+    `/properties/${id}/shortlet-occupancy/extend`,
+    data,
   );
   return {
     ...res.data,

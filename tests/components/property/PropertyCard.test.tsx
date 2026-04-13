@@ -132,4 +132,22 @@ describe("PropertyCard", () => {
     expect(screen.getByText("₦88,000,000")).toBeInTheDocument();
     expect(screen.getAllByText("asking")).toHaveLength(1);
   });
+
+  it("shows per night for shortlet rent listings", () => {
+    render(
+      <PropertyCard
+        property={{
+          ...property,
+          id: "shortlet-1",
+          property_type: "shortlet",
+          rent_amount: 70000,
+        } as never}
+        images={[]}
+      />,
+    );
+
+    expect(screen.getByText("₦70,000")).toBeInTheDocument();
+    expect(screen.getByText("per night")).toBeInTheDocument();
+    expect(screen.queryByText("per year")).toBeNull();
+  });
 });

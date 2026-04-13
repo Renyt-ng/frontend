@@ -31,6 +31,7 @@ import {
 import {
   useConfirmPropertyAvailability,
   useDeleteProperty,
+  useExtendShortletOccupancy,
   useMyAgent,
   useMyPropertyInsights,
   useMyProperties,
@@ -39,6 +40,7 @@ import {
 } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
 import {
+  formatCurrency,
   formatPropertyPriceLabel,
   formatPropertyType,
   formatListingPurpose,
@@ -49,7 +51,7 @@ import {
   getPropertyFreshnessMeta,
   summarizeListingHealth,
 } from "@/lib/utils";
-import type { Property } from "@/types";
+import type { CloseDurationUnit, Property } from "@/types";
 
 const DISMISSED_PUBLISH_SUCCESS_STORAGE_KEY = "renyt:dismissed-publish-success";
 
@@ -127,6 +129,64 @@ function getOutcomeActionStyles(status: Extract<Property["status"], "rented_reny
   };
 }
 
+function isShortletProperty(property?: Pick<Property, "property_type"> | null) {
+  return property?.property_type === "shortlet";
+}
+
+function requiresDurationFields(
+  property?: Pick<Property, "listing_purpose"> | null,
+  status?: Property["status"] | null,
+) {
+  return Boolean(
+    property &&
+      property.listing_purpose === "rent" &&
+      (status === "rented_renyt" || status === "rented_off_platform"),
+  );
+}
+
+function buildCloseoutPreview(
+  property?: Pick<
+    Property,
+    | "property_type"
+    | "rent_amount"
+    | "agency_fee"
+    | "listing_authority_mode"
+    | "declared_commission_share_percent"
+  > | null,
+  durationValue?: number | null,
+  durationUnit?: CloseDurationUnit | null,
+) {
+  if (!property || !durationValue || !durationUnit) {
+    return null;
+  }
+
+  const rentAmount = Number(property.rent_amount ?? 0);
+  const agencyFee = Number(property.agency_fee ?? 0);
+  if (rentAmount <= 0 || agencyFee <= 0) {
+    return null;
+  }
+
+  const contractValue =
+    durationUnit === "days"
+      ? rentAmount * durationValue
+      : durationUnit === "months"
+        ? (rentAmount / 12) * durationValue
+        : rentAmount * durationValue;
+  const publicBasis = contractValue * (agencyFee / rentAmount);
+  const eligibleBasis =
+    property.listing_authority_mode === "authorized_listing_agent"
+      ? publicBasis * Number(property.declared_commission_share_percent ?? 0) / 100
+      : publicBasis;
+  const commissionPool = eligibleBasis * 0.1;
+
+  return {
+    contractValue,
+    eligibleBasis,
+    referrerShare: commissionPool / 2,
+    renytShare: commissionPool / 2,
+  };
+}
+
 export default function MyPropertiesPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -147,6 +207,7 @@ export default function MyPropertiesPage() {
     },
   });
   const confirmAvailability = useConfirmPropertyAvailability();
+  const extendShortletOccupancy = useExtendShortletOccupancy();
   const deleteProperty = useDeleteProperty();
   const updateProperty = useUpdateProperty();
   const insightsQuery = useMyPropertyInsights();
@@ -162,6 +223,11 @@ export default function MyPropertiesPage() {
   const [pendingDraftDeleteId, setPendingDraftDeleteId] = useState<string | null>(null);
   const [activeInsightPropertyId, setActiveInsightPropertyId] = useState<string | null>(null);
   const [matchedUserId, setMatchedUserId] = useState("");
+  const [closeStartDate, setCloseStartDate] = useState("");
+  const [closeDurationValue, setCloseDurationValue] = useState("");
+  const [closeDurationUnit, setCloseDurationUnit] = useState<CloseDurationUnit>("years");
+  const [pendingShortletExtensionId, setPendingShortletExtensionId] = useState<string | null>(null);
+  const [additionalStayDays, setAdditionalStayDays] = useState("");
   const [resolutionFeedback, setResolutionFeedback] = useState<Record<string, string>>({});
 
   const properties = propertiesQuery.data?.data ?? [];
@@ -233,6 +299,13 @@ export default function MyPropertiesPage() {
         ? properties.find((property) => property.id === pendingDraftDeleteId) ?? null
         : null,
     [pendingDraftDeleteId, properties],
+  );
+  const pendingShortletExtensionProperty = useMemo(
+    () =>
+      pendingShortletExtensionId
+        ? properties.find((property) => property.id === pendingShortletExtensionId) ?? null
+        : null,
+    [pendingShortletExtensionId, properties],
   );
   const activeInsightProperty = useMemo(
     () =>
@@ -359,6 +432,20 @@ export default function MyPropertiesPage() {
     setMatchedUserId("");
   }, [pendingOutcome?.propertyId, pendingOutcome?.status]);
 
+  useEffect(() => {
+    const property = pendingOutcomeProperty ?? pendingConfirmationProperty;
+    const status = pendingOutcome?.status ?? pendingConfirmation?.status ?? null;
+
+    if (requiresDurationFields(property, status)) {
+      setCloseDurationUnit(isShortletProperty(property) ? "days" : "years");
+      return;
+    }
+
+    setCloseStartDate("");
+    setCloseDurationValue("");
+    setCloseDurationUnit("years");
+  }, [pendingConfirmation?.status, pendingConfirmationProperty, pendingOutcome?.status, pendingOutcomeProperty]);
+
   const groupMeta: Array<{
     key: keyof typeof groupedProperties;
     title: string;
@@ -467,29 +554,47 @@ export default function MyPropertiesPage() {
     }
 
     const { propertyId, status } = pendingConfirmation;
+    const pendingProperty = properties.find((property) => property.id === propertyId) ?? null;
     setActiveAction(`${status}:${propertyId}`);
 
     try {
-      const result = await updateProperty.mutateAsync({ id: propertyId, data: { status } });
+      const result = await updateProperty.mutateAsync({
+        id: propertyId,
+        data: {
+          status,
+          ...(requiresDurationFields(pendingProperty, status)
+            ? {
+                close_start_date: closeStartDate,
+                close_duration_unit: closeDurationUnit,
+                close_duration_value: Number(closeDurationValue),
+              }
+            : {}),
+        },
+      });
       const feedback = formatResolutionSummary(result.data?.referral_resolution_summary);
       if (feedback) {
         setResolutionFeedback((current) => ({ ...current, [propertyId]: feedback }));
       }
 
       setPendingConfirmation(null);
+      setCloseStartDate("");
+      setCloseDurationValue("");
     } finally {
       setActiveAction(null);
     }
   }
 
-  function getConfirmationCopy(status: Property["status"]) {
+  function getConfirmationCopy(status: Property["status"], property?: Property | null) {
+    const shortlet = isShortletProperty(property);
     switch (status) {
       case "unavailable":
         return {
-          title: "Mark listing unavailable",
+          title: shortlet ? "Pause shortlet availability" : "Mark listing unavailable",
           description:
-            "This removes the listing from direct-contact actions and marks open referral earnings on the property ineligible unless they are already terminal.",
-          confirmLabel: "Mark unavailable",
+            shortlet
+              ? "Use this when the shortlet should stay visible but not accept new contact. Active stay messaging will continue until the host reconfirms availability."
+              : "This removes the listing from direct-contact actions and marks open referral earnings on the property ineligible unless they are already terminal.",
+          confirmLabel: shortlet ? "Pause availability" : "Mark unavailable",
         };
       case "archived":
         return {
@@ -500,10 +605,12 @@ export default function MyPropertiesPage() {
         };
       case "rented_off_platform":
         return {
-          title: "Mark rented off-platform",
+          title: shortlet ? "Mark shortlet booked off-platform" : "Mark rented off-platform",
           description:
-            "Use this only when the property was rented outside Renyt. Open referral earnings on the property will become ineligible unless they are already terminal.",
-          confirmLabel: "Confirm off-platform rent",
+            shortlet
+              ? "Record the stay duration so Renyt can review the expected commission while the shortlet stays visible in search as booked."
+              : "Use this only when the property was rented outside Renyt. Open referral earnings on the property will become ineligible unless they are already terminal.",
+          confirmLabel: shortlet ? "Confirm booked stay" : "Confirm off-platform rent",
         };
       case "sold_off_platform":
         return {
@@ -533,6 +640,13 @@ export default function MyPropertiesPage() {
         data: {
           status: pendingOutcome.status,
           matched_user_id: matchedUserId,
+          ...(requiresDurationFields(pendingOutcomeProperty, pendingOutcome.status)
+            ? {
+                close_start_date: closeStartDate,
+                close_duration_unit: closeDurationUnit,
+                close_duration_value: Number(closeDurationValue),
+              }
+            : {}),
         },
       });
 
@@ -546,6 +660,28 @@ export default function MyPropertiesPage() {
 
       setPendingOutcome(null);
       setMatchedUserId("");
+      setCloseStartDate("");
+      setCloseDurationValue("");
+    } finally {
+      setActiveAction(null);
+    }
+  }
+
+  async function handleExtendShortletStay() {
+    if (!pendingShortletExtensionId) {
+      return;
+    }
+
+    setActiveAction(`extend:${pendingShortletExtensionId}`);
+    try {
+      await extendShortletOccupancy.mutateAsync({
+        id: pendingShortletExtensionId,
+        data: {
+          additional_days: Number(additionalStayDays),
+        },
+      });
+      setPendingShortletExtensionId(null);
+      setAdditionalStayDays("");
     } finally {
       setActiveAction(null);
     }
@@ -835,6 +971,14 @@ export default function MyPropertiesPage() {
                                   {getPropertyFinalOutcomeLabel(p.status)}
                                 </p>
                               ) : null}
+                              {p.discovery_bookable === false && p.discovery_availability_label ? (
+                                <p className="mt-2 text-xs font-medium text-amber-700">
+                                  {p.discovery_availability_label}
+                                  {p.discovery_available_from
+                                    ? ` · Available from ${new Date(p.discovery_available_from).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                                    : ""}
+                                </p>
+                              ) : null}
                               <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-secondary)]">
                                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1">
                                   <Eye className="h-3.5 w-3.5" />
@@ -961,6 +1105,31 @@ export default function MyPropertiesPage() {
                                   </div>
                                 </div>
                               ) : null}
+                              {p.status === "unavailable" ? (
+                                <div className="flex w-full flex-wrap justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="success"
+                                    className="justify-start border border-emerald-700 shadow-sm shadow-emerald-100/80"
+                                    onClick={() => handleConfirmAvailability(p.id)}
+                                    isLoading={activeAction === `confirm:${p.id}`}
+                                  >
+                                    <RefreshCw className="h-4 w-4" />
+                                    Mark available
+                                  </Button>
+                                  {p.property_type === "shortlet" && p.active_shortlet_occupancy_hold ? (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="justify-start border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-50"
+                                      onClick={() => setPendingShortletExtensionId(p.id)}
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                      Extend stay
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              ) : null}
                               <div className="flex items-center gap-2 lg:justify-end">
                                 <Link href={p.status === "active" ? `/properties/${p.id}` : `/dashboard/properties/${p.id}/edit`}>
                                   <Button variant="ghost" size="icon">
@@ -1001,7 +1170,11 @@ export default function MyPropertiesPage() {
       <Modal
         isOpen={Boolean(pendingOutcome)}
         onClose={() => setPendingOutcome(null)}
-        title={pendingOutcome?.status === "sold_renyt" ? "Mark sold via Renyt" : "Mark rented via Renyt"}
+        title={pendingOutcome?.status === "sold_renyt"
+          ? "Mark sold via Renyt"
+          : pendingOutcomeProperty?.property_type === "shortlet"
+            ? "Mark shortlet booked via Renyt"
+            : "Mark rented via Renyt"}
         ariaLabel="Confirm Renyt close outcome"
         dialogClassName="overflow-hidden"
         className="flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col sm:max-h-[85vh]"
@@ -1015,6 +1188,69 @@ export default function MyPropertiesPage() {
             <div className="mt-4 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
               <p className="font-medium text-[var(--color-text-primary)]">{pendingOutcomeProperty.title}</p>
               <p className="mt-1">{pendingOutcomeProperty.area}</p>
+            </div>
+          ) : null}
+
+          {requiresDurationFields(pendingOutcomeProperty, pendingOutcome?.status ?? null) ? (
+            <div className="mt-4 space-y-3 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-4 text-sm text-[var(--color-text-secondary)]">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Start date</span>
+                  <input
+                    type="date"
+                    value={closeStartDate}
+                    onChange={(event) => setCloseStartDate(event.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  />
+                </label>
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Duration</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={closeDurationValue}
+                    onChange={(event) => setCloseDurationValue(event.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  />
+                </label>
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Unit</span>
+                  <select
+                    value={closeDurationUnit}
+                    onChange={(event) => setCloseDurationUnit(event.target.value as CloseDurationUnit)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  >
+                    {pendingOutcomeProperty?.property_type === "shortlet" ? (
+                      <option value="days">Days</option>
+                    ) : (
+                      <>
+                        <option value="years">Years</option>
+                        <option value="months">Months</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+              </div>
+              {(() => {
+                const preview = buildCloseoutPreview(
+                  pendingOutcomeProperty,
+                  Number(closeDurationValue || 0),
+                  closeDurationUnit,
+                );
+
+                if (!preview) {
+                  return null;
+                }
+
+                return (
+                  <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+                    <p className="font-medium text-[var(--color-text-primary)]">Expected review snapshot</p>
+                    <p className="mt-1">Contract value: {formatCurrency(preview.contractValue)}</p>
+                    <p>Eligible basis: {formatCurrency(preview.eligibleBasis)}</p>
+                    <p>Referrer share: {formatCurrency(preview.referrerShare)} · Renyt share: {formatCurrency(preview.renytShare)}</p>
+                  </div>
+                );
+              })()}
             </div>
           ) : null}
 
@@ -1086,7 +1322,11 @@ export default function MyPropertiesPage() {
                 isLoading={Boolean(
                   pendingOutcome && activeAction === `${pendingOutcome.status}:${pendingOutcome.propertyId}`,
                 )}
-                disabled={!matchedUserId}
+                disabled={
+                  !matchedUserId ||
+                  (requiresDurationFields(pendingOutcomeProperty, pendingOutcome?.status ?? null) &&
+                    (!closeStartDate || !closeDurationValue))
+                }
               >
                 Confirm outcome
               </Button>
@@ -1098,12 +1338,12 @@ export default function MyPropertiesPage() {
       <Modal
         isOpen={Boolean(pendingConfirmation)}
         onClose={() => setPendingConfirmation(null)}
-        title={pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status).title : "Confirm status change"}
+        title={pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status, pendingConfirmationProperty).title : "Confirm status change"}
         ariaLabel="Confirm property status change"
       >
         <div className="space-y-4">
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status).description : "Review this change before continuing."}
+            {pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status, pendingConfirmationProperty).description : "Review this change before continuing."}
           </p>
 
           {pendingConfirmationProperty ? (
@@ -1117,6 +1357,49 @@ export default function MyPropertiesPage() {
             Confirmed and paid referral earnings remain unchanged. This confirmation only affects open referral items tied to this property.
           </div>
 
+          {requiresDurationFields(pendingConfirmationProperty, pendingConfirmation?.status ?? null) ? (
+            <div className="space-y-3 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-4 text-sm text-[var(--color-text-secondary)]">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Start date</span>
+                  <input
+                    type="date"
+                    value={closeStartDate}
+                    onChange={(event) => setCloseStartDate(event.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  />
+                </label>
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Duration</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={closeDurationValue}
+                    onChange={(event) => setCloseDurationValue(event.target.value)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  />
+                </label>
+                <label className="space-y-1 sm:col-span-1">
+                  <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Unit</span>
+                  <select
+                    value={closeDurationUnit}
+                    onChange={(event) => setCloseDurationUnit(event.target.value as CloseDurationUnit)}
+                    className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+                  >
+                    {pendingConfirmationProperty?.property_type === "shortlet" ? (
+                      <option value="days">Days</option>
+                    ) : (
+                      <>
+                        <option value="years">Years</option>
+                        <option value="months">Months</option>
+                      </>
+                    )}
+                  </select>
+                </label>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex justify-end gap-3">
             <Button variant="secondary" onClick={() => setPendingConfirmation(null)}>
               Cancel
@@ -1127,8 +1410,58 @@ export default function MyPropertiesPage() {
                 pendingConfirmation &&
                 activeAction === `${pendingConfirmation.status}:${pendingConfirmation.propertyId}`,
               )}
+              disabled={
+                requiresDurationFields(pendingConfirmationProperty, pendingConfirmation?.status ?? null) &&
+                (!closeStartDate || !closeDurationValue)
+              }
             >
-              {pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status).confirmLabel : "Confirm"}
+              {pendingConfirmation ? getConfirmationCopy(pendingConfirmation.status, pendingConfirmationProperty).confirmLabel : "Confirm"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(pendingShortletExtensionId)}
+        onClose={() => setPendingShortletExtensionId(null)}
+        title="Extend shortlet stay"
+        ariaLabel="Extend shortlet occupancy"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Add the extra number of days for this current stay. The booked-until date and expected commission review snapshot will update.
+          </p>
+
+          {pendingShortletExtensionProperty ? (
+            <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+              <p className="font-medium text-[var(--color-text-primary)]">{pendingShortletExtensionProperty.title}</p>
+              <p className="mt-1">{pendingShortletExtensionProperty.discovery_availability_label ?? pendingShortletExtensionProperty.area}</p>
+            </div>
+          ) : null}
+
+          <label className="block space-y-1">
+            <span className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--dashboard-text-secondary)]">Additional days</span>
+            <input
+              type="number"
+              min={1}
+              value={additionalStayDays}
+              onChange={(event) => setAdditionalStayDays(event.target.value)}
+              className="w-full rounded-xl border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--color-text-primary)]"
+            />
+          </label>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setPendingShortletExtensionId(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleExtendShortletStay}
+              isLoading={Boolean(
+                pendingShortletExtensionId && activeAction === `extend:${pendingShortletExtensionId}`,
+              )}
+              disabled={!additionalStayDays || Number(additionalStayDays) <= 0}
+            >
+              Extend stay
             </Button>
           </div>
         </div>

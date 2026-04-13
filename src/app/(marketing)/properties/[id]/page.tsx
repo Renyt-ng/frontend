@@ -65,6 +65,7 @@ export async function generateMetadata({
     const previewImageUrl = resolveSharePreviewImageUrl(previewImage);
     const price = formatPropertyPriceLabel({
       listingPurpose: property.listing_purpose,
+      propertyType: property.property_type,
       rentAmount: property.rent_amount,
       askingPrice: property.asking_price,
       isPriceNegotiable: property.is_price_negotiable,
@@ -297,11 +298,15 @@ export default async function PropertyDetailPage({
                   {freshnessLabel}
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-[var(--color-text-secondary)]">
-                  {property.freshness_state === "fresh"
-                    ? "This listing was recently reconfirmed by the agent and is still open for direct contact."
-                    : property.freshness_state === "confirmation_due"
-                      ? "This listing is temporarily being reconfirmed. Contact response may be slower until the agent refreshes availability."
-                      : "This listing is no longer active for new contact."}
+                  {property.discovery_bookable === false
+                    ? property.discovery_available_from
+                      ? `This shortlet is currently booked. It remains visible for planning and should be available again from ${new Date(property.discovery_available_from).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}, once the agent reconfirms it.`
+                      : "This shortlet is currently awaiting host confirmation before it can accept new contact."
+                    : property.freshness_state === "fresh"
+                      ? "This listing was recently reconfirmed by the agent and is still open for direct contact."
+                      : property.freshness_state === "confirmation_due"
+                        ? "This listing is temporarily being reconfirmed. Contact response may be slower until the agent refreshes availability."
+                        : "This listing is no longer active for new contact."}
                 </p>
               </div>
             </div>

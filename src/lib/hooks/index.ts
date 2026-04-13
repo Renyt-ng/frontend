@@ -24,6 +24,7 @@ export {
   useDeleteProperty,
   usePublishProperty,
   useConfirmPropertyAvailability,
+  useExtendShortletOccupancy,
   useUploadPropertyImage,
   useReorderPropertyImages,
   useSetPropertyCoverImage,

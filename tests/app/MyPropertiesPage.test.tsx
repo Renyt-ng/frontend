@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   deletePropertyMutateAsync: vi.fn(),
   hooks: {
     useDeleteProperty: vi.fn(),
+    useExtendShortletOccupancy: vi.fn(),
     useMyAgent: vi.fn(),
     useMyPropertyInsights: vi.fn(),
     useMyProperties: vi.fn(),
@@ -182,6 +183,10 @@ describe("MyPropertiesPage", () => {
       mutateAsync: vi.fn(),
       isPending: false,
     });
+    state.hooks.useExtendShortletOccupancy.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
     state.hooks.useUpdateProperty.mockReturnValue({
       mutateAsync: state.updatePropertyMutateAsync.mockResolvedValue({
         data: {
@@ -227,12 +232,24 @@ describe("MyPropertiesPage", () => {
   });
 
   it("requires matched-account selection before confirming a Renyt close", async () => {
+    const rentalProperty = {
+      ...baseProperty,
+      agency_fee: 7200000,
+    };
+    state.hooks.useMyProperties.mockReturnValue({
+      data: { data: [rentalProperty] },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
     render(<MyPropertiesPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /Mark rented via Renyt/i }));
 
     expect(screen.getByText(/Select the matched buyer or renter/i)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Matched User/i));
+    fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: "2026-04-15" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: /Confirm outcome/i }));
 
     await waitFor(() => {
@@ -241,12 +258,25 @@ describe("MyPropertiesPage", () => {
         data: {
           status: "rented_renyt",
           matched_user_id: "user-2",
+          close_start_date: "2026-04-15",
+          close_duration_unit: "years",
+          close_duration_value: 2,
         },
       });
     });
   }, 15000);
 
   it("requires confirmation before applying an off-platform outcome", async () => {
+    const rentalProperty = {
+      ...baseProperty,
+      agency_fee: 7200000,
+    };
+    state.hooks.useMyProperties.mockReturnValue({
+      data: { data: [rentalProperty] },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
     render(<MyPropertiesPage />);
 
     await act(async () => {
@@ -255,6 +285,8 @@ describe("MyPropertiesPage", () => {
 
     expect(screen.getByText(/Use this only when the property was rented outside Renyt/i)).toBeInTheDocument();
     expect(state.updatePropertyMutateAsync).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: "2026-04-15" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "2" } });
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: /Confirm off-platform rent/i }));
@@ -265,6 +297,58 @@ describe("MyPropertiesPage", () => {
         id: "property-1",
         data: {
           status: "rented_off_platform",
+          close_start_date: "2026-04-15",
+          close_duration_unit: "years",
+          close_duration_value: 2,
+        },
+      });
+    });
+  }, 15000);
+
+  it("lets agents extend an occupied shortlet stay", async () => {
+    const extendMutateAsync = vi.fn().mockResolvedValue({ success: true });
+    state.hooks.useExtendShortletOccupancy.mockReturnValue({
+      mutateAsync: extendMutateAsync,
+      isPending: false,
+    });
+    state.hooks.useMyProperties.mockReturnValue({
+      data: {
+        data: [
+          {
+            ...baseProperty,
+            property_type: "shortlet",
+            status: "unavailable",
+            discovery_bookable: false,
+            discovery_availability_label: "Booked until 18 Apr",
+            discovery_available_from: "2026-04-18T00:00:00.000Z",
+            active_shortlet_occupancy_hold: {
+              start_date: "2026-04-13T00:00:00.000Z",
+              end_date: "2026-04-18T00:00:00.000Z",
+              duration_days: 5,
+              source_status: "rented_off_platform",
+              last_reminder_sent_at: null,
+            },
+          },
+        ],
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MyPropertiesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Extend stay/i }));
+    const dialog = await screen.findByRole("dialog", { name: /Extend shortlet occupancy/i });
+    fireEvent.change(within(dialog).getByLabelText(/Additional days/i), {
+      target: { value: "3" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Extend stay$/i }));
+
+    await waitFor(() => {
+      expect(extendMutateAsync).toHaveBeenCalledWith({
+        id: "property-1",
+        data: {
+          additional_days: 3,
         },
       });
     });
@@ -352,5 +436,5 @@ describe("MyPropertiesPage", () => {
     await waitFor(() => {
       expect(state.deletePropertyMutateAsync).toHaveBeenCalledWith("draft-1");
     });
-  });
+  }, 15000);
 });

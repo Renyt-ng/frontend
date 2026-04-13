@@ -13,6 +13,7 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
   const rentAmount = property.rent_amount ?? 0;
   const askingPrice = property.asking_price ?? 0;
   const isSaleListing = property.listing_purpose === "sale";
+  const isShortlet = property.listing_purpose === "rent" && property.property_type === "shortlet";
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   if (isSaleListing) {
@@ -38,7 +39,7 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
         amount: fee.calculated_amount,
         meta:
           fee.value_type === "percentage" && fee.percentage != null
-            ? `${fee.percentage}% of annual rent`
+            ? `${fee.percentage}% of ${isShortlet ? "nightly rate" : "annual rent"}`
             : null,
       }))
     : [
@@ -75,7 +76,9 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
             {formatCurrency(total)}
           </p>
           <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-            Tap the hint icon to see how rent and fees make up the move-in total.
+            {isShortlet
+              ? "Tap the hint icon to see how the nightly rate and fees make up the booking total."
+              : "Tap the hint icon to see how rent and fees make up the move-in total."}
           </p>
         </div>
       </div>
@@ -84,20 +87,22 @@ export function PricingBreakdown({ property }: PricingBreakdownProps) {
         <div className="mt-5 space-y-3 border-t border-[var(--color-border)] pt-5">
           <div className="flex items-start justify-between gap-4">
             <span className="min-w-0 text-sm text-[var(--color-text-secondary)]">
-              Annual Rent
+              {isShortlet ? "Nightly Rate" : "Annual Rent"}
             </span>
             <span className="text-right text-base font-semibold text-[var(--color-text-primary)]">
               {formatCurrency(baseAmount)}
             </span>
           </div>
-          <div className="flex items-start justify-between gap-4">
-            <span className="min-w-0 text-sm text-[var(--color-text-secondary)]">
-              Monthly Equivalent
-            </span>
-            <span className="text-right text-sm text-[var(--color-text-primary)]">
-              {formatCurrency(monthly)}
-            </span>
-          </div>
+          {isShortlet ? null : (
+            <div className="flex items-start justify-between gap-4">
+              <span className="min-w-0 text-sm text-[var(--color-text-secondary)]">
+                Monthly Equivalent
+              </span>
+              <span className="text-right text-sm text-[var(--color-text-primary)]">
+                {formatCurrency(monthly)}
+              </span>
+            </div>
+          )}
           {feeItems.map((item) => (
             <div key={item.label} className="flex items-start justify-between gap-4">
               <div className="min-w-0">

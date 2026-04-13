@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const get = vi.fn();
+const post = vi.fn();
 
 vi.mock("@/lib/api/client", () => ({
   default: {
     get,
+    post,
   },
 }));
 
 describe("properties api search", () => {
   beforeEach(() => {
     get.mockReset();
+    post.mockReset();
   });
 
   it("maps verified search params for the backend", async () => {
@@ -75,5 +78,36 @@ describe("properties api search", () => {
     });
     expect(result.pagination).toEqual({ page: 1, limit: 24, total: 88 });
     expect(result.data).toHaveLength(1);
+  });
+
+  it("posts shortlet occupancy extensions to the dedicated endpoint", async () => {
+    post.mockResolvedValue({
+      data: {
+        success: true,
+        data: {
+          id: "property-1",
+          title: "Ikoyi Shortlet",
+          area: "Ikoyi",
+          property_type: "shortlet",
+          listing_purpose: "rent",
+          bedrooms: 1,
+          bathrooms: 1,
+          rent_amount: 120000,
+          asking_price: null,
+          status: "unavailable",
+          discovery_bookable: false,
+          property_images: [],
+        },
+      },
+    });
+
+    const { extendShortletOccupancy } = await import("@/lib/api/properties");
+    const result = await extendShortletOccupancy("property-1", { additional_days: 3 });
+
+    expect(post).toHaveBeenCalledWith(
+      "/properties/property-1/shortlet-occupancy/extend",
+      { additional_days: 3 },
+    );
+    expect(result.data.id).toBe("property-1");
   });
 });

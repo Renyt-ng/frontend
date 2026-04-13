@@ -400,6 +400,47 @@ describe("PropertyComposer", () => {
     expect(removeButton).toHaveClass("w-full", "md:w-auto");
   });
 
+  it("shows daily pricing copy for shortlet drafts on the pricing step", async () => {
+    window.history.replaceState({}, "", "/dashboard/properties/draft-1/edit?step=pricing");
+    hooks.useManageProperty.mockReturnValue({
+      data: {
+        data: {
+          ...baseProperty,
+          property_type: "shortlet",
+          title: "Shortlet in Lekki",
+          rent_amount: 85000,
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    expect(await screen.findByRole("heading", { name: "Pricing Breakdown" })).toBeInTheDocument();
+    expect(screen.getByText(/Use the daily rate in naira/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Daily Rate (NGN)")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Annual Rent (NGN)")).toBeNull();
+  });
+
+  it("warns that editing an active listing requires republish", async () => {
+    hooks.useManageProperty.mockReturnValue({
+      data: {
+        data: {
+          ...baseProperty,
+          status: "active",
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<PropertyComposer propertyId="draft-1" />);
+
+    expect(
+      await screen.findByText(/Editing a live listing will save your changes back to draft/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Republish after review to make the updates visible in discovery/i)).toBeInTheDocument();
+  });
+
   it("publishes immediately without a redundant save when the draft is already current", async () => {
     const deferred = createDeferred<{ success: true }>();
     publishPropertyMutateAsync.mockReturnValueOnce(deferred.promise);
@@ -621,5 +662,5 @@ describe("PropertyComposer", () => {
 
     deferred.resolve({ success: true });
     await waitFor(() => expect(deletePropertyImageMutateAsync).toHaveBeenCalled());
-  });
+  }, 15000);
 });

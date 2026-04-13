@@ -351,7 +351,7 @@ export default function VerificationsPage() {
                       <p className="mt-1 text-sm font-semibold text-[var(--color-deep-slate-blue)]">
                         {property.listing_purpose === "sale"
                           ? `${formatCurrency(property.asking_price ?? 0)} asking`
-                          : `${formatCurrency(property.rent_amount ?? 0)}/year`}
+                          : `${formatCurrency(property.rent_amount ?? 0)}/${property.property_type === "shortlet" ? "night" : "year"}`}
                       </p>
                     </div>
                     <Badge

@@ -510,11 +510,12 @@ export function PropertyComposer({
     () =>
       buildDraftPricingSummary(
         values.listing_purpose,
+        values.property_type,
         values.rent_amount ?? 0,
         values.asking_price ?? 0,
         values.fees,
       ),
-    [values.asking_price, values.fees, values.listing_purpose, values.rent_amount],
+    [values.asking_price, values.fees, values.listing_purpose, values.property_type, values.rent_amount],
   );
   const allowedFeeTypes = useMemo(
     () => getAllowedFeeTypes(values.listing_purpose, feeTypesQuery.data?.data ?? []),
@@ -649,13 +650,17 @@ export function PropertyComposer({
 
   function validatePricing() {
     const errors: Record<string, string> = {};
+    const isShortletPricing =
+      values.listing_purpose === "rent" && values.property_type === "shortlet";
 
     if (values.listing_purpose === "sale") {
       if ((values.asking_price ?? 0) <= 0) {
         errors.asking_price = "Asking price must be greater than 0";
       }
     } else if ((values.rent_amount ?? 0) <= 0) {
-      errors.rent_amount = "Annual rent must be greater than 0";
+      errors.rent_amount = isShortletPricing
+        ? "Daily rate must be greater than 0"
+        : "Annual rent must be greater than 0";
     }
 
     if (values.listing_purpose === "rent") {
@@ -1151,6 +1156,12 @@ export function PropertyComposer({
         </div>
       )}
 
+      {draftId && draftStatus === "active" ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Editing a live listing will save your changes back to draft. Republish after review to make the updates visible in discovery.
+        </div>
+      ) : null}
+
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
         {stepOrder.map((item, index) => {
           const isActive = item === step;
@@ -1301,7 +1312,9 @@ export function PropertyComposer({
                   description={
                     values.listing_purpose === "sale"
                       ? "Set the asking price in naira. Agency fee is tracked internally for referral calculations and is not added to the buyer-facing price."
-                      : "Use annual rent in naira, then add structured fee lines so tenants see the full move-in cost upfront."
+                      : values.property_type === "shortlet"
+                        ? "Use the daily rate in naira, then add structured fee lines so guests can understand the full booking cost upfront."
+                        : "Use annual rent in naira, then add structured fee lines so tenants see the full move-in cost upfront."
                   }
                 />
 
@@ -1341,7 +1354,7 @@ export function PropertyComposer({
                 ) : (
                   <NumericInput
                     id="rent_amount"
-                    label="Annual Rent (NGN)"
+                    label={values.property_type === "shortlet" ? "Daily Rate (NGN)" : "Annual Rent (NGN)"}
                     value={values.rent_amount}
                     onValueChange={(value) => updateField("rent_amount", value)}
                     format="currency"
@@ -1435,7 +1448,7 @@ export function PropertyComposer({
                         <p className="mt-3 text-sm text-[var(--color-text-secondary)]">
                           {values.listing_purpose === "sale"
                             ? "Agency fee is stored for internal referral and commission workflows only."
-                            : `This fee adds ${formatCurrency(buildDraftPricingSummary(values.listing_purpose, values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the move-in total.`}
+                            : `This fee adds ${formatCurrency(buildDraftPricingSummary(values.listing_purpose, values.property_type, values.rent_amount ?? 0, values.asking_price ?? 0, [fee]).fees_total)} to the move-in total.`}
                         </p>
                       </div>
                     );
@@ -1921,6 +1934,7 @@ export function PropertyComposer({
                     value={
                       formatPropertyPriceLabel({
                         listingPurpose: values.listing_purpose,
+                        propertyType: values.property_type,
                         rentAmount: values.rent_amount,
                         askingPrice: values.asking_price,
                         isPriceNegotiable: values.is_price_negotiable,
@@ -1938,8 +1952,13 @@ export function PropertyComposer({
                 </>
               ) : (
                 <>
-                  <SummaryRow label="Annual rent" value={formatCurrency(pricingSummary.annual_rent)} />
-                  <SummaryRow label="Monthly equivalent" value={formatCurrency(pricingSummary.monthly_equivalent)} />
+                  <SummaryRow
+                    label={values.property_type === "shortlet" ? "Daily rate" : "Annual rent"}
+                    value={formatCurrency(pricingSummary.annual_rent)}
+                  />
+                  {values.property_type === "shortlet" ? null : (
+                    <SummaryRow label="Monthly equivalent" value={formatCurrency(pricingSummary.monthly_equivalent)} />
+                  )}
                   <SummaryRow label="Fees total" value={formatCurrency(pricingSummary.fees_total)} />
                   <SummaryRow
                     label="Agency fee"

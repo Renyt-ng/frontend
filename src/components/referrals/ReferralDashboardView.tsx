@@ -415,6 +415,22 @@ export function ReferralDashboardView() {
         })}
       </div>
 
+      <Card>
+        <CardContent className="space-y-2 p-5">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+            How rent referral earnings are reviewed
+          </h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Potential earnings for rent listings are examples, not final payouts.
+            For apartments, final earnings can increase when the confirmed lease duration is longer.
+            For shortlets, final earnings can increase when the confirmed stay runs for more nights.
+          </p>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Renyt reviews the final payout after the booking or lease duration is recorded.
+          </p>
+        </CardContent>
+      </Card>
+
       <ProgressRail summary={dashboard.summary} />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

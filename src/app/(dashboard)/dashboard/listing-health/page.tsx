@@ -106,6 +106,7 @@ export default function AdminListingHealthPage() {
                       {properties.map((property) => {
                         const price = formatPropertyPriceLabel({
                           listingPurpose: property.listing_purpose,
+                          propertyType: property.property_type,
                           rentAmount: property.rent_amount,
                           askingPrice: property.asking_price,
                           isPriceNegotiable: property.is_price_negotiable,

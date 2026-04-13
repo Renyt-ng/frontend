@@ -53,6 +53,9 @@ export function PropertyCard({
   const agentName = property.agent_contact?.full_name?.trim() || "Verified Agent";
   const detailHref = `/properties/${property.id}`;
   const freshnessLabel = getPropertyFreshnessLabel(property);
+  const availabilityMeta = property.discovery_bookable === false
+    ? property.discovery_available_from
+    : null;
 
   useEffect(() => {
     return () => {
@@ -198,7 +201,7 @@ export function PropertyCard({
             <span className="rounded-md bg-[var(--color-deep-slate-blue)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
               {formatListingPurpose(property.listing_purpose)}
             </span>
-            {property.status === "active" && (
+            {(property.status === "active" || property.discovery_bookable === false) && (
               <Badge
                 variant={getPropertyFreshnessBadgeVariant(property)}
                 size="sm"
@@ -270,6 +273,7 @@ export function PropertyCard({
               {(() => {
                 const price = formatPropertyPriceLabel({
                   listingPurpose: property.listing_purpose,
+                  propertyType: property.property_type,
                   rentAmount: property.rent_amount,
                   askingPrice: property.asking_price,
                   isPriceNegotiable: property.is_price_negotiable,
@@ -293,6 +297,14 @@ export function PropertyCard({
               {freshnessLabel}
             </p>
           </div>
+          {availabilityMeta ? (
+            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+              Available from {new Date(availabilityMeta).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+              })}
+            </p>
+          ) : null}
 
         </Link>
 

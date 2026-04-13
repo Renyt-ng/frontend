@@ -252,6 +252,21 @@ export function useConfirmPropertyAvailability() {
   });
 }
 
+export function useExtendShortletOccupancy() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { additional_days: number } }) =>
+      propertiesApi.extendShortletOccupancy(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: propertyKeys.manage(variables.id) });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.mine() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: propertyKeys.detail(variables.id) });
+    },
+  });
+}
+
 export function useUploadPropertyImage() {
   const queryClient = useQueryClient();
 

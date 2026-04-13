@@ -45,6 +45,53 @@ function commissionSummary(preview: ReferralCommissionPreview) {
   };
 }
 
+function getDurationEstimateContent(
+  propertyType: string,
+  preview: ReferralCommissionPreview,
+) {
+  if (preview.commission_type !== "percentage") {
+    return null;
+  }
+
+  if (propertyType === "shortlet") {
+    return {
+      heading: "Estimated referral share",
+      helper: `Example estimate for 1 night: ${formatCurrency(preview.estimated_amount)}`,
+      explanation:
+        "Final referral earnings can increase with booked nights. If the guest extends their stay, your reviewed payout can be higher than the 1-night example shown here.",
+      reviewNote:
+        "Final payout is reviewed after the confirmed stay length is recorded.",
+      scenarios: [
+        { label: "1 night example", amount: preview.estimated_amount },
+        { label: "3 nights example", amount: preview.estimated_amount * 3 },
+        { label: "7 nights example", amount: preview.estimated_amount * 7 },
+      ],
+    };
+  }
+
+  return {
+    heading: "Estimated referral share",
+    helper: `Example estimate for 1 year: ${formatCurrency(preview.estimated_amount)}`,
+    explanation:
+      "Final referral earnings can increase with lease duration. If the renter closes for multiple years, your reviewed payout can be higher than the 1-year example shown here.",
+    reviewNote:
+      "Final payout is reviewed after the confirmed lease duration is recorded.",
+    scenarios: [
+      { label: "1 year example", amount: preview.estimated_amount },
+      { label: "2 years example", amount: preview.estimated_amount * 2 },
+    ],
+  };
+}
+
+function buildReferralShareText(property: ReferralShareProperty) {
+  const durationNote =
+    property.property_type === "shortlet"
+      ? "Final referral earnings are reviewed against the confirmed stay length, so longer bookings can earn more than the initial nightly example."
+      : "For rent listings, final referral earnings are reviewed against the confirmed lease duration, so longer closes can earn more than the initial example.";
+
+  return `${property.title} in ${property.area} on Renyt. ${durationNote}`;
+}
+
 export function ReferralProgramModal({
   isOpen,
   onClose,
@@ -69,6 +116,10 @@ export function ReferralProgramModal({
       estimated_amount: 0,
     } as ReferralCommissionPreview);
   const summary = useMemo(() => commissionSummary(preview), [preview]);
+  const durationEstimateContent = useMemo(
+    () => getDurationEstimateContent(property.property_type, preview),
+    [property.property_type, preview],
+  );
   const previewState = previewQuery.data?.data ?? null;
   const shareBasisExplanation = useMemo(() => {
     if (
@@ -134,11 +185,11 @@ export function ReferralProgramModal({
       });
 
       const shareUrl = response.data.share_url;
-      const shareText = `${property.title} in ${property.area} on Renyt. View it here: ${shareUrl}`;
+      const shareText = `${buildReferralShareText(property)} View it here: ${shareUrl}`;
 
       if (channel === "copy_link") {
         await navigator.clipboard.writeText(shareUrl);
-        setFeedback("Referral link copied. Share it anywhere and track potential earnings in your dashboard.");
+        setFeedback("Referral link copied. Share it anywhere and track reviewed earnings as confirmed duration is recorded.");
         return;
       }
 
@@ -148,7 +199,7 @@ export function ReferralProgramModal({
           "_blank",
           "noopener,noreferrer",
         );
-        setFeedback("WhatsApp share ready. We have recorded this property as shared.");
+        setFeedback("WhatsApp share ready. We have recorded this property as shared, and reviewed earnings will update as confirmed duration is recorded.");
         return;
       }
 
@@ -158,7 +209,7 @@ export function ReferralProgramModal({
           text: shareText,
           url: shareUrl,
         });
-        setFeedback("Share recorded. Your dashboard will update as referrals convert.");
+        setFeedback("Share recorded. Your dashboard will update as referrals convert and confirmed duration is reviewed.");
         return;
       }
 
@@ -223,14 +274,30 @@ export function ReferralProgramModal({
               </p>
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                  Commission preview
+                  {durationEstimateContent?.heading ?? "Commission preview"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-[var(--color-text-primary)]">
                   {summary.title}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {summary.helper}
+                  {durationEstimateContent?.helper ?? summary.helper}
                 </p>
+                {durationEstimateContent ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-3 text-sm text-emerald-950">
+                    <p>{durationEstimateContent.explanation}</p>
+                    <div className="mt-3 space-y-2">
+                      {durationEstimateContent.scenarios.map((scenario) => (
+                        <div key={scenario.label} className="flex items-center justify-between gap-4 text-xs">
+                          <span className="text-emerald-900">{scenario.label}</span>
+                          <span className="font-semibold text-[var(--color-text-primary)]">
+                            {formatCurrency(scenario.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-emerald-900">{durationEstimateContent.reviewNote}</p>
+                  </div>
+                ) : null}
                 {previewState?.campaign_name ? (
                   <p className="mt-2 text-xs text-emerald-800">
                     Active campaign: {previewState.campaign_name}
@@ -326,14 +393,30 @@ export function ReferralProgramModal({
 
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">
-                  Potential earning
+                  {durationEstimateContent?.heading ?? "Potential earning"}
                 </p>
                 <p className="mt-1 text-xl font-semibold text-[var(--color-text-primary)]">
                   {summary.title}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {summary.helper}
+                  {durationEstimateContent?.helper ?? summary.helper}
                 </p>
+                {durationEstimateContent ? (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-white/70 px-3 py-3 text-sm text-emerald-950">
+                    <p>{durationEstimateContent.explanation}</p>
+                    <div className="mt-3 space-y-2">
+                      {durationEstimateContent.scenarios.map((scenario) => (
+                        <div key={scenario.label} className="flex items-center justify-between gap-4 text-xs">
+                          <span className="text-emerald-900">{scenario.label}</span>
+                          <span className="font-semibold text-[var(--color-text-primary)]">
+                            {formatCurrency(scenario.amount)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-xs text-emerald-900">{durationEstimateContent.reviewNote}</p>
+                  </div>
+                ) : null}
                 {previewState?.campaign_name ? (
                   <p className="mt-2 text-xs text-emerald-800">
                     Active campaign: {previewState.campaign_name}

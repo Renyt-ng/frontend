@@ -90,4 +90,49 @@ describe("PricingBreakdown", () => {
     expect(screen.getByText("Caution Deposit")).toBeInTheDocument();
     expect(screen.getByText("Agency Fee")).toBeInTheDocument();
   });
+
+  it("shows nightly rate language for shortlet listings", () => {
+    render(
+      <PricingBreakdown
+        property={{
+          id: "shortlet-1",
+          agent_id: "agent-1",
+          title: "Shortlet suite",
+          description: "Shortlet description",
+          area: "Lekki",
+          address_line: "12 Admiralty Way",
+          property_type: "shortlet",
+          listing_purpose: "rent",
+          bedrooms: 1,
+          bathrooms: 1,
+          rent_amount: 85000,
+          asking_price: null,
+          is_price_negotiable: false,
+          service_charge: 5000,
+          caution_deposit: 15000,
+          agency_fee: 10000,
+          application_mode: "message_agent",
+          is_verified: true,
+          verification_status: "approved",
+          status: "active",
+          availability_confirmed_at: null,
+          last_updated_at: "2026-04-06T08:00:00.000Z",
+          created_at: "2026-04-05T08:00:00.000Z",
+          property_fees: [],
+          pricing_summary: {
+            annual_rent: 85000,
+            monthly_equivalent: 0,
+            asking_price: 0,
+            fees_total: 30000,
+            total_move_in_cost: 115000,
+          },
+        } as never}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /show move-in cost breakdown/i }));
+
+    expect(screen.getByText("Nightly Rate")).toBeInTheDocument();
+    expect(screen.queryByText("Monthly Equivalent")).toBeNull();
+  });
 });

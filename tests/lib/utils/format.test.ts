@@ -5,6 +5,7 @@ import {
   formatDate,
   formatRelativeTime,
   capitalize,
+  formatPropertyPriceLabel,
   formatPropertyType,
   slugify,
 } from "@/lib/utils/format";
@@ -77,6 +78,31 @@ describe("formatPropertyType", () => {
 
   it("capitalizes unknown types", () => {
     expect(formatPropertyType("villa")).toBe("Villa");
+  });
+});
+
+describe("formatPropertyPriceLabel", () => {
+  it("uses per night for shortlet rent pricing", () => {
+    expect(
+      formatPropertyPriceLabel({
+        listingPurpose: "rent",
+        propertyType: "shortlet",
+        rentAmount: 85000,
+      }),
+    ).toEqual({
+      amount: expect.stringContaining("85,000"),
+      qualifier: "per night",
+    });
+  });
+
+  it("keeps per year for non-shortlet rent pricing", () => {
+    expect(
+      formatPropertyPriceLabel({
+        listingPurpose: "rent",
+        propertyType: "apartment",
+        rentAmount: 8500000,
+      }).qualifier,
+    ).toBe("per year");
   });
 });
 

@@ -80,4 +80,49 @@ describe("ReferralProgramModal", () => {
     expect(await screen.findByText(/authorized listing agent/i)).toBeInTheDocument();
     expect(screen.getByText(/declared 40% share of the agency fee/i)).toBeInTheDocument();
   });
+
+  it("shows nightly duration examples for shortlet referrals", async () => {
+    render(
+      <ReferralProgramModal
+        isOpen
+        onClose={() => {}}
+        property={{
+          id: "property-1",
+          agent_id: "agent-1",
+          title: "Modern/Luxury Apartment",
+          area: "Ikoyi",
+          property_type: "shortlet",
+          is_verified: true,
+        }}
+      />,
+    );
+
+    expect(await screen.findByText(/Example estimate for 1 night/i)).toBeInTheDocument();
+    expect(screen.getByText(/Final referral earnings can increase with booked nights/i)).toBeInTheDocument();
+    expect(screen.getByText("1 night example")).toBeInTheDocument();
+    expect(screen.getByText("3 nights example")).toBeInTheDocument();
+    expect(screen.getByText("7 nights example")).toBeInTheDocument();
+  });
+
+  it("shows lease-duration examples for non-shortlet rent referrals", async () => {
+    render(
+      <ReferralProgramModal
+        isOpen
+        onClose={() => {}}
+        property={{
+          id: "property-1",
+          agent_id: "agent-1",
+          title: "Modern/Luxury Apartment",
+          area: "Ikoyi",
+          property_type: "apartment",
+          is_verified: true,
+        }}
+      />,
+    );
+
+    expect(await screen.findByText(/Example estimate for 1 year/i)).toBeInTheDocument();
+    expect(screen.getByText(/Final referral earnings can increase with lease duration/i)).toBeInTheDocument();
+    expect(screen.getByText("1 year example")).toBeInTheDocument();
+    expect(screen.getByText("2 years example")).toBeInTheDocument();
+  });
 });

@@ -80,6 +80,7 @@ export function formatListingPurpose(purpose: "rent" | "sale"): string {
 
 export function formatPropertyPriceLabel(params: {
   listingPurpose: "rent" | "sale";
+  propertyType?: string | null;
   rentAmount?: number | null;
   askingPrice?: number | null;
   isPriceNegotiable?: boolean | null;
@@ -93,7 +94,7 @@ export function formatPropertyPriceLabel(params: {
 
   return {
     amount: formatCurrency(params.rentAmount ?? 0),
-    qualifier: "per year",
+    qualifier: params.propertyType === "shortlet" ? "per night" : "per year",
   };
 }
 
