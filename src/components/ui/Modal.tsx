@@ -27,6 +27,12 @@ export function Modal({
 }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  function handleBackdropClick(event: React.MouseEvent<HTMLDialogElement>) {
+    if (event.target === dialogRef.current) {
+      onClose();
+    }
+  }
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -44,6 +50,7 @@ export function Modal({
     <dialog
       ref={dialogRef}
       onClose={onClose}
+      onClick={handleBackdropClick}
       aria-label={ariaLabel || title}
       className={cn(
         "fixed inset-0 z-50 m-auto max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto rounded-2xl border border-[var(--color-border)] bg-white p-0 shadow-xl backdrop:bg-black/40 backdrop:backdrop-blur-sm sm:max-h-[85vh] sm:w-full",

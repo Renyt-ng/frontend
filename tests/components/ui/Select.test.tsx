@@ -51,4 +51,15 @@ describe("Select", () => {
 
     expect(handleChange.mock.calls[0]?.[0].target.value).toBe("active");
   });
+
+  it("closes when a pointer event happens outside the listbox", () => {
+    render(<Select options={options} value="draft" onChange={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
 });

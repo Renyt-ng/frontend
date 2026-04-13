@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LoginForm } from "@/app/(auth)/login/LoginForm";
 import { RegisterForm } from "@/app/(auth)/register/RegisterForm";
@@ -26,6 +26,17 @@ export function AuthOverlay() {
     () => buildCurrentUrl(pathname || "/", searchParams),
     [pathname, searchParams],
   );
+  const isDedicatedAuthPage =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password";
+
+  useEffect(() => {
+    if (isOpen && isDedicatedAuthPage) {
+      closeOverlay();
+    }
+  }, [closeOverlay, isDedicatedAuthPage, isOpen]);
 
   async function handleSuccess() {
     const destination = redirectTo || currentUrl;

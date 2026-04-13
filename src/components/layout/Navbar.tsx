@@ -80,7 +80,7 @@ export function Navbar() {
       return;
     }
 
-    function handlePointerDown(event: MouseEvent) {
+    function handlePointerDown(event: PointerEvent) {
       if (!accountMenuRef.current?.contains(event.target as Node)) {
         setAccountMenuOpen(false);
       }
@@ -92,11 +92,11 @@ export function Navbar() {
       }
     }
 
-    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [accountMenuOpen]);
@@ -269,6 +269,7 @@ export function Navbar() {
             type="button"
             aria-label="Dismiss navigation menu"
             className="absolute inset-0 bg-slate-950/30 backdrop-blur-[1px]"
+            onPointerDown={() => setMobileOpen(false)}
             onClick={() => setMobileOpen(false)}
           />
           <div
@@ -335,14 +336,14 @@ export function Navbar() {
                       Sign in to save homes, track listings, and pick up where you left off.
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
+                  <div className="grid gap-2">
+                    <div>
                       <Button variant="secondary" className="w-full" onClick={() => openAuth("login")}>
                         <LogIn className="h-4 w-4" />
                         Sign In
                       </Button>
                     </div>
-                    <div className="flex-1">
+                    <div>
                       <Button className="w-full" onClick={() => openAuth("register")}>
                         <User className="h-4 w-4" />
                         Get Started

@@ -82,7 +82,7 @@ const MultiSelect = forwardRef<HTMLButtonElement, MultiSelectProps>(
         return;
       }
 
-      function handlePointerDown(event: MouseEvent) {
+      function handlePointerDown(event: PointerEvent) {
         if (!wrapperRef.current?.contains(event.target as Node)) {
           setIsOpen(false);
         }
@@ -95,11 +95,11 @@ const MultiSelect = forwardRef<HTMLButtonElement, MultiSelectProps>(
         }
       }
 
-      document.addEventListener("mousedown", handlePointerDown);
+      document.addEventListener("pointerdown", handlePointerDown);
       document.addEventListener("keydown", handleEscape);
 
       return () => {
-        document.removeEventListener("mousedown", handlePointerDown);
+        document.removeEventListener("pointerdown", handlePointerDown);
         document.removeEventListener("keydown", handleEscape);
       };
     }, [isOpen]);

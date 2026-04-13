@@ -1,27 +1,39 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ForgotPasswordForm } from "@/app/(auth)/forgot-password/ForgotPasswordForm";
 import { LoginForm } from "@/app/(auth)/login/LoginForm";
 import { RegisterForm } from "@/app/(auth)/register/RegisterForm";
+import { ResetPasswordForm } from "@/app/(auth)/reset-password/ResetPasswordForm";
 
 const {
   push,
   refresh,
+  resetPasswordForEmail,
   signInWithOAuth,
   signInWithPassword,
+  signOut,
   signUp,
+  updateUser,
   requestSignupEmailVerification,
   verifySignupEmailVerification,
   getProfile,
+  getSession,
+  onAuthStateChange,
   setAuthToken,
 } = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
+  resetPasswordForEmail: vi.fn(),
   signInWithOAuth: vi.fn(),
   signInWithPassword: vi.fn(),
+  signOut: vi.fn(),
   signUp: vi.fn(),
+  updateUser: vi.fn(),
   requestSignupEmailVerification: vi.fn(),
   verifySignupEmailVerification: vi.fn(),
   getProfile: vi.fn(),
+  getSession: vi.fn(),
+  onAuthStateChange: vi.fn(),
   setAuthToken: vi.fn(),
 }));
 
@@ -50,9 +62,14 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@supabase/ssr", () => ({
   createBrowserClient: () => ({
     auth: {
+      resetPasswordForEmail,
       signInWithOAuth,
       signInWithPassword,
+      signOut,
       signUp,
+      updateUser,
+      getSession,
+      onAuthStateChange,
     },
   }),
 }));
@@ -60,8 +77,12 @@ vi.mock("@supabase/ssr", () => ({
 describe("auth forms", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+    window.localStorage.clear();
+    resetPasswordForEmail.mockResolvedValue({ error: null });
     signInWithOAuth.mockResolvedValue({ error: null });
     signInWithPassword.mockResolvedValue({ error: null, data: {} });
+    signOut.mockResolvedValue({ error: null });
     signUp.mockResolvedValue({
       error: null,
       data: {
@@ -115,6 +136,16 @@ describe("auth forms", () => {
         created_at: "2026-04-03T00:00:00.000Z",
       },
     });
+    updateUser.mockResolvedValue({ error: null });
+    getSession.mockResolvedValue({ data: { session: null } });
+    onAuthStateChange.mockReturnValue({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    });
+    window.history.replaceState({}, "", "/login");
   });
 
   it("renders a visible Google sign-in action on the login form", async () => {
@@ -235,6 +266,99 @@ describe("auth forms", () => {
     await waitFor(() => {
       expect(setAuthToken).toHaveBeenCalledWith("access-token");
       expect(push).toHaveBeenCalled();
+      expect(refresh).toHaveBeenCalled();
+    });
+  });
+
+  it("sends a password reset email from the forgot password form", async () => {
+    render(<ForgotPasswordForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    await waitFor(() => {
+      expect(resetPasswordForEmail).toHaveBeenCalledWith(
+        "ada@example.com",
+        expect.objectContaining({
+          redirectTo: expect.stringContaining("/reset-password"),
+        }),
+      );
+    });
+
+    expect(
+      screen.getByText(/we have sent password reset instructions to your inbox/i),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send again in 1:00/i })).toBeDisabled();
+  });
+
+  it("keeps a cooldown between password reset requests", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-13T10:00:00.000Z"));
+
+    render(<ForgotPasswordForm />);
+
+    fireEvent.change(screen.getByLabelText(/email address/i), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(resetPasswordForEmail).toHaveBeenCalledTimes(1);
+
+    expect(screen.getByText(/you can request another reset email in 1:00/i)).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(31_000);
+    });
+
+    expect(screen.getByRole("button", { name: /send again in 0:29/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /send again in 0:29/i }));
+    expect(resetPasswordForEmail).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(29_000);
+    });
+
+    expect(screen.getByRole("button", { name: /send reset link/i })).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /send reset link/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(resetPasswordForEmail).toHaveBeenCalledTimes(2);
+  });
+
+  it("updates the password from a valid recovery session and redirects to sign in", async () => {
+    getSession.mockResolvedValue({ data: { session: { user: { id: "user-1" } } } });
+    window.history.replaceState({}, "", "/reset-password#type=recovery&access_token=test-token");
+
+    render(<ResetPasswordForm />);
+
+    await screen.findByLabelText(/^New Password$/i);
+
+    fireEvent.change(screen.getByLabelText(/^New Password$/i), {
+      target: { value: "newpassword123" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Confirm New Password$/i), {
+      target: { value: "newpassword123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save new password/i }));
+
+    await waitFor(() => {
+      expect(updateUser).toHaveBeenCalledWith({ password: "newpassword123" });
+    });
+
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalled();
+      expect(push).toHaveBeenCalledWith(expect.stringContaining("/login?message="));
       expect(refresh).toHaveBeenCalled();
     });
   });

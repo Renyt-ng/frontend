@@ -18,4 +18,19 @@ describe("ContextualHelp", () => {
       screen.getByText("This field controls whether the asking label is shown publicly."),
     ).toBeInTheDocument();
   });
+
+  it("closes when a pointer event happens outside the tooltip", () => {
+    render(
+      <ContextualHelp label="More information" title="Why this matters">
+        This field controls whether the asking label is shown publicly.
+      </ContextualHelp>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /more information/i }));
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
 });

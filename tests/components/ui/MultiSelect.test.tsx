@@ -52,4 +52,17 @@ describe("MultiSelect", () => {
 
     expect(handleChange).toHaveBeenCalledWith([]);
   });
+
+  it("closes when a pointer event happens outside the menu", () => {
+    render(
+      <MultiSelect options={options} value={[]} emptyLabel="Any" onChange={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+
+    fireEvent.pointerDown(document.body);
+
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
 });

@@ -67,6 +67,7 @@ export function LoginForm({
   } = useForm<LoginValues>();
 
   const oauthError = searchParams.get("error");
+  const statusMessage = searchParams.get("message");
 
   async function onSubmit(data: LoginValues) {
     setServerError("");
@@ -165,6 +166,12 @@ export function LoginForm({
       {(serverError || oauthError) && (
         <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
           {serverError || oauthError}
+        </div>
+      )}
+
+      {statusMessage && !serverError && !oauthError && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {statusMessage}
         </div>
       )}
 

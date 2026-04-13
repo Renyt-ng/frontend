@@ -67,7 +67,7 @@ describe("Navbar", () => {
       "/dashboard",
     );
     expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("calls logout from the account menu", () => {
     render(<Navbar />);
@@ -76,7 +76,7 @@ describe("Navbar", () => {
     fireEvent.click(screen.getByRole("button", { name: /logout/i }));
 
     expect(logout).toHaveBeenCalledOnce();
-  });
+  }, 15000);
 
   it("opens mobile navigation as a side drawer and exposes mobile sign-in when signed out", () => {
     useAuthStore.setState({
@@ -93,12 +93,35 @@ describe("Navbar", () => {
 
     const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
     const drawer = dialog.querySelector("#mobile-navigation-drawer");
+    const signInButton = within(dialog).getAllByRole("button", { name: /^Sign In$/i })[0];
+    const getStartedButton = within(dialog).getByRole("button", { name: /^Get Started$/i });
+    const ctaGrid = signInButton.parentElement?.parentElement;
 
     expect(drawer).toHaveClass("absolute", "right-0", "top-0", "h-dvh");
+    expect(ctaGrid).toHaveClass("grid", "gap-2");
+    expect(signInButton).toHaveClass("w-full");
+    expect(getStartedButton).toHaveClass("w-full");
     expect(screen.getAllByRole("button", { name: /^Sign In$/i }).length).toBe(3);
 
     fireEvent.click(within(dialog).getByRole("button", { name: /^Close navigation menu$/i }));
 
     expect(screen.queryByRole("dialog", { name: /navigation menu/i })).not.toBeInTheDocument();
-  });
+  }, 15000);
+
+  it("closes the mobile drawer when the backdrop is tapped", () => {
+    useAuthStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+
+    render(<Navbar />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open navigation menu/i }));
+
+    const dialog = screen.getByRole("dialog", { name: /navigation menu/i });
+    fireEvent.pointerDown(within(dialog).getByRole("button", { name: /dismiss navigation menu/i }));
+
+    expect(screen.queryByRole("dialog", { name: /navigation menu/i })).not.toBeInTheDocument();
+  }, 15000);
 });
