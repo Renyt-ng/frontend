@@ -254,7 +254,7 @@ export function DashboardSectionNav({
       aria-label={ariaLabel}
       className={cn("xl:sticky xl:top-24", className)}
     >
-      <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 xl:mx-0 xl:flex-col xl:gap-1 xl:overflow-visible xl:px-0">
+      <div className="grid grid-cols-1 gap-2 pb-1 sm:grid-cols-2 xl:flex xl:flex-col xl:gap-1 xl:overflow-visible xl:pb-0">
         {items.map((item) => {
           const isActive = item.id === activeId;
 
@@ -265,17 +265,17 @@ export function DashboardSectionNav({
               onClick={() => setActiveId(item.id)}
               aria-current={isActive ? "true" : undefined}
               className={cn(
-                "flex min-h-11 snap-start items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium whitespace-nowrap transition-all",
+                "flex min-h-11 min-w-0 items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-all",
                 isActive
                   ? "border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface)] text-[var(--dashboard-text-primary)] shadow-[var(--shadow-dashboard-sm)]"
                   : "border-transparent bg-[var(--dashboard-surface-alt)] text-[var(--dashboard-text-secondary)] hover:border-[var(--dashboard-border)] hover:text-[var(--dashboard-text-primary)]",
               )}
             >
-              <span>{item.label}</span>
+              <span className="min-w-0 break-words">{item.label}</span>
               {item.count !== undefined ? (
                 <span
                   className={cn(
-                    "rounded-full px-2 py-0.5 text-xs font-semibold",
+                    "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
                     isActive
                       ? "bg-[var(--dashboard-surface-alt)] text-[var(--dashboard-text-primary)]"
                       : "bg-[var(--dashboard-surface)] text-[var(--dashboard-text-tertiary)]",

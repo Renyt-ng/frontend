@@ -153,7 +153,7 @@ export default function AgentActivationPage() {
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)]">
         <DashboardSectionNav items={sectionItems} className="order-2 xl:order-1" />
 
-        <div className="space-y-6 order-1">
+        <div className="order-1 min-w-0 space-y-6">
           <section id="candidate-list">
             <DashboardPanel>
               <DashboardSectionHeading title="Agent Activation" description="Search account. Complete package. Approve when ready." />

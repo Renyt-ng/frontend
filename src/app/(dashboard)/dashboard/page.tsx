@@ -137,7 +137,7 @@ function OverviewShell({
   return (
     <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
       <DashboardSectionNav items={items} className="order-2 xl:order-1" />
-      <div className="order-1 space-y-6 xl:order-2">{children}</div>
+      <div className="order-1 min-w-0 space-y-6 xl:order-2">{children}</div>
     </div>
   );
 }

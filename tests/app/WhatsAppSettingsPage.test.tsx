@@ -170,5 +170,83 @@ describe("WhatsAppSettingsPage", () => {
     expect(screen.getByRole("heading", { name: /top missing fields/i })).toBeInTheDocument();
     expect(screen.getByText(/service charge/i)).toBeInTheDocument();
     expect(screen.getByText(/24h\+/i)).toBeInTheDocument();
+  }, 15000);
+
+  it("keeps long operational identifiers wrapped inside mobile sections", () => {
+    hooks.useAdminWhatsAppOverview.mockReturnValue({
+      data: {
+        data: {
+          provider: "meta_cloud_api",
+          status: "configured",
+          phone_number_id: "1104505406074545-very-long-provider-identifier-for-mobile-layout-check",
+          display_phone_number: "+23480300000001234567890",
+          waba_id: "1299814942035991-super-long-waba-identifier-for-mobile-layout-check",
+          webhook_configured: true,
+          action_summary: {
+            total_enabled: 3,
+            total_paused: 1,
+            total_agents_enrolled: 4,
+          },
+          recent_summary: {
+            total: 12,
+            delivered: 9,
+            read: 6,
+            failed: 1,
+            last_sent_at: "2026-04-09T09:00:00.000Z",
+          },
+        },
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    hooks.useAdminWhatsAppTasks.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "task-id-that-is-intentionally-very-long-for-mobile-wrapping-check-1234567890",
+            agent_id: "agent-id-that-is-intentionally-very-long-for-mobile-wrapping-check-1234567890",
+            entity_id: "property-id-that-is-intentionally-very-long-for-mobile-wrapping-check-1234567890",
+            action_type: "listing_creation",
+            status: "failed",
+            current_step: "awaiting_images",
+            failure_reason: "provider timeout while waiting for retry window",
+            source_trigger: "admin_dispatch",
+            updated_at: "2026-04-09T09:00:00.000Z",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    hooks.useAdminWhatsAppEvents.mockReturnValue({
+      data: {
+        data: [
+          {
+            id: "event-1",
+            recipient_phone: "+23480300000001234567890",
+            event_type: "message_delivered",
+            message_type: "template",
+            template_name: "listing_follow_up_template_with_long_name",
+            occurred_at: "2026-04-09T09:00:00.000Z",
+            event_status: "delivered",
+            provider_message_id: "wamid.HBgL-long-provider-message-identifier-for-mobile-wrapping-check-1234567890",
+            agent_id: "agent-1",
+            source: "meta_webhook_with_long_source_value",
+          },
+        ],
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const { container } = render(<WhatsAppSettingsPage />);
+
+    expect(screen.getByText(/1104505406074545-very-long-provider-identifier/i)).toHaveClass("break-all");
+    expect(screen.getByText(/task-id-that-is-intentionally-very-long/i)).toHaveClass("break-all");
+    expect(screen.getByText(/wamid\.HBgL-long-provider-message-identifier/i)).toHaveClass("break-all");
+    expect(container.querySelectorAll(".min-w-0").length).toBeGreaterThan(0);
   });
 });

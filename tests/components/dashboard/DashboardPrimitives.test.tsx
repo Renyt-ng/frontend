@@ -140,7 +140,7 @@ describe("Dashboard primitives", () => {
   });
 
   it("marks the clicked section as active in section navigation", () => {
-    render(
+    const { container } = render(
       <DashboardSectionNav
         items={[
           { id: "health", label: "Health", count: 3 },
@@ -154,6 +154,8 @@ describe("Dashboard primitives", () => {
 
     expect(eventsLink).toHaveAttribute("href", "#events");
     expect(eventsLink).toHaveAttribute("aria-current", "true");
-    expect(eventsLink).toHaveClass("snap-start");
+    expect(container.firstElementChild?.firstElementChild).toHaveClass("grid");
+    expect(container.firstElementChild?.firstElementChild).toHaveClass("sm:grid-cols-2");
+    expect(eventsLink).not.toHaveClass("whitespace-nowrap");
   });
 });

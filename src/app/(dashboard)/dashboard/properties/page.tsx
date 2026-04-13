@@ -891,9 +891,10 @@ export default function MyPropertiesPage() {
         <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
           <DashboardSectionNav items={sectionItems} className="order-2 xl:order-1" />
 
-          <div className="order-1 space-y-6 xl:order-2">
+          <div className="order-1 min-w-0 space-y-6 xl:order-2">
             {visibleGroups.map((group) => {
               const items = groupedProperties[group.key];
+              const showLifecycleActions = group.key === "needs_confirmation" || group.key === "active";
 
               return (
                 <section
@@ -1009,7 +1010,7 @@ export default function MyPropertiesPage() {
                               ) : null}
                             </div>
                             <div className="flex flex-col gap-2 lg:w-[420px] lg:items-end">
-                              {p.status === "active" ? (
+                              {showLifecycleActions ? (
                                 <div className="w-full rounded-[24px] border border-[var(--dashboard-border)] bg-[var(--dashboard-surface)] p-3 shadow-[0_12px_30px_rgba(15,23,42,0.05)]">
                                   <div className="space-y-2">
                                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-secondary)]">

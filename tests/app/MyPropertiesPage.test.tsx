@@ -231,6 +231,32 @@ describe("MyPropertiesPage", () => {
     expect(within(dialog).getByText(/Qualified referrals/i)).toBeInTheDocument();
   });
 
+  it("shows lifecycle action buttons for needs confirmation listings", () => {
+    state.hooks.useMyProperties.mockReturnValue({
+      data: {
+        data: [
+          {
+            ...baseProperty,
+            availability_confirmed_at: null,
+            freshness_state: "confirmation_due",
+          },
+        ],
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    render(<MyPropertiesPage />);
+
+    expect(screen.getByRole("heading", { name: /needs confirmation/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /share/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /confirm live/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /unavailable/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /archive/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark rented via renyt/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark rented off-platform/i })).toBeInTheDocument();
+  }, 15000);
+
   it("requires matched-account selection before confirming a Renyt close", async () => {
     const rentalProperty = {
       ...baseProperty,

@@ -175,7 +175,7 @@ export default function SmsSettingsPage() {
       <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
         <DashboardSectionNav items={sectionItems} className="hidden xl:block" />
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section id="sms-overview" className="scroll-mt-28">
             <DashboardPanel padding="lg" className="space-y-5">
               <DashboardSectionHeading

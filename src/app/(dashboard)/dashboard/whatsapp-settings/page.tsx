@@ -417,7 +417,7 @@ export default function WhatsAppSettingsPage() {
       <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
         <DashboardSectionNav items={sectionItems} className="hidden xl:block" />
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Overview section */}
           <section id="wa-overview" className="scroll-mt-28">
             <DashboardPanel padding="lg" className="space-y-5">
@@ -427,9 +427,9 @@ export default function WhatsAppSettingsPage() {
               />
 
               <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5">
+                <div className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--dashboard-text-tertiary)]">
                         Provider state
                       </p>
@@ -445,15 +445,15 @@ export default function WhatsAppSettingsPage() {
                   </div>
 
                   <div className="mt-4 space-y-2 text-sm text-[var(--dashboard-text-secondary)]">
-                    <p>Phone number ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{overview?.phone_number_id ?? "Not configured"}</span></p>
-                    <p>Display number: <span className="font-medium text-[var(--dashboard-text-primary)]">{overview?.display_phone_number ?? "Unavailable"}</span></p>
-                    <p>WABA ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{overview?.waba_id ?? "Not configured"}</span></p>
-                    <p>Webhook: <span className="font-medium text-[var(--dashboard-text-primary)]">{overview?.webhook_configured ? "Configured" : "Not configured"}</span></p>
-                    <p>Last send: <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(overview?.recent_summary.last_sent_at)}</span></p>
+                    <p className="break-words">Phone number ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{overview?.phone_number_id ?? "Not configured"}</span></p>
+                    <p className="break-words">Display number: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{overview?.display_phone_number ?? "Unavailable"}</span></p>
+                    <p className="break-words">WABA ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{overview?.waba_id ?? "Not configured"}</span></p>
+                    <p className="break-words">Webhook: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{overview?.webhook_configured ? "Configured" : "Not configured"}</span></p>
+                    <p className="break-words">Last send: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(overview?.recent_summary.last_sent_at)}</span></p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="min-w-0 grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
                     <div className="flex items-center gap-3">
                       <Activity className="h-5 w-5 text-[var(--dashboard-accent)]" />
@@ -594,14 +594,14 @@ export default function WhatsAppSettingsPage() {
                   {agentAccessList.map((access) => (
                     <div
                       key={access.id}
-                      className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                      className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium text-[var(--dashboard-text-primary)]">
                             {access.business_name ?? `Agent ${access.agent_id.slice(0, 8)}…`}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                          <p className="mt-1 break-words text-sm text-[var(--dashboard-text-secondary)]">
                             {access.whatsapp_phone ?? access.primary_phone ?? "Phone not configured"}
                             {" · "}
                             {access.enabled_actions.length === 0
@@ -758,7 +758,7 @@ export default function WhatsAppSettingsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
+                <div className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
                   <h3 className="font-medium text-[var(--dashboard-text-primary)]">Stale draft watchlist</h3>
                   <div className="mt-4 space-y-3">
                     {(listingReport?.stale_drafts ?? []).length === 0 ? (
@@ -769,10 +769,10 @@ export default function WhatsAppSettingsPage() {
                       listingReport?.stale_drafts.map((draft) => (
                         <div
                           key={draft.task_id}
-                          className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                          className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="font-medium text-[var(--dashboard-text-primary)]">
                                 {draft.property_title ?? "Untitled WhatsApp draft"}
                               </p>
@@ -787,10 +787,10 @@ export default function WhatsAppSettingsPage() {
                           </div>
 
                           <div className="mt-3 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-2">
-                            <p>Pending fields: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.pending_fields.length === 0 ? "None" : draft.pending_fields.join(", ")}</span></p>
+                            <p className="break-words">Pending fields: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.pending_fields.length === 0 ? "None" : draft.pending_fields.join(", ")}</span></p>
                             <p>Images uploaded: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.uploaded_image_count}</span></p>
                             <p>Reminders sent: <span className="font-medium text-[var(--dashboard-text-primary)]">{draft.reminder_count}</span></p>
-                            <p>Last reminder: <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(draft.last_reminder_sent_at)}</span></p>
+                            <p className="break-words">Last reminder: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(draft.last_reminder_sent_at)}</span></p>
                           </div>
                         </div>
                       ))
@@ -934,14 +934,14 @@ export default function WhatsAppSettingsPage() {
                   {tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                      className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium text-[var(--dashboard-text-primary)]">
                             {task.action_type.replace(/_/g, " ")}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                          <p className="mt-1 break-words text-sm text-[var(--dashboard-text-secondary)]">
                             Status: {task.status.replace(/_/g, " ")}
                             {task.current_step ? ` · step ${task.current_step.replace(/_/g, " ")}` : ""}
                             {task.failure_reason ? ` · ${task.failure_reason}` : ""}
@@ -964,10 +964,10 @@ export default function WhatsAppSettingsPage() {
                       </div>
 
                       <div className="mt-3 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-2 xl:grid-cols-4">
-                        <p>Task ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.id}</span></p>
-                        <p>Agent ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.agent_id}</span></p>
-                        <p>Listing ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{task.entity_id ?? "Not bound yet"}</span></p>
-                        <p>Updated: <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(task.updated_at)}</span></p>
+                        <p className="break-words">Task ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{task.id}</span></p>
+                        <p className="break-words">Agent ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{task.agent_id}</span></p>
+                        <p className="break-words">Listing ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{task.entity_id ?? "Not bound yet"}</span></p>
+                        <p className="break-words">Updated: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{formatTimestamp(task.updated_at)}</span></p>
                       </div>
                     </div>
                   ))}
@@ -1041,7 +1041,7 @@ export default function WhatsAppSettingsPage() {
                       Send test message
                     </Button>
                     {statusMessage ? (
-                      <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                      <p className="break-all text-sm text-[var(--dashboard-text-secondary)]">
                         {statusMessage}
                       </p>
                     ) : null}
@@ -1082,14 +1082,14 @@ export default function WhatsAppSettingsPage() {
                   {events.map((event) => (
                     <div
                       key={event.id}
-                      className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                      className="min-w-0 rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium text-[var(--dashboard-text-primary)]">
                             {event.recipient_phone ?? "Unknown recipient"}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                          <p className="mt-1 break-words text-sm text-[var(--dashboard-text-secondary)]">
                             {event.event_type.replace(/_/g, " ")}
                             {event.message_type ? ` · ${event.message_type}` : ""}
                             {event.template_name ? ` · ${event.template_name}` : ""}
@@ -1102,10 +1102,10 @@ export default function WhatsAppSettingsPage() {
                         </Badge>
                       </div>
 
-                      <div className="mt-3 grid gap-3 md:grid-cols-3 text-sm text-[var(--dashboard-text-secondary)]">
-                        <p>Provider message ID: <span className="font-medium text-[var(--dashboard-text-primary)]">{event.provider_message_id ?? "Unavailable"}</span></p>
+                      <div className="mt-3 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-3">
+                        <p className="break-words">Provider message ID: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{event.provider_message_id ?? "Unavailable"}</span></p>
                         <p>Agent: <span className="font-medium text-[var(--dashboard-text-primary)]">{event.agent_id ? `${event.agent_id.slice(0, 8)}…` : "System"}</span></p>
-                        <p>Source: <span className="font-medium text-[var(--dashboard-text-primary)]">{event.source}</span></p>
+                        <p className="break-words">Source: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{event.source}</span></p>
                       </div>
                     </div>
                   ))}

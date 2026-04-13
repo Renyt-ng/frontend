@@ -849,7 +849,7 @@ export function AdminReferralReview() {
         <div className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
           <DashboardSectionNav items={sectionItems} className="order-2 xl:order-1" />
 
-          <div className="order-1 grid gap-4 md:grid-cols-3 xl:order-2">
+          <div className="order-1 min-w-0 grid gap-4 md:grid-cols-3 xl:order-2">
             <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-4">
               <div className="flex items-start gap-3">
                 <Clock3 className="h-5 w-5 text-[var(--dashboard-accent)]" />
@@ -890,7 +890,7 @@ export function AdminReferralReview() {
       <div className="grid gap-6 xl:grid-cols-[220px_minmax(0,1fr)] xl:items-start">
         <DashboardSectionNav items={sectionItems} className="hidden xl:block" />
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <section id="referrals-freshness" className="scroll-mt-28">
             <DashboardPanel padding="lg" className="space-y-5">
               <DashboardSectionHeading
