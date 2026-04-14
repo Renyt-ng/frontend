@@ -20,7 +20,10 @@ vi.mock("@/components/profile/ProfileAvatarCropModal", () => ({
 }));
 
 describe("SettingsPage", () => {
+  const updateProfileMutateAsync = vi.fn();
+
   beforeEach(() => {
+    updateProfileMutateAsync.mockReset();
     useAuthStore.setState({
       user: {
         id: "user-1",
@@ -43,7 +46,7 @@ describe("SettingsPage", () => {
       },
     });
     hooks.useUpdateProfile.mockReturnValue({
-      mutateAsync: vi.fn(),
+      mutateAsync: updateProfileMutateAsync,
       isPending: false,
     });
     hooks.useUploadProfileAvatar.mockReturnValue({
@@ -76,5 +79,45 @@ describe("SettingsPage", () => {
     expect(
       screen.getByRole("link", { name: /agent verification page/i }),
     ).toHaveAttribute("href", "/dashboard/agent-verification");
+  });
+
+  it("lets non-agents edit and save their phone number from settings", async () => {
+    useAuthStore.setState({
+      user: {
+        id: "user-2",
+        email: "tenant@example.com",
+        full_name: "Teni Tenant",
+        phone: "+2348000000000",
+        avatar_url: null,
+        avatar_review_status: "pending",
+        avatar_review_note: null,
+        role: "tenant",
+        created_at: "2026-04-01T00:00:00.000Z",
+      },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    hooks.useProfile.mockReturnValue({
+      data: {
+        data: useAuthStore.getState().user,
+      },
+    });
+
+    render(<SettingsPage />);
+
+    const phoneInput = screen.getByDisplayValue("+2348000000000");
+    const saveButton = screen.getByRole("button", { name: /save changes/i });
+
+    expect(phoneInput).not.toHaveAttribute("readonly");
+    fireEvent.change(phoneInput, { target: { value: "+2348111111111" } });
+    expect(saveButton).toBeEnabled();
+
+    fireEvent.click(saveButton);
+
+    expect(updateProfileMutateAsync).toHaveBeenCalledWith({
+      full_name: "Teni Tenant",
+      phone: "+2348111111111",
+    });
   });
 });

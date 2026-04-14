@@ -28,7 +28,9 @@ export default function SettingsPage() {
 
   const profile = profileQuery.data?.data ?? user;
   const initialFullName = profile?.full_name ?? "";
-  const hasProfileChanges = fullName !== initialFullName;
+  const initialPhone = profile?.phone ?? "";
+  const isAgent = profile?.role === "agent";
+  const hasProfileChanges = fullName !== initialFullName || (!isAgent && phone !== initialPhone);
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -42,6 +44,7 @@ export default function SettingsPage() {
     try {
       await updateProfile.mutateAsync({
         full_name: fullName,
+        ...(!isAgent ? { phone: phone || null } : {}),
       });
     } catch (error) {
       setServerError(
@@ -84,7 +87,6 @@ export default function SettingsPage() {
     }
   }
 
-  const isAgent = profile?.role === "agent";
   const headshotStatus = profile?.avatar_review_status ?? "pending";
   const headshotNote = profile?.avatar_review_note?.trim() ?? "";
 
@@ -212,19 +214,30 @@ export default function SettingsPage() {
                   <input
                     type="tel"
                     value={phone}
+                    onChange={(event) => {
+                      if (!isAgent) {
+                        setPhone(event.target.value);
+                      }
+                    }}
                     placeholder="+234 800 000 0000"
-                    readOnly
-                    aria-readonly="true"
-                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-gray-50 pl-10 pr-4 text-sm text-[var(--color-text-secondary)] focus:outline-none"
+                    readOnly={isAgent}
+                    aria-readonly={isAgent ? "true" : undefined}
+                    className={`h-12 w-full rounded-xl border border-[var(--color-border)] pl-10 pr-4 text-sm focus:outline-none ${
+                      isAgent
+                        ? "bg-gray-50 text-[var(--color-text-secondary)]"
+                        : "bg-white focus:border-[var(--color-deep-slate-blue)]/30 focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+                    }`}
                   />
                 </div>
-                <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-                  Phone number changes are handled on the{" "}
-                  <Link href="/dashboard/agent-verification" className="font-medium text-[var(--color-deep-slate-blue)] hover:underline">
-                    agent verification page
-                  </Link>
-                  .
-                </p>
+                {isAgent ? (
+                  <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                    Phone number changes are handled on the{" "}
+                    <Link href="/dashboard/agent-verification" className="font-medium text-[var(--color-deep-slate-blue)] hover:underline">
+                      agent verification page
+                    </Link>
+                    .
+                  </p>
+                ) : null}
               </div>
 
               <div>
