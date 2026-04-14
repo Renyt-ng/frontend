@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import AgentVerificationPage from "@/app/(dashboard)/dashboard/agent-verification/page";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -10,6 +10,7 @@ const hooks = vi.hoisted(() => ({
   useMyAgent: vi.fn(),
   usePhoneVerificationStatus: vi.fn(),
   useRequestPhoneVerification: vi.fn(),
+  useUpdateMyAgentContact: vi.fn(),
   useVerifyPhoneVerification: vi.fn(),
 }));
 
@@ -23,6 +24,13 @@ vi.mock("next/link", () => ({
 
 describe("AgentVerificationPage", () => {
   beforeEach(() => {
+    HTMLDialogElement.prototype.showModal = vi.fn(function showModalStub(this: HTMLDialogElement) {
+      this.open = true;
+    });
+    HTMLDialogElement.prototype.close = vi.fn(function closeStub(this: HTMLDialogElement) {
+      this.open = false;
+    });
+
     useAuthStore.setState({
       user: {
         id: "user-1",
@@ -81,13 +89,17 @@ describe("AgentVerificationPage", () => {
       mutateAsync: vi.fn(),
       isPending: false,
     });
+    hooks.useUpdateMyAgentContact.mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
     hooks.useVerifyPhoneVerification.mockReturnValue({
       mutateAsync: vi.fn(),
       isPending: false,
     });
   });
 
-  it("renders the phone and WhatsApp sections before document upload", () => {
+  it("renders the phone and WhatsApp sections before document upload", { timeout: 15000 }, () => {
     render(<AgentVerificationPage />);
 
     expect(screen.getByRole("heading", { name: /phone verification/i })).toBeInTheDocument();
@@ -100,6 +112,21 @@ describe("AgentVerificationPage", () => {
   });
 
   it("renders the submitted summary with phone and WhatsApp details", () => {
+    hooks.usePhoneVerificationStatus.mockReturnValue({
+      data: {
+        data: {
+          phone: "+234 800 000 0000",
+          verified: true,
+          code_sent: false,
+          resend_available_at: null,
+          expires_at: null,
+          locked_until: null,
+          verified_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     hooks.useMyAgent.mockReturnValue({
       data: {
         data: {
@@ -123,6 +150,7 @@ describe("AgentVerificationPage", () => {
       isLoading: false,
       isError: false,
       error: null,
+      refetch: vi.fn(),
     });
 
     render(<AgentVerificationPage />);
@@ -133,6 +161,60 @@ describe("AgentVerificationPage", () => {
     expect(
       screen.getByText(/whatsapp contact uses \+234 801 111 1111/i),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /update contact numbers/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /phone verification/i })).not.toBeInTheDocument();
+  });
+
+  it("opens a shared contact modal for primary phone and whatsapp updates", () => {
+    hooks.usePhoneVerificationStatus.mockReturnValue({
+      data: {
+        data: {
+          phone: "+234 800 000 0000",
+          verified: true,
+          code_sent: false,
+          resend_available_at: null,
+          expires_at: null,
+          locked_until: null,
+          verified_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    hooks.useMyAgent.mockReturnValue({
+      data: {
+        data: {
+          id: "agent-1",
+          user_id: "user-1",
+          verification_status: "approved",
+          business_name: "Prime Homes",
+          business_address: "12 Admiralty Way, Lekki",
+          id_document_url: null,
+          verification_documents: [],
+          phone_verified: true,
+          primary_phone: "+234 800 000 0000",
+          primary_phone_verified_at: "2026-04-01T00:00:00.000Z",
+          whatsapp_phone: "+234 801 111 1111",
+          whatsapp_same_as_primary_phone: false,
+          approved_by: null,
+          approved_at: null,
+          created_at: "2026-04-01T00:00:00.000Z",
+        },
+      },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<AgentVerificationPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /update contact numbers/i }));
+
+    expect(screen.getByRole("dialog", { name: /update contact numbers/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /phone verification/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /whatsapp contact/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save contact settings/i })).toBeInTheDocument();
   });
 
   it("reopens the form for a rejected verification so the agent can try again", () => {

@@ -111,6 +111,20 @@ export function useVerifyPhoneVerification() {
     mutationFn: agentsApi.verifyPhoneVerification,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.phoneVerification() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.me() });
+      queryClient.invalidateQueries({ queryKey: profileKeys.me });
+    },
+  });
+}
+
+export function useUpdateMyAgentContact() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: agentsApi.updateMyAgentContact,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: agentKeys.phoneVerification() });
+      queryClient.invalidateQueries({ queryKey: agentKeys.me() });
       queryClient.invalidateQueries({ queryKey: profileKeys.me });
     },
   });

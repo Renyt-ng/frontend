@@ -43,7 +43,7 @@ export async function verifySignupEmailVerification(data: {
 }
 
 export async function updateProfile(
-  data: Partial<Pick<Profile, "full_name" | "phone" | "avatar_url">>,
+  data: Partial<Pick<Profile, "full_name" | "avatar_url">>,
 ) {
   const res = await apiClient.patch<ApiSuccessResponse<Profile>>(
     "/profiles/me",

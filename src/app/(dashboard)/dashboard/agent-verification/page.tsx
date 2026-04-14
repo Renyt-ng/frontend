@@ -10,11 +10,11 @@ import {
   Building2,
   CheckCircle2,
   FileBadge2,
-  MessageCircle,
   ShieldCheck,
   Smartphone,
+  PencilLine,
 } from "lucide-react";
-import { Card, CardContent, Button, Input } from "@/components/ui";
+import { Card, CardContent, Button, Input, Modal } from "@/components/ui";
 import { EmptyState, StatusBadge } from "@/components/shared";
 import {
   useAgentVerificationSettings,
@@ -22,6 +22,7 @@ import {
   useMyAgent,
   usePhoneVerificationStatus,
   useRequestPhoneVerification,
+  useUpdateMyAgentContact,
   useVerifyPhoneVerification,
 } from "@/lib/hooks";
 import {
@@ -89,6 +90,7 @@ export default function AgentVerificationPage() {
   });
   const requestPhoneVerification = useRequestPhoneVerification();
   const verifyPhoneVerification = useVerifyPhoneVerification();
+  const updateMyAgentContact = useUpdateMyAgentContact();
   const createAgent = useCreateAgent();
 
   const [serverError, setServerError] = useState("");
@@ -108,6 +110,7 @@ export default function AgentVerificationPage() {
   const [developmentCode, setDevelopmentCode] = useState<string | null>(null);
   const [liveAnnouncement, setLiveAnnouncement] = useState("");
   const [now, setNow] = useState(() => Date.now());
+  const [showContactModal, setShowContactModal] = useState(false);
 
   const phoneSectionRef = useRef<HTMLElement | null>(null);
   const whatsappSectionRef = useRef<HTMLElement | null>(null);
@@ -134,6 +137,7 @@ export default function AgentVerificationPage() {
 
   const existingAgent = myAgentQuery.data?.data ?? null;
   const canResubmitRejectedAgent = existingAgent?.verification_status === "rejected";
+  const canManageExistingAgentPhone = Boolean(existingAgent && !canResubmitRejectedAgent);
   const agentNotFound =
     axios.isAxiosError(myAgentQuery.error) &&
     myAgentQuery.error.response?.status === 404;
@@ -205,9 +209,21 @@ export default function AgentVerificationPage() {
     buildChecklistItem(businessDetailsComplete, "Complete business details"),
   ];
   const canSubmit = readinessItems.every((item) => item.completed);
+  const normalizedExistingPrimaryPhone = normalizeNigerianPhone(existingAgent?.primary_phone ?? "");
+  const normalizedExistingWhatsappPhone = normalizeNigerianPhone(existingAgent?.whatsapp_phone ?? "");
+  const normalizedDraftWhatsappPhone = whatsappSameAsPrimaryPhone
+    ? normalizedPrimaryPhone
+    : normalizeNigerianPhone(whatsappPhone);
+  const contactSettingsChanged = Boolean(
+    existingAgent && (
+      normalizedExistingPrimaryPhone !== normalizedPrimaryPhone
+      || existingAgent.whatsapp_same_as_primary_phone !== whatsappSameAsPrimaryPhone
+      || normalizedExistingWhatsappPhone !== normalizedDraftWhatsappPhone
+    ),
+  );
 
   useEffect(() => {
-    if (!canResubmitRejectedAgent || !existingAgent) {
+    if (!existingAgent) {
       return;
     }
 
@@ -217,7 +233,35 @@ export default function AgentVerificationPage() {
         ? ""
         : (existingAgent.whatsapp_phone ?? ""),
     );
-  }, [canResubmitRejectedAgent, existingAgent]);
+  }, [existingAgent]);
+
+  function resetContactModalState() {
+    setPrimaryPhone(phoneStatus?.phone ?? "");
+    setOtpCode("");
+    setPhoneError("");
+    setOtpError("");
+    setWhatsappError("");
+    setDevelopmentCode(null);
+
+    if (existingAgent) {
+      setWhatsappSameAsPrimaryPhone(existingAgent.whatsapp_same_as_primary_phone);
+      setWhatsappPhone(
+        existingAgent.whatsapp_same_as_primary_phone
+          ? ""
+          : (existingAgent.whatsapp_phone ?? ""),
+      );
+    }
+  }
+
+  function openContactModal() {
+    resetContactModalState();
+    setShowContactModal(true);
+  }
+
+  function closeContactModal() {
+    setShowContactModal(false);
+    resetContactModalState();
+  }
 
   function scrollToSection(section: "phone" | "whatsapp" | "business" | "documents") {
     const refMap = {
@@ -267,7 +311,11 @@ export default function AgentVerificationPage() {
       await verifyPhoneVerification.mutateAsync({ code: otpCode.trim() });
       setOtpCode("");
       setDevelopmentCode(null);
-      setLiveAnnouncement("Phone number verified");
+      setLiveAnnouncement(
+        canManageExistingAgentPhone
+          ? "Phone number verified and agent contact updated"
+          : "Phone number verified",
+      );
     } catch (error) {
       setOtpError(extractApiError(error, "Verification failed, try again."));
       setLiveAnnouncement("Verification failed, try again");
@@ -348,6 +396,43 @@ export default function AgentVerificationPage() {
     }
   }
 
+  async function handleSaveContactSettings() {
+    setServerError("");
+    setPhoneError("");
+    setWhatsappError("");
+
+    if (!existingAgent) {
+      return;
+    }
+
+    if (!isPhoneVerified) {
+      setPhoneError("Verify your primary phone before saving contact settings.");
+      return;
+    }
+
+    if (!whatsappSameAsPrimaryPhone && !isValidNigerianPhone(whatsappPhone)) {
+      setWhatsappError("Enter a valid Nigerian WhatsApp number.");
+      return;
+    }
+
+    try {
+      await updateMyAgentContact.mutateAsync({
+        whatsapp_same_as_primary_phone: whatsappSameAsPrimaryPhone,
+        whatsapp_phone: whatsappSameAsPrimaryPhone ? null : formatNigerianPhone(whatsappPhone),
+      });
+
+      await Promise.all([
+        myAgentQuery.refetch(),
+        phoneVerificationQuery.refetch(),
+      ]);
+
+      setLiveAnnouncement("Agent contact numbers updated");
+      closeContactModal();
+    } catch (error) {
+      setServerError(extractApiError(error, "Could not save contact settings."));
+    }
+  }
+
   function handleFileChange(documentType: AgentVerificationDocumentType, file: File | null) {
     setServerError("");
 
@@ -393,6 +478,187 @@ export default function AgentVerificationPage() {
 
     return "WhatsApp contact not configured";
   }, [existingAgent]);
+
+  function renderPhoneVerificationSection(helperText: string) {
+    return (
+      <section
+        ref={phoneSectionRef}
+        className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-6"
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="space-y-1">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+              Phone Verification
+            </h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              {helperText}
+            </p>
+          </div>
+          <StatusBadge status={isPhoneVerified ? "approved" : "none"} size="sm" />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <Input
+            id="primary_phone"
+            label="Primary phone number"
+            aria-label="Primary phone number"
+            inputMode="tel"
+            type="tel"
+            placeholder="+234 800 000 0000"
+            value={primaryPhone}
+            disabled={requestPhoneVerification.isPending}
+            error={phoneError}
+            onChange={(event) => {
+              setPrimaryPhone(event.target.value);
+              setPhoneError("");
+              setOtpError("");
+              setLiveAnnouncement("");
+              if (event.target.value.trim() !== persistedPhone.trim()) {
+                setDevelopmentCode(null);
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="lg"
+            className="w-full lg:w-auto"
+            isLoading={requestPhoneVerification.isPending}
+            disabled={!canRequestPhoneVerificationCode}
+            onClick={handleSendCode}
+          >
+            <Smartphone className="h-4 w-4" />
+            {phoneVerificationPending ? "Resend code" : "Send code"}
+          </Button>
+        </div>
+
+        {lockCountdown ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Too many attempts. Try again in {lockCountdown}.
+          </div>
+        ) : null}
+
+        {phoneVerificationPending && !isPhoneVerified ? (
+          <div className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-white p-4">
+            <Input
+              id="verification_code"
+              label="Verification code"
+              aria-label="Verification code"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="Enter the 6-digit code"
+              value={otpCode}
+              error={otpError}
+              onChange={(event) => {
+                setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6));
+                setOtpError("");
+              }}
+            />
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <Button
+                type="button"
+                isLoading={verifyPhoneVerification.isPending}
+                disabled={otpCode.trim().length !== 6}
+                onClick={handleVerifyCode}
+              >
+                Verify code
+              </Button>
+
+              {resendCountdown ? (
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Resend in {resendCountdown}
+                </p>
+              ) : (
+                <Button type="button" variant="link" onClick={handleSendCode}>
+                  Resend code
+                </Button>
+              )}
+            </div>
+
+            {developmentCode ? (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[var(--color-deep-slate-blue)]">
+                Development code: {developmentCode}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isPhoneVerified ? (
+          <div className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <CheckCircle2 className="h-4 w-4" />
+            {canManageExistingAgentPhone
+              ? "Phone verified. Your agent contact record now uses this number."
+              : "Phone verified."}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
+  function renderWhatsappContactSection() {
+    return (
+      <section
+        ref={whatsappSectionRef}
+        className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-white p-6"
+      >
+        <div className="space-y-1">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+            WhatsApp Contact
+          </h2>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Choose which number users should reach on WhatsApp.
+          </p>
+        </div>
+
+        <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 rounded border-[var(--color-border)]"
+            checked={whatsappSameAsPrimaryPhone}
+            disabled={!isPhoneVerified}
+            onChange={(event) => {
+              setWhatsappSameAsPrimaryPhone(event.target.checked);
+              setWhatsappError("");
+              if (event.target.checked) {
+                setWhatsappPhone("");
+              }
+            }}
+          />
+          <span>WhatsApp number is the same as my primary phone</span>
+        </label>
+
+        {!isPhoneVerified ? (
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Verify your primary phone to unlock WhatsApp contact settings.
+          </p>
+        ) : whatsappSameAsPrimaryPhone ? (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            WhatsApp will use your verified primary phone.
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4">
+            <Input
+              id="whatsapp_phone"
+              label="WhatsApp number"
+              aria-label="WhatsApp number"
+              inputMode="tel"
+              type="tel"
+              placeholder="+234 800 000 0000"
+              value={whatsappPhone}
+              error={whatsappError}
+              onChange={(event) => {
+                setWhatsappPhone(event.target.value);
+                setWhatsappError("");
+              }}
+            />
+            <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
+              Used for WhatsApp only.
+            </p>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   if (user?.role !== "agent") {
     return (
@@ -441,7 +707,7 @@ export default function AgentVerificationPage() {
 
             <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4 text-sm text-[var(--color-text-secondary)]">
               {existingAgent.verification_status === "approved"
-                ? "Your account is approved. You can now publish listings and receive tenant applications."
+                ? "Your account is approved. You can now publish listings and receive user inquiries."
                 : existingAgent.verification_status === "rejected"
                   ? "Your previous application was rejected. Review your submission details and contact an admin before resubmitting."
                   : "Primary phone verified. Submission under review."}
@@ -505,6 +771,10 @@ export default function AgentVerificationPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" type="button" onClick={openContactModal}>
+                <PencilLine className="h-4 w-4" />
+                Update Contact Numbers
+              </Button>
               <Link href="/dashboard/properties/new">
                 <Button>
                   <Building2 className="h-4 w-4" />
@@ -517,6 +787,36 @@ export default function AgentVerificationPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Modal
+          isOpen={showContactModal}
+          onClose={closeContactModal}
+          title="Update Contact Numbers"
+          className="space-y-5"
+        >
+          {serverError ? (
+            <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
+              {serverError}
+            </div>
+          ) : null}
+          {renderPhoneVerificationSection(
+            "Update your primary phone here. Once you verify the new number, your agent contact record is updated automatically.",
+          )}
+          {renderWhatsappContactSection()}
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button variant="secondary" type="button" onClick={closeContactModal}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              isLoading={updateMyAgentContact.isPending}
+              disabled={!isPhoneVerified || !contactSettingsChanged}
+              onClick={handleSaveContactSettings}
+            >
+              Save Contact Settings
+            </Button>
+          </div>
+        </Modal>
       </div>
     );
   }
@@ -574,176 +874,8 @@ export default function AgentVerificationPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <Card>
           <CardContent className="space-y-6 p-6">
-            <section
-              ref={phoneSectionRef}
-              className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-6"
-            >
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                    Phone Verification
-                  </h2>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Verify your primary phone before submitting.
-                  </p>
-                </div>
-                <StatusBadge status={isPhoneVerified ? "approved" : "none"} size="sm" />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-                <Input
-                  id="primary_phone"
-                  label="Primary phone number"
-                  aria-label="Primary phone number"
-                  inputMode="tel"
-                  type="tel"
-                  placeholder="+234 800 000 0000"
-                  value={primaryPhone}
-                  disabled={requestPhoneVerification.isPending}
-                  error={phoneError}
-                  onChange={(event) => {
-                    setPrimaryPhone(event.target.value);
-                    setPhoneError("");
-                    setOtpError("");
-                    setLiveAnnouncement("");
-                    if (event.target.value.trim() !== persistedPhone.trim()) {
-                      setDevelopmentCode(null);
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  size="lg"
-                  className="w-full lg:w-auto"
-                  isLoading={requestPhoneVerification.isPending}
-                  disabled={!canRequestPhoneVerificationCode}
-                  onClick={handleSendCode}
-                >
-                  <Smartphone className="h-4 w-4" />
-                  {phoneVerificationPending ? "Resend code" : "Send code"}
-                </Button>
-              </div>
-
-              {lockCountdown ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  Too many attempts. Try again in {lockCountdown}.
-                </div>
-              ) : null}
-
-              {phoneVerificationPending && !isPhoneVerified ? (
-                <div className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-white p-4">
-                  <Input
-                    id="verification_code"
-                    label="Verification code"
-                    aria-label="Verification code"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Enter the 6-digit code"
-                    value={otpCode}
-                    error={otpError}
-                    onChange={(event) => {
-                      setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6));
-                      setOtpError("");
-                    }}
-                  />
-
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center">
-                    <Button
-                      type="button"
-                      isLoading={verifyPhoneVerification.isPending}
-                      disabled={otpCode.trim().length !== 6}
-                      onClick={handleVerifyCode}
-                    >
-                      Verify code
-                    </Button>
-
-                    {resendCountdown ? (
-                      <p className="text-sm text-[var(--color-text-secondary)]">
-                        Resend in {resendCountdown}
-                      </p>
-                    ) : (
-                      <Button type="button" variant="link" onClick={handleSendCode}>
-                        Resend code
-                      </Button>
-                    )}
-                  </div>
-
-                  {developmentCode ? (
-                    <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-[var(--color-deep-slate-blue)]">
-                      Development code: {developmentCode}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {isPhoneVerified ? (
-                <div className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Phone verified.
-                </div>
-              ) : null}
-            </section>
-
-            <section
-              ref={whatsappSectionRef}
-              className="space-y-4 rounded-3xl border border-[var(--color-border)] bg-white p-6"
-            >
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-                  WhatsApp Contact
-                </h2>
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  Choose which number tenants should reach on WhatsApp.
-                </p>
-              </div>
-
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-[var(--color-border)] px-4 py-3 text-sm text-[var(--color-text-primary)]">
-                <input
-                  type="checkbox"
-                  className="mt-1 h-4 w-4 rounded border-[var(--color-border)]"
-                  checked={whatsappSameAsPrimaryPhone}
-                  disabled={!isPhoneVerified}
-                  onChange={(event) => {
-                    setWhatsappSameAsPrimaryPhone(event.target.checked);
-                    setWhatsappError("");
-                    if (event.target.checked) {
-                      setWhatsappPhone("");
-                    }
-                  }}
-                />
-                <span>WhatsApp number is the same as my primary phone</span>
-              </label>
-
-              {!isPhoneVerified ? (
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  Verify your primary phone to unlock WhatsApp contact settings.
-                </p>
-              ) : whatsappSameAsPrimaryPhone ? (
-                <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-                  WhatsApp will use your verified primary phone.
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4">
-                  <Input
-                    id="whatsapp_phone"
-                    label="WhatsApp number"
-                    aria-label="WhatsApp number"
-                    inputMode="tel"
-                    type="tel"
-                    placeholder="+234 800 000 0000"
-                    value={whatsappPhone}
-                    error={whatsappError}
-                    onChange={(event) => {
-                      setWhatsappPhone(event.target.value);
-                      setWhatsappError("");
-                    }}
-                  />
-                  <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-                    Used for WhatsApp only.
-                  </p>
-                </div>
-              )}
-            </section>
+            {renderPhoneVerificationSection("Verify your primary phone before submitting.")}
+            {renderWhatsappContactSection()}
 
             <section ref={businessSectionRef} className="space-y-5">
               <Input

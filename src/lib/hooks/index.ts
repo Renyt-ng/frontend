@@ -57,6 +57,7 @@ export {
   useAgentVerificationSettings,
   usePhoneVerificationStatus,
   useRequestPhoneVerification,
+  useUpdateMyAgentContact,
   useVerifyPhoneVerification,
 } from "./useAgents";
 

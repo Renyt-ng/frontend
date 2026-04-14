@@ -55,6 +55,17 @@ export async function verifyPhoneVerification(data: { code: string }) {
   return res.data;
 }
 
+export async function updateMyAgentContact(data: {
+  whatsapp_same_as_primary_phone: boolean;
+  whatsapp_phone?: string | null;
+}) {
+  const res = await apiClient.patch<ApiSuccessResponse<Agent>>(
+    "/agents/me/contact",
+    data,
+  );
+  return res.data;
+}
+
 export async function getMyAgent() {
   const res = await apiClient.get<ApiSuccessResponse<Agent>>("/agents/me");
   return res.data;

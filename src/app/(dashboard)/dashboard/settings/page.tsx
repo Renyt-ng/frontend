@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { User, Mail, Phone, Camera, Save } from "lucide-react";
 import { Card, CardContent, Button, Avatar } from "@/components/ui";
 import { StatusBadge } from "@/components/shared";
@@ -27,10 +28,7 @@ export default function SettingsPage() {
 
   const profile = profileQuery.data?.data ?? user;
   const initialFullName = profile?.full_name ?? "";
-  const initialPhone = profile?.phone ?? "";
-  const hasProfileChanges =
-    fullName !== initialFullName ||
-    phone !== initialPhone;
+  const hasProfileChanges = fullName !== initialFullName;
 
   useEffect(() => {
     setFullName(profile?.full_name ?? "");
@@ -44,7 +42,6 @@ export default function SettingsPage() {
     try {
       await updateProfile.mutateAsync({
         full_name: fullName,
-        phone: phone || null,
       });
     } catch (error) {
       setServerError(
@@ -215,11 +212,19 @@ export default function SettingsPage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
                     placeholder="+234 800 000 0000"
-                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-white pl-10 pr-4 text-sm focus:border-[var(--color-deep-slate-blue)]/30 focus:outline-none focus:ring-2 focus:ring-[var(--color-deep-slate-blue)]/10"
+                    readOnly
+                    aria-readonly="true"
+                    className="h-12 w-full rounded-xl border border-[var(--color-border)] bg-gray-50 pl-10 pr-4 text-sm text-[var(--color-text-secondary)] focus:outline-none"
                   />
                 </div>
+                <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+                  Phone number changes are handled on the{" "}
+                  <Link href="/dashboard/agent-verification" className="font-medium text-[var(--color-deep-slate-blue)] hover:underline">
+                    agent verification page
+                  </Link>
+                  .
+                </p>
               </div>
 
               <div>

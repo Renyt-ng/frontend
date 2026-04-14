@@ -66,4 +66,15 @@ describe("SettingsPage", () => {
     fireEvent.change(fullNameInput, { target: { value: "Ada Agent" } });
     expect(saveButton).toBeDisabled();
   });
+
+  it("renders phone as read-only and points agents to the verification page for updates", () => {
+    render(<SettingsPage />);
+
+    const phoneInput = screen.getByDisplayValue("+2348000000000");
+
+    expect(phoneInput).toHaveAttribute("readonly");
+    expect(
+      screen.getByRole("link", { name: /agent verification page/i }),
+    ).toHaveAttribute("href", "/dashboard/agent-verification");
+  });
 });
