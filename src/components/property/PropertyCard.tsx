@@ -39,6 +39,7 @@ export function PropertyCard({
   images,
   className,
 }: PropertyCardProps) {
+  const TOUCH_MOVE_THRESHOLD = 12;
   const router = useRouter();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const statusQuery = usePropertyEngagementStatus(property.id, isAuthenticated);
@@ -47,6 +48,8 @@ export function PropertyCard({
   const lastTouchRef = useRef(0);
   const ignoreClickRef = useRef(false);
   const burstTimeoutRef = useRef<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchMovedRef = useRef(false);
   const [showLikeBurst, setShowLikeBurst] = useState(false);
   const primaryImage = images?.[0]?.image_url;
   const imageCount = images?.length ?? 0;
@@ -100,6 +103,39 @@ export function PropertyCard({
     router.push(detailHref);
   }
 
+  function handleImageTouchStart(event: React.TouchEvent<HTMLButtonElement>) {
+    const touch = event.touches[0];
+    if (!touch) {
+      touchStartRef.current = null;
+      touchMovedRef.current = false;
+      return;
+    }
+
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    touchMovedRef.current = false;
+  }
+
+  function handleImageTouchMove(event: React.TouchEvent<HTMLButtonElement>) {
+    const start = touchStartRef.current;
+    const touch = event.touches[0];
+
+    if (!start || !touch) {
+      return;
+    }
+
+    if (
+      Math.abs(touch.clientX - start.x) > TOUCH_MOVE_THRESHOLD
+      || Math.abs(touch.clientY - start.y) > TOUCH_MOVE_THRESHOLD
+    ) {
+      touchMovedRef.current = true;
+    }
+  }
+
+  function resetTouchGesture() {
+    touchStartRef.current = null;
+    touchMovedRef.current = false;
+  }
+
   function handleImageTouch() {
     ignoreClickRef.current = true;
 
@@ -144,8 +180,18 @@ export function PropertyCard({
           <button
             type="button"
             aria-label={`View details for ${property.title}`}
-            className="absolute inset-0 z-10"
+            className="absolute inset-0 z-10 touch-pan-y"
+            onTouchStart={handleImageTouchStart}
+            onTouchMove={handleImageTouchMove}
+            onTouchCancel={resetTouchGesture}
             onTouchEnd={(event) => {
+              const shouldHandleTap = !touchMovedRef.current;
+              resetTouchGesture();
+
+              if (!shouldHandleTap) {
+                return;
+              }
+
               event.preventDefault();
               handleImageTouch();
             }}

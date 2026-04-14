@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PropertyCard } from "@/components/property";
 
@@ -149,5 +149,66 @@ describe("PropertyCard", () => {
     expect(screen.getByText("₦70,000")).toBeInTheDocument();
     expect(screen.getByText("per night")).toBeInTheDocument();
     expect(screen.queryByText("per year")).toBeNull();
+  });
+
+  it("does not navigate when a touch over the image is actually a scroll gesture", () => {
+    render(
+      <PropertyCard
+        property={property as never}
+        images={[
+          {
+            id: "image-1",
+            property_id: "property-1",
+            image_url: "https://example.com/image.jpg",
+            display_order: 0,
+            is_cover: true,
+            created_at: "2026-03-29T09:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    const imageButton = screen.getByRole("button", { name: /view details for urban modern studio/i });
+
+    fireEvent.touchStart(imageButton, {
+      touches: [{ clientX: 120, clientY: 240 }],
+    });
+    fireEvent.touchMove(imageButton, {
+      touches: [{ clientX: 118, clientY: 275 }],
+    });
+    fireEvent.touchEnd(imageButton, {
+      changedTouches: [{ clientX: 118, clientY: 275 }],
+    });
+
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it("still navigates when the image receives a real tap", () => {
+    render(
+      <PropertyCard
+        property={property as never}
+        images={[
+          {
+            id: "image-1",
+            property_id: "property-1",
+            image_url: "https://example.com/image.jpg",
+            display_order: 0,
+            is_cover: true,
+            created_at: "2026-03-29T09:00:00.000Z",
+          },
+        ]}
+      />,
+    );
+
+    const imageButton = screen.getByRole("button", { name: /view details for urban modern studio/i });
+
+    fireEvent.touchStart(imageButton, {
+      touches: [{ clientX: 120, clientY: 240 }],
+    });
+    fireEvent.touchEnd(imageButton, {
+      changedTouches: [{ clientX: 120, clientY: 240 }],
+    });
+
+    expect(push).toHaveBeenCalledWith("/properties/property-1");
   });
 });
