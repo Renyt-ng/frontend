@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -9,6 +11,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, Button, Badge } from "@/components/ui";
 import { EmptyState, StatusBadge } from "@/components/shared";
@@ -32,6 +35,10 @@ const agentDocumentTypeOptions: AgentVerificationDocumentType[] = [
 ];
 
 type VerificationType = "agents" | "properties";
+
+function resolveVerificationTab(tab: string | null): VerificationType {
+  return tab === "properties" ? "properties" : "agents";
+}
 
 /** Tab selector */
 function TabBar({
@@ -69,13 +76,21 @@ function TabBar({
 }
 
 export default function VerificationsPage() {
-  const [activeTab, setActiveTab] = useState<VerificationType>("agents");
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<VerificationType>(() =>
+    resolveVerificationTab(requestedTab),
+  );
   const agentsQuery = useAdminAgents();
   const agentVerificationSettingsQuery = useAdminAgentVerificationSettings();
-  const propertiesQuery = useAdminProperties();
+  const propertiesQuery = useAdminProperties({ status: "active" });
   const updateAgentVerificationSettings = useUpdateAdminAgentVerificationSettings();
   const updateAgentStatus = useUpdateAgentStatus();
   const verifyProperty = useVerifyProperty();
+
+  useEffect(() => {
+    setActiveTab(resolveVerificationTab(requestedTab));
+  }, [requestedTab]);
 
   const pendingAgents = (agentsQuery.data?.data ?? []).filter(
     (agent) => agent.verification_status === "pending",
@@ -85,11 +100,13 @@ export default function VerificationsPage() {
   ).length;
   const pendingProperties = (propertiesQuery.data?.data ?? []).filter(
     (property) =>
-      property.verification_status === "none" ||
-      property.verification_status === "pending",
+      property.status === "active" &&
+      (property.verification_status === "none" ||
+        property.verification_status === "pending"),
   );
   const rejectedProperties = (propertiesQuery.data?.data ?? []).filter(
-    (property) => property.verification_status === "rejected",
+    (property) =>
+      property.status === "active" && property.verification_status === "rejected",
   ).length;
 
   const totalPending = pendingAgents.length + pendingProperties.length;
@@ -98,7 +115,8 @@ export default function VerificationsPage() {
       (agent) => agent.verification_status === "approved",
     ).length +
     (propertiesQuery.data?.data ?? []).filter(
-      (property) => property.verification_status === "approved",
+      (property) =>
+        property.status === "active" && property.verification_status === "approved",
     ).length;
   const totalRejected = rejectedAgents + rejectedProperties;
 
@@ -369,6 +387,15 @@ export default function VerificationsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-3">
+                    <Link href={`/properties/${property.id}`}>
+                      <Button
+                        variant="ghost"
+                        aria-label={`View listing ${property.title}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                        View Listing
+                      </Button>
+                    </Link>
                     <Button
                       onClick={() => handlePropertyDecision(property.id, "approved")}
                       disabled={isBusy}

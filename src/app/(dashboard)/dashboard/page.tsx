@@ -516,6 +516,10 @@ function AdminView({
               <ShieldCheck className="h-4 w-4" />
               Review verifications
             </ActionLink>
+            <ActionLink href="/dashboard/verifications?tab=properties">
+              <Building2 className="h-4 w-4" />
+              Review property verifications
+            </ActionLink>
             <ActionLink href="/dashboard/users">
               <Users className="h-4 w-4" />
               Manage users

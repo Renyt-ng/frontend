@@ -106,5 +106,9 @@ describe("DashboardPage", () => {
       "href",
       "/dashboard/whatsapp-settings",
     );
-  });
+    expect(screen.getByRole("link", { name: /review property verifications/i })).toHaveAttribute(
+      "href",
+      "/dashboard/verifications?tab=properties",
+    );
+  }, 20000);
 });
