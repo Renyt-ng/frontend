@@ -150,8 +150,8 @@ export default function AgentVerificationPage() {
       return;
     }
 
-    setPrimaryPhone(phoneStatus.phone ?? "");
-  }, [phoneStatus?.phone]);
+    setPrimaryPhone(phoneStatus.whatsapp_phone ?? phoneStatus.phone ?? "");
+  }, [phoneStatus?.phone, phoneStatus?.whatsapp_phone]);
 
   useEffect(() => {
     if (!canResubmitRejectedAgent || !existingAgent) {
@@ -181,12 +181,20 @@ export default function AgentVerificationPage() {
   }, [now, phoneStatus?.locked_until, phoneStatus?.resend_available_at]);
 
   const normalizedPrimaryPhone = normalizeNigerianPhone(primaryPhone);
-  const persistedPhone = phoneStatus?.phone ?? "";
+  const persistedPhone = phoneStatus?.whatsapp_phone ?? phoneStatus?.phone ?? "";
   const phoneMatchesPersisted =
     Boolean(normalizedPrimaryPhone) &&
     normalizedPrimaryPhone === normalizeNigerianPhone(persistedPhone);
   const isPhoneVerified = Boolean(phoneStatus?.verified && phoneMatchesPersisted);
   const phoneVerificationPending = Boolean(phoneStatus?.code_sent && phoneMatchesPersisted);
+  const verificationChannelLabel =
+    phoneStatus?.delivery_channel === "whatsapp"
+      ? "WhatsApp"
+      : phoneStatus?.delivery_channel === "sms"
+        ? "SMS"
+        : null;
+  const showVerificationOutage =
+    !phoneVerificationPending && /temporarily unavailable/i.test(phoneError);
   const resendCountdown = formatCountdown(phoneStatus?.resend_available_at ?? null, now);
   const lockCountdown = formatCountdown(phoneStatus?.locked_until ?? null, now);
   const canRequestPhoneVerificationCode =
@@ -203,22 +211,22 @@ export default function AgentVerificationPage() {
     : false;
   const readinessItems = [
     buildChecklistItem(!blockedByHeadshot, "Headshot ready"),
-    buildChecklistItem(isPhoneVerified, "Verify your primary phone"),
-    buildChecklistItem(whatsappConfigured, "Choose your WhatsApp contact number"),
+    buildChecklistItem(isPhoneVerified, "Verify your WhatsApp number"),
+    buildChecklistItem(whatsappConfigured, "Choose your call contact number"),
     buildChecklistItem(documentsReady, "Upload required verification documents"),
     buildChecklistItem(businessDetailsComplete, "Complete business details"),
   ];
   const canSubmit = readinessItems.every((item) => item.completed);
   const normalizedExistingPrimaryPhone = normalizeNigerianPhone(existingAgent?.primary_phone ?? "");
   const normalizedExistingWhatsappPhone = normalizeNigerianPhone(existingAgent?.whatsapp_phone ?? "");
-  const normalizedDraftWhatsappPhone = whatsappSameAsPrimaryPhone
+  const normalizedDraftPrimaryPhone = whatsappSameAsPrimaryPhone
     ? normalizedPrimaryPhone
     : normalizeNigerianPhone(whatsappPhone);
   const contactSettingsChanged = Boolean(
     existingAgent && (
-      normalizedExistingPrimaryPhone !== normalizedPrimaryPhone
+      normalizedExistingPrimaryPhone !== normalizedDraftPrimaryPhone
       || existingAgent.whatsapp_same_as_primary_phone !== whatsappSameAsPrimaryPhone
-      || normalizedExistingWhatsappPhone !== normalizedDraftWhatsappPhone
+      || normalizedExistingWhatsappPhone !== normalizedPrimaryPhone
     ),
   );
 
@@ -231,7 +239,7 @@ export default function AgentVerificationPage() {
     setWhatsappPhone(
       existingAgent.whatsapp_same_as_primary_phone
         ? ""
-        : (existingAgent.whatsapp_phone ?? ""),
+        : (existingAgent.primary_phone ?? ""),
     );
   }, [existingAgent]);
 
@@ -248,7 +256,7 @@ export default function AgentVerificationPage() {
       setWhatsappPhone(
         existingAgent.whatsapp_same_as_primary_phone
           ? ""
-          : (existingAgent.whatsapp_phone ?? ""),
+          : (existingAgent.primary_phone ?? ""),
       );
     }
   }
@@ -280,7 +288,7 @@ export default function AgentVerificationPage() {
     setOtpError("");
 
     if (!isValidNigerianPhone(primaryPhone)) {
-      setPhoneError("Enter a valid Nigerian phone number before requesting a verification code.");
+      setPhoneError("Enter a valid Nigerian WhatsApp number before requesting a verification code.");
       return;
     }
 
@@ -289,10 +297,14 @@ export default function AgentVerificationPage() {
         phone: primaryPhone,
       });
 
-      setPrimaryPhone(res.data.phone ?? formatNigerianPhone(primaryPhone));
+      setPrimaryPhone(res.data.whatsapp_phone ?? res.data.phone ?? formatNigerianPhone(primaryPhone));
       setOtpCode("");
       setDevelopmentCode(res.data.development_code ?? null);
-      setLiveAnnouncement("Verification code sent");
+      setLiveAnnouncement(
+        res.data.delivery_channel === "whatsapp"
+          ? "Verification code sent by WhatsApp"
+          : "Verification code sent by SMS",
+      );
     } catch (error) {
       setPhoneError(extractApiError(error, "Could not send verification code."));
     }
@@ -313,8 +325,8 @@ export default function AgentVerificationPage() {
       setDevelopmentCode(null);
       setLiveAnnouncement(
         canManageExistingAgentPhone
-          ? "Phone number verified and agent contact updated"
-          : "Phone number verified",
+          ? "WhatsApp number verified and contact updated"
+          : "WhatsApp number verified",
       );
     } catch (error) {
       setOtpError(extractApiError(error, "Verification failed, try again."));
@@ -335,13 +347,13 @@ export default function AgentVerificationPage() {
     }
 
     if (!isPhoneVerified) {
-      setPhoneError("Verify your primary phone before submitting.");
+      setPhoneError("Verify your WhatsApp number before submitting.");
       scrollToSection("phone");
       return;
     }
 
     if (!whatsappSameAsPrimaryPhone && !isValidNigerianPhone(whatsappPhone)) {
-      setWhatsappError("Enter a valid Nigerian WhatsApp number.");
+      setWhatsappError("Enter a valid Nigerian call number.");
       scrollToSection("whatsapp");
       return;
     }
@@ -386,7 +398,7 @@ export default function AgentVerificationPage() {
         business_name: values.business_name,
         business_address: values.business_address,
         whatsapp_same_as_primary_phone: whatsappSameAsPrimaryPhone,
-        whatsapp_phone: whatsappSameAsPrimaryPhone ? null : formatNigerianPhone(whatsappPhone),
+        primary_phone: whatsappSameAsPrimaryPhone ? null : formatNigerianPhone(whatsappPhone),
         verification_documents: verificationDocuments,
       });
 
@@ -406,19 +418,19 @@ export default function AgentVerificationPage() {
     }
 
     if (!isPhoneVerified) {
-      setPhoneError("Verify your primary phone before saving contact settings.");
+      setPhoneError("Verify your WhatsApp number before saving contact settings.");
       return;
     }
 
     if (!whatsappSameAsPrimaryPhone && !isValidNigerianPhone(whatsappPhone)) {
-      setWhatsappError("Enter a valid Nigerian WhatsApp number.");
+      setWhatsappError("Enter a valid Nigerian call number.");
       return;
     }
 
     try {
       await updateMyAgentContact.mutateAsync({
         whatsapp_same_as_primary_phone: whatsappSameAsPrimaryPhone,
-        whatsapp_phone: whatsappSameAsPrimaryPhone ? null : formatNigerianPhone(whatsappPhone),
+        primary_phone: whatsappSameAsPrimaryPhone ? null : formatNigerianPhone(whatsappPhone),
       });
 
       await Promise.all([
@@ -463,20 +475,20 @@ export default function AgentVerificationPage() {
     }));
   }
 
-  const submittedWhatsappSummary = useMemo(() => {
+  const submittedCallSummary = useMemo(() => {
     if (!existingAgent) {
       return null;
     }
 
     if (existingAgent.whatsapp_same_as_primary_phone) {
-      return "WhatsApp contact uses your verified primary phone";
+      return "Calls use your verified WhatsApp number";
     }
 
-    if (existingAgent.whatsapp_phone) {
-      return `WhatsApp contact uses ${existingAgent.whatsapp_phone}`;
+    if (existingAgent.primary_phone) {
+      return `Calls use ${existingAgent.primary_phone}`;
     }
 
-    return "WhatsApp contact not configured";
+    return "Call number not configured";
   }, [existingAgent]);
 
   function renderPhoneVerificationSection(helperText: string) {
@@ -488,7 +500,7 @@ export default function AgentVerificationPage() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-              Phone Verification
+              WhatsApp Verification
             </h2>
             <p className="text-sm text-[var(--color-text-secondary)]">
               {helperText}
@@ -500,8 +512,8 @@ export default function AgentVerificationPage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <Input
             id="primary_phone"
-            label="Primary phone number"
-            aria-label="Primary phone number"
+            label="WhatsApp number"
+            aria-label="WhatsApp number"
             inputMode="tel"
             type="tel"
             placeholder="+234 800 000 0000"
@@ -534,6 +546,23 @@ export default function AgentVerificationPage() {
         {lockCountdown ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             Too many attempts. Try again in {lockCountdown}.
+          </div>
+        ) : null}
+
+        {showVerificationOutage ? (
+          <div
+            role="alert"
+            className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]"
+          >
+            <p className="font-medium">Verification is temporarily unavailable.</p>
+            <p className="mt-1">We cannot send a verification code right now. Please try again shortly.</p>
+          </div>
+        ) : null}
+
+        {phoneVerificationPending && verificationChannelLabel ? (
+          <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
+            Code sent by {verificationChannelLabel}
+            {phoneStatus?.delivery_target_masked ? ` to your WhatsApp number ${phoneStatus.delivery_target_masked}.` : "."}
           </div>
         ) : null}
 
@@ -587,8 +616,8 @@ export default function AgentVerificationPage() {
           <div className="flex items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             <CheckCircle2 className="h-4 w-4" />
             {canManageExistingAgentPhone
-              ? "Phone verified. Your agent contact record now uses this number."
-              : "Phone verified."}
+              ? "WhatsApp number verified. Your agent contact record now uses this number."
+              : "WhatsApp number verified."}
           </div>
         ) : null}
       </section>
@@ -603,10 +632,10 @@ export default function AgentVerificationPage() {
       >
         <div className="space-y-1">
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
-            WhatsApp Contact
+            Call Contact
           </h2>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            Choose which number users should reach on WhatsApp.
+            Choose which number users should reach for calls.
           </p>
         </div>
 
@@ -624,23 +653,23 @@ export default function AgentVerificationPage() {
               }
             }}
           />
-          <span>WhatsApp number is the same as my primary phone</span>
+          <span>Use my WhatsApp number for calls too</span>
         </label>
 
         {!isPhoneVerified ? (
           <p className="text-sm text-[var(--color-text-secondary)]">
-            Verify your primary phone to unlock WhatsApp contact settings.
+            Verify your WhatsApp number to unlock call contact settings.
           </p>
         ) : whatsappSameAsPrimaryPhone ? (
           <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 px-4 py-3 text-sm text-[var(--color-text-secondary)]">
-            WhatsApp will use your verified primary phone.
+            Calls will use your verified WhatsApp number.
           </div>
         ) : (
           <div className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-4">
             <Input
               id="whatsapp_phone"
-              label="WhatsApp number"
-              aria-label="WhatsApp number"
+              label="Call number"
+              aria-label="Call number"
               inputMode="tel"
               type="tel"
               placeholder="+234 800 000 0000"
@@ -652,7 +681,7 @@ export default function AgentVerificationPage() {
               }}
             />
             <p className="mt-2 text-sm text-[var(--color-text-secondary)]">
-              Used for WhatsApp only.
+              This number is used for calls only and is not verified in this step.
             </p>
           </div>
         )}
@@ -710,31 +739,31 @@ export default function AgentVerificationPage() {
                 ? "Your account is approved. You can now publish listings and receive user inquiries."
                 : existingAgent.verification_status === "rejected"
                   ? "Your previous application was rejected. Review your submission details and contact an admin before resubmitting."
-                  : "Primary phone verified. Submission under review."}
+                  : "WhatsApp number verified. Submission under review."}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
-                  Verified primary phone
+                  Verified WhatsApp number
                 </p>
                 <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">
-                  {existingAgent.primary_phone ?? "Not provided"}
+                  {existingAgent.whatsapp_phone ?? "Not provided"}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {existingAgent.phone_verified ? "Phone verified" : "Verification reset"}
+                  {existingAgent.phone_verified ? "WhatsApp verified" : "Verification reset"}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-[var(--color-border)] bg-white p-4">
                 <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-text-secondary)]">
-                  WhatsApp contact
+                  Call contact
                 </p>
                 <p className="mt-2 text-sm font-medium text-[var(--color-text-primary)]">
-                  {existingAgent.whatsapp_phone ?? existingAgent.primary_phone ?? "Not provided"}
+                  {existingAgent.primary_phone ?? existingAgent.whatsapp_phone ?? "Not provided"}
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                  {submittedWhatsappSummary}
+                  {submittedCallSummary}
                 </p>
               </div>
             </div>
@@ -800,7 +829,7 @@ export default function AgentVerificationPage() {
             </div>
           ) : null}
           {renderPhoneVerificationSection(
-            "Update your primary phone here. Once you verify the new number, your agent contact record is updated automatically.",
+            "Update your WhatsApp number here. Once you verify the new number, your agent contact record is updated automatically.",
           )}
           {renderWhatsappContactSection()}
           <div className="flex flex-wrap justify-end gap-3">
@@ -842,7 +871,7 @@ export default function AgentVerificationPage() {
         <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
           {canResubmitRejectedAgent
             ? "Your previous submission was rejected. Update the required details, upload a fresh verification package, and submit another review attempt."
-            : "Verify your primary phone, choose your WhatsApp contact, and complete the required business details and documents."}
+            : "Verify your WhatsApp number, choose your call contact, and complete the required business details and documents."}
         </p>
       </div>
 
@@ -874,7 +903,7 @@ export default function AgentVerificationPage() {
       <form onSubmit={handleSubmit(onSubmit)}>
         <Card>
           <CardContent className="space-y-6 p-6">
-            {renderPhoneVerificationSection("Verify your primary phone before submitting.")}
+            {renderPhoneVerificationSection("Verify your WhatsApp number before submitting.")}
             {renderWhatsappContactSection()}
 
             <section ref={businessSectionRef} className="space-y-5">

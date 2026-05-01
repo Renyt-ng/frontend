@@ -51,6 +51,8 @@ import type {
   WhatsAppDeliveryEvent,
   WhatsAppListingCreationReport,
   WhatsAppOverview,
+  WhatsAppTemplateCatalog,
+  WhatsAppTemplateSyncResult,
   WhatsAppTask,
   WhatsAppTaskDispatchResult,
   WhatsAppTestSendResult,
@@ -710,6 +712,20 @@ export async function getWhatsAppEvents(params?: GetAdminWhatsAppEventsParams) {
   const res = await apiClient.get<ApiSuccessResponse<WhatsAppDeliveryEvent[]>>(
     "/admin/whatsapp/events",
     { params },
+  );
+  return res.data;
+}
+
+export async function getWhatsAppTemplates() {
+  const res = await apiClient.get<ApiSuccessResponse<WhatsAppTemplateCatalog>>(
+    "/admin/whatsapp/templates",
+  );
+  return res.data;
+}
+
+export async function syncWhatsAppTemplates() {
+  const res = await apiClient.post<ApiSuccessResponse<WhatsAppTemplateSyncResult>>(
+    "/admin/whatsapp/templates/sync",
   );
   return res.data;
 }

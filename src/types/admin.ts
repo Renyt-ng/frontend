@@ -445,6 +445,49 @@ export interface WhatsAppTestSendResult {
   recipient_phone: string;
 }
 
+export type WhatsAppTemplateLogicalKey = "phone_verification_code";
+
+export interface WhatsAppTemplateMapping {
+  id: string;
+  logical_key: WhatsAppTemplateLogicalKey;
+  label: string;
+  description: string | null;
+  fallback_template_name: string | null;
+  fallback_language: string;
+  fallback_button_index: number | null;
+  fallback_button_sub_type: string | null;
+  use_meta_override: boolean;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppMetaTemplate {
+  id: string;
+  provider: WhatsAppProvider;
+  provider_template_id: string;
+  template_name: string;
+  language: string;
+  status: string | null;
+  category: string | null;
+  components: Record<string, unknown>[];
+  raw_payload: Record<string, unknown>;
+  is_available_on_meta: boolean;
+  last_synced_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WhatsAppTemplateCatalog {
+  mappings: WhatsAppTemplateMapping[];
+  meta_templates: WhatsAppMetaTemplate[];
+}
+
+export interface WhatsAppTemplateSyncResult {
+  synced_count: number;
+  last_synced_at: string;
+}
+
 export interface WhatsAppActionControl {
   id: string;
   action_type: WhatsAppActionType;

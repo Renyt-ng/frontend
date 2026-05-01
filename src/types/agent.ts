@@ -54,12 +54,18 @@ export interface Agent {
 
 export interface PhoneVerificationStatus {
   phone: string | null;
+  whatsapp_phone: string | null;
   verified: boolean;
   code_sent: boolean;
   resend_available_at: string | null;
   expires_at: string | null;
   locked_until: string | null;
   verified_at: string | null;
+  delivery_channel: "sms" | "whatsapp" | null;
+  delivery_status: "sent" | "unavailable" | null;
+  delivery_target_label: "whatsapp_phone" | null;
+  delivery_target_masked: string | null;
+  service_unavailable_reason: "no_active_channel" | null;
   development_code?: string;
 }
 

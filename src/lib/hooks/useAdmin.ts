@@ -46,6 +46,8 @@ import type {
   WhatsAppListingCreationReport,
   WhatsAppOverview,
   WhatsAppTask,
+  WhatsAppTemplateCatalog,
+  WhatsAppTemplateSyncResult,
   WhatsAppTestSendResult,
 } from "@/types/admin";
 import type {
@@ -103,6 +105,7 @@ export const adminKeys = {
   whatsappOverview: () => ["admin", "whatsapp-overview"] as const,
   whatsappEvents: (params?: GetAdminWhatsAppEventsParams) =>
     ["admin", "whatsapp-events", params] as const,
+  whatsappTemplates: () => ["admin", "whatsapp-templates"] as const,
   whatsappActionControls: () => ["admin", "whatsapp-action-controls"] as const,
   whatsappAgentAccess: (params?: GetAdminWhatsAppAgentAccessParams) =>
     ["admin", "whatsapp-agent-access", params] as const,
@@ -865,6 +868,19 @@ export function useAdminWhatsAppEvents(
   });
 }
 
+export function useAdminWhatsAppTemplates(
+  options?: Omit<
+    UseQueryOptions<ApiSuccessResponse<WhatsAppTemplateCatalog>>,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: adminKeys.whatsappTemplates(),
+    queryFn: () => adminApi.getWhatsAppTemplates(),
+    ...options,
+  });
+}
+
 export function useAdminWhatsAppActionControls(
   options?: Omit<
     UseQueryOptions<ApiSuccessResponse<WhatsAppActionControl[]>>,
@@ -928,6 +944,20 @@ export function useSendAdminWhatsAppTest() {
       queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-overview"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "whatsapp-events"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "overview"] });
+    },
+  });
+}
+
+export function useSyncAdminWhatsAppTemplates() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (): Promise<ApiSuccessResponse<WhatsAppTemplateSyncResult>> =>
+      adminApi.syncWhatsAppTemplates(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.whatsappTemplates() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.whatsappOverview() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.whatsappEvents() });
     },
   });
 }

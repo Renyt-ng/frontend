@@ -23,6 +23,7 @@ import {
 import {
   useAdminWhatsAppOverview,
   useAdminWhatsAppEvents,
+  useAdminWhatsAppTemplates,
   useAdminWhatsAppActionControls,
   useAdminWhatsAppAgentAccessList,
   useAdminWhatsAppListingCreationReport,
@@ -31,6 +32,7 @@ import {
   useDispatchAdminWhatsAppFinalOutcome,
   useRecoverAdminWhatsAppTask,
   useSendAdminWhatsAppTest,
+  useSyncAdminWhatsAppTemplates,
   useUpdateAdminWhatsAppActionControl,
   useUpdateAdminWhatsAppAgentAccess,
 } from "@/lib/hooks";
@@ -49,6 +51,8 @@ import type {
   WhatsAppActionType,
   WhatsAppActionStatus,
   WhatsAppAgentAccessStatus,
+  WhatsAppTemplateMapping,
+  WhatsAppMetaTemplate,
   WhatsAppTask,
 } from "@/types/admin";
 
@@ -103,6 +107,10 @@ export default function WhatsAppSettingsPage() {
       staleTime: 10_000,
     },
   );
+  const templatesQuery = useAdminWhatsAppTemplates({
+    refetchInterval: LIVE_REFRESH_INTERVAL_MS,
+    staleTime: 10_000,
+  });
   const actionsQuery = useAdminWhatsAppActionControls({
     refetchInterval: LIVE_REFRESH_INTERVAL_MS,
     staleTime: 10_000,
@@ -129,11 +137,15 @@ export default function WhatsAppSettingsPage() {
   const dispatchFinalOutcome = useDispatchAdminWhatsAppFinalOutcome();
   const recoverTask = useRecoverAdminWhatsAppTask();
   const sendTestWhatsApp = useSendAdminWhatsAppTest();
+  const syncTemplates = useSyncAdminWhatsAppTemplates();
   const updateAction = useUpdateAdminWhatsAppActionControl();
   const updateAgentAccess = useUpdateAdminWhatsAppAgentAccess();
 
   const overview = overviewQuery.data?.data;
   const events = eventsQuery.data?.data ?? [];
+  const templateCatalog = templatesQuery.data?.data;
+  const templateMappings = templateCatalog?.mappings ?? [];
+  const metaTemplates = templateCatalog?.meta_templates ?? [];
   const actions = actionsQuery.data?.data ?? [];
   const agentAccessList = agentAccessQuery.data?.data ?? [];
   const tasks = tasksQuery.data?.data ?? [];
@@ -144,6 +156,7 @@ export default function WhatsAppSettingsPage() {
     template_name: "",
     message: "",
   });
+  const [templateStatusMessage, setTemplateStatusMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [operationsStatusMessage, setOperationsStatusMessage] = useState<string | null>(null);
   const [finalOutcomePropertyId, setFinalOutcomePropertyId] = useState("");
@@ -173,6 +186,7 @@ export default function WhatsAppSettingsPage() {
   const sectionItems = useMemo(
     () => [
       { id: "wa-overview", label: "Overview" },
+      { id: "wa-templates", label: "Templates", count: metaTemplates.length },
       { id: "wa-actions", label: "Action controls", count: actions.length },
       { id: "wa-agents", label: "Agent access", count: agentAccessList.length },
       { id: "wa-listing-report", label: "Listing flow report", count: listingReport?.stale_drafts.length ?? 0 },
@@ -181,7 +195,7 @@ export default function WhatsAppSettingsPage() {
       { id: "wa-test-send", label: "Test send" },
       { id: "wa-events", label: "Recent activity", count: events.length },
     ],
-    [actions.length, agentAccessList.length, events.length, listingReport?.stale_drafts.length, tasks.length],
+    [actions.length, agentAccessList.length, events.length, listingReport?.stale_drafts.length, metaTemplates.length, tasks.length],
   );
   const visibleActions = useMemo(
     () => actions.filter((action) => action.action_type !== "listing_update"),
@@ -213,6 +227,44 @@ export default function WhatsAppSettingsPage() {
         error instanceof Error ? error.message : "Unable to send test message right now.",
       );
     }
+  }
+
+  async function handleTemplateSync() {
+    setTemplateStatusMessage(null);
+
+    try {
+      const result = await syncTemplates.mutateAsync();
+      setTemplateStatusMessage(
+        `Synced ${result.data.synced_count} Meta template${result.data.synced_count === 1 ? "" : "s"} at ${formatTimestamp(result.data.last_synced_at)}.`,
+      );
+    } catch (error) {
+      setTemplateStatusMessage(
+        error instanceof Error ? error.message : "Unable to sync templates right now.",
+      );
+    }
+  }
+
+  function findResolvedMetaTemplate(templateName: string | null, language: string) {
+    if (!templateName) {
+      return null;
+    }
+
+    return (
+      metaTemplates.find(
+        (template: WhatsAppMetaTemplate) =>
+          template.template_name === templateName
+          && template.language === language
+          && template.is_available_on_meta,
+      ) ?? null
+    );
+  }
+
+  function formatTemplateStatus(template: WhatsAppMetaTemplate | null) {
+    if (!template?.status) {
+      return "Unknown";
+    }
+
+    return template.status.replace(/_/g, " ");
   }
 
   async function handleActionStatusSave(actionType: WhatsAppActionType) {
@@ -497,6 +549,136 @@ export default function WhatsAppSettingsPage() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </DashboardPanel>
+          </section>
+
+          <section id="wa-templates" className="scroll-mt-28">
+            <DashboardPanel padding="lg" className="space-y-5">
+              <DashboardSectionHeading
+                title="Template catalog"
+                description="Review fallback mappings and sync the approved Meta template catalog used to override live WhatsApp sends."
+                action={
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="dashboard">{metaTemplates.length} Meta templates</Badge>
+                    <Button
+                      type="button"
+                      variant="dashboardPrimary"
+                      size="sm"
+                      onClick={handleTemplateSync}
+                      disabled={syncTemplates.isPending}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Sync from Meta
+                    </Button>
+                  </div>
+                }
+              />
+
+              {templateStatusMessage ? (
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white px-4 py-3 text-sm text-[var(--dashboard-text-secondary)]">
+                  {templateStatusMessage}
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="space-y-3">
+                  {templatesQuery.isError ? (
+                    <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-[var(--color-rejected)]">
+                      WhatsApp template mappings could not be loaded. Confirm the new admin template endpoints are reachable.
+                    </div>
+                  ) : templateMappings.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[var(--dashboard-border-strong)] bg-[var(--dashboard-surface-alt)] px-5 py-8 text-sm text-[var(--dashboard-text-secondary)]">
+                      No WhatsApp template mappings are available yet.
+                    </div>
+                  ) : (
+                    templateMappings.map((mapping: WhatsAppTemplateMapping) => {
+                      const metaTemplate = findResolvedMetaTemplate(
+                        mapping.fallback_template_name,
+                        mapping.fallback_language,
+                      );
+
+                      return (
+                        <div
+                          key={mapping.id}
+                          className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-[var(--dashboard-text-primary)]">
+                                {mapping.label}
+                              </p>
+                              <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                                {mapping.description ?? "No description configured."}
+                              </p>
+                            </div>
+                            <Badge variant={metaTemplate ? "dashboardSuccess" : "dashboard"}>
+                              {metaTemplate ? "Meta override active" : "Using fallback mapping"}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 text-sm text-[var(--dashboard-text-secondary)] md:grid-cols-2">
+                            <p className="break-words">Logical key: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{mapping.logical_key}</span></p>
+                            <p className="break-words">Fallback template: <span className="break-all font-medium text-[var(--dashboard-text-primary)]">{mapping.fallback_template_name ?? "None"}</span></p>
+                            <p>Language: <span className="font-medium text-[var(--dashboard-text-primary)]">{mapping.fallback_language}</span></p>
+                            <p>Button parameter: <span className="font-medium text-[var(--dashboard-text-primary)]">{mapping.fallback_button_index ?? "None"}{mapping.fallback_button_index !== null ? ` · ${mapping.fallback_button_sub_type ?? "button"}` : ""}</span></p>
+                          </div>
+
+                          {metaTemplate ? (
+                            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-[var(--dashboard-text-secondary)]">
+                              Meta currently has <span className="font-medium text-[var(--dashboard-text-primary)]">{metaTemplate.template_name}</span> in <span className="font-medium text-[var(--dashboard-text-primary)]">{metaTemplate.language}</span> with status <span className="font-medium text-[var(--dashboard-text-primary)]">{formatTemplateStatus(metaTemplate)}</span>. Runtime sends will prefer the synced catalog.
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-[var(--dashboard-border)] bg-white p-5">
+                  <h3 className="font-medium text-[var(--dashboard-text-primary)]">Meta template inventory</h3>
+                  <p className="mt-1 text-sm text-[var(--dashboard-text-secondary)]">
+                    Recently synced templates from your WhatsApp Business Account.
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    {templatesQuery.isError ? (
+                      <p className="text-sm text-[var(--color-rejected)]">
+                        Meta template inventory could not be loaded.
+                      </p>
+                    ) : metaTemplates.length === 0 ? (
+                      <p className="text-sm text-[var(--dashboard-text-secondary)]">
+                        No Meta templates have been synced yet. Use “Sync from Meta” to populate the local catalog.
+                      </p>
+                    ) : (
+                      metaTemplates.slice(0, 12).map((template: WhatsAppMetaTemplate) => (
+                        <div
+                          key={template.id}
+                          className="rounded-2xl border border-[var(--dashboard-border)] bg-[var(--dashboard-surface-alt)] p-4"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-medium text-[var(--dashboard-text-primary)]">
+                                {template.template_name}
+                              </p>
+                              <p className="mt-1 break-words text-sm text-[var(--dashboard-text-secondary)]">
+                                {template.language}
+                                {template.category ? ` · ${template.category.toLowerCase()}` : ""}
+                                {template.provider_template_id ? ` · ${template.provider_template_id}` : ""}
+                              </p>
+                            </div>
+                            <Badge variant={template.is_available_on_meta ? "dashboardSuccess" : "dashboard"}>
+                              {formatTemplateStatus(template)}
+                            </Badge>
+                          </div>
+                          <p className="mt-3 text-xs text-[var(--dashboard-text-secondary)]">
+                            Last synced {formatTimestamp(template.last_synced_at)}
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>

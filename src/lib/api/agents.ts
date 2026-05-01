@@ -12,7 +12,7 @@ export async function createAgent(
     business_name: string;
     business_address: string;
     whatsapp_same_as_primary_phone: boolean;
-    whatsapp_phone?: string | null;
+    primary_phone?: string | null;
     verification_documents: Array<{
       document_type: AgentVerificationDocumentType;
       file_name: string;
@@ -57,7 +57,7 @@ export async function verifyPhoneVerification(data: { code: string }) {
 
 export async function updateMyAgentContact(data: {
   whatsapp_same_as_primary_phone: boolean;
-  whatsapp_phone?: string | null;
+  primary_phone?: string | null;
 }) {
   const res = await apiClient.patch<ApiSuccessResponse<Agent>>(
     "/agents/me/contact",

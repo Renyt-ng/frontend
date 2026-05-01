@@ -71,12 +71,18 @@ describe("AgentVerificationPage", () => {
       data: {
         data: {
           phone: "+234 800 000 0000",
+          whatsapp_phone: "+234 800 000 0000",
           verified: false,
           code_sent: false,
           resend_available_at: null,
           expires_at: null,
           locked_until: null,
           verified_at: null,
+          delivery_channel: null,
+          delivery_status: null,
+          delivery_target_label: null,
+          delivery_target_masked: null,
+          service_unavailable_reason: null,
         },
       },
       isLoading: false,
@@ -99,29 +105,35 @@ describe("AgentVerificationPage", () => {
     });
   });
 
-  it("renders the phone and WhatsApp sections before document upload", { timeout: 15000 }, () => {
+  it("renders the WhatsApp verification and call contact sections before document upload", { timeout: 15000 }, () => {
     render(<AgentVerificationPage />);
 
-    expect(screen.getByRole("heading", { name: /phone verification/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /whatsapp contact/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /whatsapp verification/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /call contact/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/verify your primary phone to unlock whatsapp contact settings/i),
+      screen.getByText(/verify your whatsapp number to unlock call contact settings/i),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /verification documents/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /submit verification/i })).toBeDisabled();
   });
 
-  it("renders the submitted summary with phone and WhatsApp details", () => {
+  it("renders the submitted summary with whatsapp and call contact details", () => {
     hooks.usePhoneVerificationStatus.mockReturnValue({
       data: {
         data: {
           phone: "+234 800 000 0000",
+          whatsapp_phone: "+234 800 000 0000",
           verified: true,
           code_sent: false,
           resend_available_at: null,
           expires_at: null,
           locked_until: null,
           verified_at: "2026-04-01T00:00:00.000Z",
+          delivery_channel: null,
+          delivery_status: null,
+          delivery_target_label: null,
+          delivery_target_masked: null,
+          service_unavailable_reason: null,
         },
       },
       isLoading: false,
@@ -155,14 +167,14 @@ describe("AgentVerificationPage", () => {
 
     render(<AgentVerificationPage />);
 
-    expect(screen.getByText(/verified primary phone/i)).toBeInTheDocument();
-    expect(screen.getByText("+234 800 000 0000")).toBeInTheDocument();
+    expect(screen.getByText(/verified whatsapp number/i)).toBeInTheDocument();
     expect(screen.getByText("+234 801 111 1111")).toBeInTheDocument();
+    expect(screen.getByText("+234 800 000 0000")).toBeInTheDocument();
     expect(
-      screen.getByText(/whatsapp contact uses \+234 801 111 1111/i),
+      screen.getByText(/calls use \+234 800 000 0000/i),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /update contact numbers/i })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: /phone verification/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /whatsapp verification/i })).not.toBeInTheDocument();
   });
 
   it("opens a shared contact modal for primary phone and whatsapp updates", () => {
@@ -170,12 +182,18 @@ describe("AgentVerificationPage", () => {
       data: {
         data: {
           phone: "+234 800 000 0000",
+          whatsapp_phone: "+234 800 000 0000",
           verified: true,
           code_sent: false,
           resend_available_at: null,
           expires_at: null,
           locked_until: null,
           verified_at: "2026-04-01T00:00:00.000Z",
+          delivery_channel: null,
+          delivery_status: null,
+          delivery_target_label: null,
+          delivery_target_masked: null,
+          service_unavailable_reason: null,
         },
       },
       isLoading: false,
@@ -212,8 +230,8 @@ describe("AgentVerificationPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /update contact numbers/i }));
 
     expect(screen.getByRole("dialog", { name: /update contact numbers/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /phone verification/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /whatsapp contact/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /whatsapp verification/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /call contact/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save contact settings/i })).toBeInTheDocument();
   });
 
@@ -246,12 +264,18 @@ describe("AgentVerificationPage", () => {
       data: {
         data: {
           phone: "+234 800 000 0000",
+          whatsapp_phone: "+234 800 000 0000",
           verified: true,
           code_sent: false,
           resend_available_at: null,
           expires_at: null,
           locked_until: null,
           verified_at: "2026-04-01T00:00:00.000Z",
+          delivery_channel: null,
+          delivery_status: null,
+          delivery_target_label: null,
+          delivery_target_masked: null,
+          service_unavailable_reason: null,
         },
       },
       isLoading: false,
@@ -273,12 +297,18 @@ describe("AgentVerificationPage", () => {
       data: {
         data: {
           phone: "+234 800 000 0000",
+          whatsapp_phone: "+234 800 000 0000",
           verified: true,
           code_sent: false,
           resend_available_at: null,
           expires_at: null,
           locked_until: null,
           verified_at: "2026-04-01T00:00:00.000Z",
+          delivery_channel: null,
+          delivery_status: null,
+          delivery_target_label: null,
+          delivery_target_masked: null,
+          service_unavailable_reason: null,
         },
       },
       isLoading: false,
@@ -287,6 +317,6 @@ describe("AgentVerificationPage", () => {
     render(<AgentVerificationPage />);
 
     expect(screen.getByRole("button", { name: /send code/i })).toBeDisabled();
-    expect(screen.getByText(/phone verified\./i)).toBeInTheDocument();
+    expect(screen.getByText(/whatsapp number verified\./i)).toBeInTheDocument();
   });
 });
